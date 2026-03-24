@@ -1,0 +1,79 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.0.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'spring'
+version = '0.0.1-SNAPSHOT'
+description = 'springServer'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencies {
+
+    // spring security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.security:spring-security-messaging'
+    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
+
+    // webmvc
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+
+    // phone
+    implementation 'com.github.l98293:phone:1.1.0'
+
+    // lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // mysql
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // junit
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // jwt
+    implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.13.0'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+
+    // env
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+    // JPA
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+    // web
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // mail
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
+
+    // thymeleaf
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+    // spring boot test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
