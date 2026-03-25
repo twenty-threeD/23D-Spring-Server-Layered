@@ -1,4 +1,4 @@
-package spring.springserver.global.exception;
+package spring.springserver.global.handler;
 
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.global.data.BaseResponse;
