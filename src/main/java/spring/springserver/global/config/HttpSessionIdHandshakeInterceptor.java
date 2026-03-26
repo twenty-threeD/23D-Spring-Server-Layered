@@ -18,7 +18,6 @@ public class HttpSessionIdHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtProvider jwtProvider;
 
-
     @Override
     public boolean beforeHandshake(ServerHttpRequest request,
                                    ServerHttpResponse response,
