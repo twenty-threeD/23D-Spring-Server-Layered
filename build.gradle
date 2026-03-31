@@ -38,7 +38,7 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // postgreSQL
+    // postgresQL
     runtimeOnly 'org.postgresql:postgresql'
 
     // redis
