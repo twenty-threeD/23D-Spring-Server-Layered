@@ -55,7 +55,7 @@ public class JwtProvider implements TokenProvider {
 				.subject(username)
 
 				.claim("role", role)
-				.claim("tokenType", "refreshToken")
+				.claim("tokenType", "accessToken")
 
 				.issuedAt(now)
 				.expiration(expiration)
