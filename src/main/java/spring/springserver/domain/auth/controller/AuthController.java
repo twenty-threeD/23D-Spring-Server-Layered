@@ -3,12 +3,10 @@ package spring.springserver.domain.auth.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import spring.springserver.domain.auth.data.request.SignInRequest;
 import spring.springserver.domain.auth.data.request.SignUpRequest;
+import spring.springserver.domain.auth.data.response.LogOutResponse;
 import spring.springserver.domain.auth.data.response.SignUpResponse;
 import spring.springserver.domain.auth.data.response.SignInResponse;
 import spring.springserver.domain.auth.service.AuthService;
@@ -32,5 +30,12 @@ public class AuthController {
                                                HttpServletResponse httpServletResponse) {
 
         return authService.signIn(signInRequest, httpServletResponse);
+    }
+
+    @PostMapping("/logout")
+    public BaseResponse<LogOutResponse> logOut(@CookieValue(value = "accessToken", required = false) String accessToken,
+                                               @CookieValue(value = "refreshToken", required = false) String refreshToken,
+                                               HttpServletResponse httpServletResponse) {
+        return authService.SignOut(accessToken, refreshToken, httpServletResponse);
     }
 }
