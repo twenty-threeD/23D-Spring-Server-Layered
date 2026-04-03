@@ -1,6 +1,7 @@
 package spring.springserver.domain.auth.service;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -10,7 +11,7 @@ import org.springframework.stereotype.Service;
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
 import spring.springserver.domain.auth.data.request.SignInRequest;
 import spring.springserver.domain.auth.data.request.SignUpRequest;
-import spring.springserver.domain.auth.data.response.LogOutResponse;
+import spring.springserver.domain.auth.data.response.SignOutResponse;
 import spring.springserver.domain.auth.data.response.SignUpResponse;
 import spring.springserver.domain.auth.data.response.SignInResponse;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
@@ -28,27 +29,37 @@ public class AuthService {
     private final MemberRepository memberRepository;
     private final TokenService tokenService;
     private final JwtProvider jwtProvider;
-    private final RedisTemplate<Object, Object> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
-    public BaseResponse<SignUpResponse> signUp(SignUpRequest signupRequest) {
+    /**
+     * 회원가입
+     * @param signUpRequest 회원가입 요청 값
+     * @return message
+     */
+    public BaseResponse<SignUpResponse> signUp(SignUpRequest signUpRequest) {
 
-        if (memberRepository.existsByUsername(signupRequest.username())) {
+        if (memberRepository.existsByUsername(signUpRequest.username())) {
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 
-        memberRepository.save(signupRequest.toEntity(passwordEncoder.encode(signupRequest.password())));
+        memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
         return BaseResponse.ok(SignUpResponse.of("회원가입이 완료되었습니다."));
     }
 
-    public BaseResponse<SignInResponse> signIn(SignInRequest signinRequest,
+    /**
+     * @param signInRequest 로그인 요청 값
+     * @param httpServletResponse 쿠키 저장용
+     * @return accessToken, refreshToken
+     */
+    public BaseResponse<SignInResponse> signIn(SignInRequest signInRequest,
                                                HttpServletResponse httpServletResponse) {
 
-        Member member = memberRepository.findByUsername(signinRequest.username())
+        Member member = memberRepository.findByUsername(signInRequest.username())
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
                 );
 
-        if (!passwordEncoder.matches(signinRequest.password(), member.getPassword())) {
+        if (!passwordEncoder.matches(signInRequest.password(), member.getPassword())) {
             throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
         }
 
@@ -64,36 +75,20 @@ public class AuthService {
         );
     }
 
-    public BaseResponse<LogOutResponse> SignOut(
-            String accessToken,
-            String refreshToken,
-            HttpServletResponse httpServletResponse
-    ) {
+    /**
+     *
+     * @param httpServletRequest 쿠키용
+     * @param httpServletResponse 쿠키용
+     * @return message
+     */
+    public BaseResponse<SignOutResponse> SignOut(HttpServletRequest httpServletRequest,
+                                                 HttpServletResponse httpServletResponse) {
 
-        String accessTokenUsername = jwtProvider.getUsernameFromToken(accessToken);
-        String refreshTokenUsername = jwtProvider.getUsernameFromToken(refreshToken);
+        tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse
+        );
 
-        String storedAccessToken = (String) redisTemplate.opsForValue().get("accessToken:" + accessTokenUsername);
-        String storedRefreshToken = (String) redisTemplate.opsForValue().get("refreshToken:" + refreshTokenUsername);
-
-        if (storedAccessToken == null || storedRefreshToken == null) {
-            throw new ApplicationException(AuthStatusCode.ALREADY_LOGGED_OUT);
-        }
-
-        redisTemplate.delete("accessToken:" + accessTokenUsername);
-        redisTemplate.delete("refreshToken:" + refreshTokenUsername);
-
-        Cookie accessCookie = new Cookie("accessToken", null);
-        accessCookie.setPath("/");
-        accessCookie.setMaxAge(0);
-        httpServletResponse.addCookie(accessCookie);
-
-        Cookie refreshCookie = new Cookie("refreshToken", null);
-        refreshCookie.setPath("/");
-        refreshCookie.setMaxAge(0);
-        refreshCookie.setHttpOnly(true);
-        httpServletResponse.addCookie(refreshCookie);
-
-        return BaseResponse.ok(LogOutResponse.of(HttpStatus.OK.value(), "로그아웃 되었습니다."));
+        return BaseResponse.ok(SignOutResponse.of("로그아웃 되었습니다."));
     }
 }

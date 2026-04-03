@@ -1,11 +1,14 @@
 package spring.springserver.domain.auth.service;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
+import spring.springserver.domain.auth.exception.AuthStatusCode;
+import spring.springserver.global.exception.exception.ApplicationException;
 import spring.springserver.global.jwt.JwtProvider;
 
 import java.util.concurrent.TimeUnit;
@@ -56,5 +59,36 @@ public class TokenService {
 		httpServletResponse.addCookie(refreshCookie);
 
 		return refreshToken;
+	}
+
+	public void deleteTokens(HttpServletRequest httpServletRequest,
+							 HttpServletResponse httpServletResponse) {
+
+		String username = jwtProvider.getUsernameFromToken(String.valueOf(httpServletRequest));
+
+		String savedRefreshToken = redisTemplate.opsForValue().get("refreshToken:" + username);
+		String savedAccessToken = redisTemplate.opsForValue().get("accessToken:" + username);
+
+		if (savedRefreshToken == null || savedAccessToken == null) {
+			throw new ApplicationException(AuthStatusCode.ALREADY_LOGGED_OUT);
+		} else {
+			// 엑세스 토큰 만료(쿠키)
+			Cookie accessCookie = new Cookie("accessToken", null);
+			accessCookie.setPath("/");
+			accessCookie.setHttpOnly(false);
+			accessCookie.setMaxAge(0); // 즉시 만료
+			httpServletResponse.addCookie(accessCookie);
+
+			// 리프레시 토큰 만료(쿠키)
+			Cookie refreshCookie = new Cookie("refreshToken", null);
+			refreshCookie.setPath("/");
+			refreshCookie.setHttpOnly(true);
+			refreshCookie.setMaxAge(0); // 즉시 만료
+			httpServletResponse.addCookie(refreshCookie);
+
+			// Redis에서 삭제
+			redisTemplate.delete("accessToken:" + username);
+			redisTemplate.delete("refreshToken:" + username);
+		}
 	}
 }

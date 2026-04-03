@@ -1,12 +1,11 @@
 package spring.springserver.domain.auth.data.response;
 
-public record LogOutResponse(
+public record SignOutResponse(
 
-        int code,
         String message
 ) {
-    public static LogOutResponse of(int code, String message){
+    public static SignOutResponse of(String message){
 
-        return new LogOutResponse(code, message);
+        return new SignOutResponse(message);
     }
 }
