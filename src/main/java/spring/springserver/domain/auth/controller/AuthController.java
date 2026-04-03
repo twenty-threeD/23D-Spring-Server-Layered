@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import spring.springserver.domain.auth.data.request.SigninRequest;
-import spring.springserver.domain.auth.data.request.SignupRequest;
-import spring.springserver.domain.auth.data.response.SignupResponse;
-import spring.springserver.domain.auth.data.response.TokenResponse;
+import spring.springserver.domain.auth.data.request.SignInRequest;
+import spring.springserver.domain.auth.data.request.SignUpRequest;
+import spring.springserver.domain.auth.data.response.SignUpResponse;
+import spring.springserver.domain.auth.data.response.SignInResponse;
 import spring.springserver.domain.auth.service.AuthService;
 import spring.springserver.global.data.BaseResponse;
 
@@ -22,14 +22,15 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public BaseResponse<SignupResponse> signup(@RequestBody @Valid SignupRequest signUpRequest) {
+    public BaseResponse<SignUpResponse> signUp(@RequestBody @Valid final SignUpRequest signUpRequest) {
 
-        return authService.signup(signUpRequest);
+        return authService.signUp(signUpRequest);
     }
 
     @PostMapping("/signin")
-    public BaseResponse<TokenResponse> signin(@RequestBody @Valid SigninRequest signInRequest, HttpServletResponse httpServletResponse) {
+    public BaseResponse<SignInResponse> signIn(@RequestBody @Valid final SignInRequest signInRequest,
+                                               HttpServletResponse httpServletResponse) {
 
-        return authService.signin(signInRequest, httpServletResponse);
+        return authService.signIn(signInRequest, httpServletResponse);
     }
 }

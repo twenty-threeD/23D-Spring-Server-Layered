@@ -6,6 +6,7 @@ import java.security.Principal;
 
 @Getter
 public class StompPrincipal implements Principal {
+
     private String username;
     private String role;
 

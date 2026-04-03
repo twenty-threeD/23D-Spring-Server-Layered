@@ -7,6 +7,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
 import spring.springserver.domain.auth.interfaces.TokenProvider;
 import spring.springserver.domain.member.entity.Role;
 
@@ -30,12 +31,12 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	@Override
-	public String generateRefreshToken(String username) {
+	public String generateRefreshToken(GenerateTokenRequest generateTokenRequest) {
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
 		return Jwts.builder()
-				.subject(username)
+				.subject(generateTokenRequest.username())
 
 				.claim("tokenType", "refreshToken")
 
@@ -47,14 +48,14 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	@Override
-	public String generateAccessToken(String username, Role role) {
+	public String generateAccessToken(GenerateTokenRequest generateTokenRequest) {
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + accessTokenExpiration);
 
 		return Jwts.builder()
-				.subject(username)
+				.subject(generateTokenRequest.username())
 
-				.claim("role", role)
+				.claim("role", generateTokenRequest.role())
 				.claim("tokenType", "accessToken")
 
 				.issuedAt(now)
