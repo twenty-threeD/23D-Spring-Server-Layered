@@ -39,6 +39,6 @@ public class MemberService {
 
         memberRepository.delete(member);
 
-        return BaseResponse.ok(DeleteAccountResponse.of("탈되었습니다."));
+        return BaseResponse.ok(DeleteAccountResponse.of("탈퇴되었습니다."));
     }
 }
