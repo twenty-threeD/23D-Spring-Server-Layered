@@ -91,4 +91,17 @@ public class TokenService {
 			redisTemplate.delete("refreshToken:" + username);
 		}
 	}
+
+    public String extractTokenFromCookie(HttpServletRequest httpServletRequest,
+                                         String cookieName) {
+        Cookie[] cookies = httpServletRequest.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookieName.equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+    }
 }
