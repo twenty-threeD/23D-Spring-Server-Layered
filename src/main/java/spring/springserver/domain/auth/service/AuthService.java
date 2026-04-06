@@ -69,8 +69,8 @@ public class AuthService {
         );
 
         return BaseResponse.ok(SignInResponse.of(
-                tokenService.generateRefreshToken(generateTokenRequest, httpServletResponse),
-                tokenService.generateAccessToken(generateTokenRequest, httpServletResponse)
+                tokenService.generateAccessToken(generateTokenRequest, httpServletResponse),
+                tokenService.generateRefreshToken(generateTokenRequest, httpServletResponse)
                 )
         );
     }
