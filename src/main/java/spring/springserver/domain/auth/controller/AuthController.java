@@ -40,6 +40,7 @@ public class AuthController {
     @PostMapping("/signout")
     public BaseResponse<SignOutResponse> signOut(HttpServletRequest httpServletRequest, 
                                                  HttpServletResponse httpServletResponse) {
+
         return BaseResponse.ok(authService.signOut(
                 httpServletRequest,
                 httpServletResponse

@@ -24,6 +24,7 @@ public class TokenService {
 									  HttpServletResponse httpServletResponse) {
 
 		String accessToken = jwtProvider.generateAccessToken(generateTokenRequest);
+
 		redisTemplate.opsForValue().set(
 				"accessToken:" + generateTokenRequest.username(),
 				accessToken,
@@ -70,6 +71,7 @@ public class TokenService {
 		String savedAccessToken = redisTemplate.opsForValue().get("accessToken:" + username);
 
 		if (savedRefreshToken == null || savedAccessToken == null) {
+
 			throw new ApplicationException(AuthStatusCode.ALREADY_LOGGED_OUT);
 		} else {
 			// 엑세스 토큰 만료(쿠키)
@@ -94,14 +96,21 @@ public class TokenService {
 
     public String extractTokenFromCookie(HttpServletRequest httpServletRequest,
                                          String cookieName) {
+
         Cookie[] cookies = httpServletRequest.getCookies();
-        if (cookies != null) {
+
+        try {
             for (Cookie cookie : cookies) {
                 if (cookieName.equals(cookie.getName())) {
+
                     return cookie.getValue();
                 }
             }
-        }
-        throw new ApplicationException(AuthStatusCode.INVALID_JWT);
-    }
+        } catch (Exception e) {
+
+			throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+		}
+
+		return null;
+	}
 }

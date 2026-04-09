@@ -8,6 +8,7 @@ public interface TokenProvider {
 
 	String generateRefreshToken(GenerateTokenRequest generateTokenRequest);
 	String generateAccessToken(GenerateTokenRequest generateTokenRequest);
+
 	String getUsernameFromToken(String token);
 
 	Role getRole(String token);

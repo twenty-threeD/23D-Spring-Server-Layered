@@ -27,8 +27,6 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final MemberRepository memberRepository;
     private final TokenService tokenService;
-    private final JwtProvider jwtProvider;
-    private final RedisTemplate<String, String> redisTemplate;
 
     /**
      * 회원가입
