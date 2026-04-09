@@ -5,6 +5,7 @@ public record SignUpResponse(
 ) {
 
     public static SignUpResponse of(String message) {
+
         return new SignUpResponse(message);
     }
 }

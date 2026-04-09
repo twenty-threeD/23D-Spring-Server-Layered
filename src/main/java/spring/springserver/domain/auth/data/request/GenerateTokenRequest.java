@@ -10,4 +10,5 @@ public record GenerateTokenRequest(
 
         @NotBlank
         Role role
-) { }
+) {
+}

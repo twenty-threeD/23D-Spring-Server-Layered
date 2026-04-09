@@ -6,7 +6,9 @@ public record SignInResponse(
 
         String refreshToken
 ) {
-    public static SignInResponse of(String accessToken, String refreshToken){
+
+    public static SignInResponse of(String accessToken, String refreshToken) {
+
         return new SignInResponse(accessToken, refreshToken);
     }
 }

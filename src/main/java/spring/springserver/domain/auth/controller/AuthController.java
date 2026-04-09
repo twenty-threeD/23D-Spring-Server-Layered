@@ -23,25 +23,27 @@ public class AuthController {
     @PostMapping("/signup")
     public BaseResponse<SignUpResponse> signUp(@RequestBody @Valid final SignUpRequest signUpRequest) {
 
-        return authService.signUp(signUpRequest);
+        return BaseResponse.ok(authService.signUp(signUpRequest));
     }
 
     @PostMapping("/signin")
     public BaseResponse<SignInResponse> signIn(@RequestBody @Valid final SignInRequest signInRequest,
                                                HttpServletResponse httpServletResponse) {
 
-        return authService.signIn(
+        return BaseResponse.ok(authService.signIn(
                 signInRequest,
                 httpServletResponse
+                )
         );
     }
 
     @PostMapping("/signout")
     public BaseResponse<SignOutResponse> signOut(HttpServletRequest httpServletRequest, 
                                                  HttpServletResponse httpServletResponse) {
-        return authService.SignOut(
+        return BaseResponse.ok(authService.signOut(
                 httpServletRequest,
                 httpServletResponse
+                )
         );
     }
 }

@@ -9,4 +9,5 @@ public record SignInRequest(
 
         @NotBlank
         String password
-) { }
+) {
+}

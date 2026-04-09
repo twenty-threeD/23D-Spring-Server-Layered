@@ -1,13 +1,12 @@
 package spring.springserver.domain.auth.service;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
 import spring.springserver.domain.auth.data.request.SignInRequest;
 import spring.springserver.domain.auth.data.request.SignUpRequest;
@@ -17,12 +16,12 @@ import spring.springserver.domain.auth.data.response.SignInResponse;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
-import spring.springserver.global.data.BaseResponse;
 import spring.springserver.global.exception.exception.ApplicationException;
 import spring.springserver.global.jwt.JwtProvider;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(rollbackFor = Exception.class)
 public class AuthService {
 
     private final PasswordEncoder passwordEncoder;
@@ -36,14 +35,14 @@ public class AuthService {
      * @param signUpRequest 회원가입 요청 값
      * @return message
      */
-    public BaseResponse<SignUpResponse> signUp(SignUpRequest signUpRequest) {
+    public SignUpResponse signUp(SignUpRequest signUpRequest) {
 
         if (memberRepository.existsByUsername(signUpRequest.username())) {
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
-        return BaseResponse.ok(SignUpResponse.of("회원가입이 완료되었습니다."));
+        return SignUpResponse.of("회원가입이 완료되었습니다.");
     }
 
     /**
@@ -51,7 +50,8 @@ public class AuthService {
      * @param httpServletResponse 쿠키 저장용
      * @return accessToken, refreshToken
      */
-    public BaseResponse<SignInResponse> signIn(SignInRequest signInRequest,
+    @Transactional(readOnly = true)
+    public SignInResponse signIn(SignInRequest signInRequest,
                                                HttpServletResponse httpServletResponse) {
 
         Member member = memberRepository.findByUsername(signInRequest.username())
@@ -68,10 +68,9 @@ public class AuthService {
             member.getRole()
         );
 
-        return BaseResponse.ok(SignInResponse.of(
+        return SignInResponse.of(
                 tokenService.generateAccessToken(generateTokenRequest, httpServletResponse),
                 tokenService.generateRefreshToken(generateTokenRequest, httpServletResponse)
-                )
         );
     }
 
@@ -81,7 +80,7 @@ public class AuthService {
      * @param httpServletResponse 쿠키용
      * @return message
      */
-    public BaseResponse<SignOutResponse> SignOut(HttpServletRequest httpServletRequest,
+    public SignOutResponse signOut(HttpServletRequest httpServletRequest,
                                                  HttpServletResponse httpServletResponse) {
 
         tokenService.deleteTokens(
@@ -89,6 +88,6 @@ public class AuthService {
                 httpServletResponse
         );
 
-        return BaseResponse.ok(SignOutResponse.of("로그아웃 되었습니다."));
+        return SignOutResponse.of("로그아웃 되었습니다.");
     }
 }
