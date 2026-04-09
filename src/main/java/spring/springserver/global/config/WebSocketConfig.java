@@ -10,8 +10,8 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 import spring.springserver.global.config.WebSocketChannelInterceptor;
 
 @Configuration
-@EnableWebSocketMessageBroker
 @RequiredArgsConstructor
+@EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final WebSocketChannelInterceptor webSocketChannelInterceptor;
