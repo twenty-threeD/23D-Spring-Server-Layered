@@ -37,3 +37,12 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: 구글에서_발급받은_client_id
+            client-secret: 구글에서_발급받은_client_secret
+            scope: profile, email
