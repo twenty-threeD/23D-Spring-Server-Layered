@@ -20,6 +20,7 @@ public class MailConfig {
 
 	@Bean
 	public JavaMailSender mailSender() {
+
 		JavaMailSenderImpl mailSender = new JavaMailSenderImpl();
 
 		mailSender.setHost(host);

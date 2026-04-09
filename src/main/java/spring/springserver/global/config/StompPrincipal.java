@@ -1,19 +1,17 @@
 package spring.springserver.global.config;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 import java.security.Principal;
 
 @Getter
+@RequiredArgsConstructor
 public class StompPrincipal implements Principal {
 
     private String username;
     private String role;
 
-    public StompPrincipal(String username, String role) {
-        this.username = username;
-        this.role = role;
-    }
 
     @Override
     public String getName() {
