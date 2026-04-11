@@ -28,11 +28,13 @@ import java.util.Map;
 public class GlobalExceptionHandler {
   @ExceptionHandler(ApplicationException.class)
   public ResponseEntity<BaseResponse<Void>> handleApplicationException(ApplicationException ex) {
+
     StatusCode statusCode = ex.getStatusCode();
     ErrorResponse error = ErrorResponse.of(
         statusCode.getCode(),
         ex.getMessage() != null ? ex.getMessage() : statusCode.getMessage()
     );
+
     return ResponseEntity
         .status(statusCode.getHttpStatus())
         .body(BaseResponse.error(statusCode.getHttpStatus(), error));
@@ -40,7 +42,9 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<BaseResponse<Void>> handleValidationException(MethodArgumentNotValidException ex) {
+
     Map<String, String> details = new HashMap<>();
+
     ex.getBindingResult().getAllErrors().forEach(error -> {
       String field = ((FieldError) error).getField();
       String message = error.getDefaultMessage() != null ? error.getDefaultMessage() : "잘못된 입력값 입니다.";
@@ -60,6 +64,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(ConstraintViolationException.class)
   public ResponseEntity<BaseResponse<Void>> handleConstraintViolationException(ConstraintViolationException ex) {
+
     Map<String, String> details = new HashMap<>();
     ex.getConstraintViolations().forEach(violation -> {
       String fieldName = violation.getPropertyPath().toString();
@@ -80,6 +85,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MissingServletRequestParameterException.class)
   public ResponseEntity<BaseResponse<Void>> handleMissingServletRequestParameterException(MissingServletRequestParameterException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INVALID_ARGUMENT.getCode(),
         "필수 파라미터가 누락되었습니다: " + ex.getParameterName()
@@ -92,6 +98,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<BaseResponse<Void>> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INVALID_ARGUMENT.getCode(),
         "파라미터 타입이 잘못되었습니다: " + ex.getName()
@@ -104,6 +111,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<BaseResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INVALID_ARGUMENT.getCode(),
         ex.getMessage() != null ? ex.getMessage() : "잘못된 요청 파라미터입니다."
@@ -116,10 +124,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(BadCredentialsException.class)
   public ResponseEntity<BaseResponse<Void>> handleBadCredentialsException(BadCredentialsException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         AuthStatusCode.INVALID_CREDENTIALS.getCode(),
         AuthStatusCode.INVALID_CREDENTIALS.getMessage()
     );
+
     return ResponseEntity
         .status(AuthStatusCode.INVALID_CREDENTIALS.getHttpStatus())
         .body(BaseResponse.error(AuthStatusCode.INVALID_CREDENTIALS.getHttpStatus(), error));
@@ -127,10 +137,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(LockedException.class)
   public ResponseEntity<BaseResponse<Void>> handleAccountLockedException(LockedException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         AuthStatusCode.ACCOUNT_LOCKED.getCode(),
         AuthStatusCode.ACCOUNT_LOCKED.getMessage()
     );
+
     return ResponseEntity
         .status(AuthStatusCode.ACCOUNT_LOCKED.getHttpStatus())
         .body(BaseResponse.error(AuthStatusCode.ACCOUNT_LOCKED.getHttpStatus(), error));
@@ -138,10 +150,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(DisabledException.class)
   public ResponseEntity<BaseResponse<Void>> handleAccountDisabledException(DisabledException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         AuthStatusCode.ACCOUNT_DISABLED.getCode(),
         AuthStatusCode.ACCOUNT_DISABLED.getMessage()
     );
+
     return ResponseEntity
         .status(AuthStatusCode.ACCOUNT_DISABLED.getHttpStatus())
         .body(BaseResponse.error(AuthStatusCode.ACCOUNT_DISABLED.getHttpStatus(), error));
@@ -149,10 +163,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<BaseResponse<Void>> handleNoResourceFoundException(NoResourceFoundException ex) {
+
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.ENDPOINT_NOT_FOUND.getCode(),
         CommonStatusCode.ENDPOINT_NOT_FOUND.getMessage()
     );
+
     return ResponseEntity
         .status(CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus())
         .body(BaseResponse.error(CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus(), error));
@@ -160,11 +176,13 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<BaseResponse<Void>> handleException(Exception ex) {
+
     log.error("요청 처리 중 에러 발생: {}", ex.getMessage());
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INTERNAL_SERVER_ERROR.getCode(),
         CommonStatusCode.INTERNAL_SERVER_ERROR.getMessage()
     );
+
     return ResponseEntity
         .status(CommonStatusCode.INTERNAL_SERVER_ERROR.getHttpStatus())
         .body(BaseResponse.error(CommonStatusCode.INTERNAL_SERVER_ERROR.getHttpStatus(), error));

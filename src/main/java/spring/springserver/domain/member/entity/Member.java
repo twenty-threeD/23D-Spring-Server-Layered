@@ -41,6 +41,7 @@ public class Member {
                   String password,
                   Role role,
                   String provider) {
+
         this.username = username;
         this.name = name;
         this.email = email;
@@ -51,11 +52,13 @@ public class Member {
     }
 
     public Member update(String name) {
+
         this.name = name;
         return this;
     }
 
 	public void setPassword(String password) {
+
 		this.password = password;
 	}
 }

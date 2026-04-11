@@ -31,6 +31,7 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity, CustomOAuthUserService customOAuthUserService) throws Exception {
+
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
@@ -53,6 +54,7 @@ public class SecurityConfig {
 
 	@Bean
 	public org.springframework.web.filter.CorsFilter corsFilter() {
+
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");

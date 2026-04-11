@@ -23,6 +23,7 @@ public class CustomOAuthUserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
         Map<String,Object> attributes = oAuth2User.getAttributes();
@@ -39,6 +40,7 @@ public class CustomOAuthUserService extends DefaultOAuth2UserService {
                         .build());
 
         memberRepository.save(member); // 이제 정상적으로 Member 객체가 저장됩니다.
+
         return new DefaultOAuth2User(
                 Collections.singleton(new SimpleGrantedAuthority(member.getRole().toString())),
                 attributes,

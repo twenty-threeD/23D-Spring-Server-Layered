@@ -27,6 +27,7 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
         }
 
         log.warn("토큰 검증 실패: username={}, role={}", username, role);
+
         return null;
     }
 }
