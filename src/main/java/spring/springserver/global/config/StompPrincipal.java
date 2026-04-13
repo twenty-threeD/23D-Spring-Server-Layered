@@ -1,12 +1,13 @@
 package spring.springserver.global.config;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.security.Principal;
 
 @Getter
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class StompPrincipal implements Principal {
 
     private String username;

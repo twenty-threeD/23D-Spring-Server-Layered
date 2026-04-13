@@ -41,6 +41,8 @@ spring:
 springdoc:
   api-docs:
     path: /v3/api-docs
+    enabled: true # 배포할 때 false로 변경
   swagger-ui:
     path: /swagger-ui.html
     display-request-duration: true
+    enabled: true # 배포할 때 false로 변경
