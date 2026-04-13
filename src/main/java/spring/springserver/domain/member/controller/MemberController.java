@@ -22,11 +22,9 @@ public class MemberController {
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
 
-        return BaseResponse.ok(
-                memberService.deleteAccount(
+        return BaseResponse.ok(memberService.deleteAccount(
                         httpServletRequest,
-                        httpServletResponse
-                )
+                        httpServletResponse)
         );
     }
 }

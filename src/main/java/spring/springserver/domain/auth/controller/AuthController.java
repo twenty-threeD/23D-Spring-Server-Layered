@@ -51,16 +51,14 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
-    public BaseResponse<PasswordResetResponse> resetPasswordWithoutAuth(@RequestBody @Valid final PasswordResetRequest request
-    ) {
+    public BaseResponse<PasswordResetResponse> resetPasswordWithoutAuth(@RequestBody @Valid final PasswordResetRequest request) {
         return BaseResponse.ok(authService.resetPasswordWithoutAuth(request));
     }
 
     @PostMapping("/password/reset/check")
     public BaseResponse<PasswordResetResponse> resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                                      HttpServletResponse httpServletResponse,
-                                                                     @RequestBody @Valid final PasswordResetRequest request
-    ) {
+                                                                     @RequestBody @Valid final PasswordResetRequest request) {
         return BaseResponse.ok(
                 authService.resetPasswordWithAuth(httpServletRequest, httpServletResponse, request)
         );

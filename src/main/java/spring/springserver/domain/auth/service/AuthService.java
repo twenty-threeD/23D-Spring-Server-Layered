@@ -107,6 +107,7 @@ public class AuthService {
     public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                        HttpServletResponse httpServletResponse,
                                                        PasswordResetRequest request) {
+
         String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
         if (accessToken == null || accessToken.isBlank()) {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
@@ -120,7 +121,9 @@ public class AuthService {
         String encoded = passwordEncoder.encode(request.newPassword());
         member.setPassword(encoded);
 
-        tokenService.deleteTokens(httpServletRequest, httpServletResponse);
+        tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse);
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
     }
