@@ -32,4 +32,3 @@ public record BaseResponse<T> (
     return new BaseResponse<>(status.getHttpStatus().value(), null, ErrorResponse.of(status.getCode(), status.getMessage()));
   }
 }
-
