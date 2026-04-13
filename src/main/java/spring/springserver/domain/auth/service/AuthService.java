@@ -106,8 +106,7 @@ public class AuthService {
 
     public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                        HttpServletResponse httpServletResponse,
-                                                       PasswordResetRequest request
-    ) {
+                                                       PasswordResetRequest request) {
         String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
         if (accessToken == null || accessToken.isBlank()) {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
