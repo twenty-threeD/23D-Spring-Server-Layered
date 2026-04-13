@@ -15,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import spring.springserver.domain.oauth.CustomOAuthUserService;
+import spring.springserver.domain.oauth.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -30,7 +31,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity, CustomOAuthUserService customOAuthUserService) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity, CustomOAuthUserService customOAuthUserService, OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
@@ -45,7 +46,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuthUserService)
                         )
-                        .defaultSuccessUrl("/")
+                        .successHandler(oAuth2SuccessHandler)
                 ).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return httpSecurity.build();
