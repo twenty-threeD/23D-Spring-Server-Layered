@@ -42,6 +42,7 @@ public class AuthService {
         }
 
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
+
         return SignUpResponse.of("회원가입이 완료되었습니다.");
     }
 
@@ -51,8 +52,9 @@ public class AuthService {
      * @return accessToken, refreshToken
      */
     @Transactional(readOnly = true)
-    public SignInResponse signIn(SignInRequest signInRequest,
-                                               HttpServletResponse httpServletResponse) {
+    public SignInResponse signIn(
+            SignInRequest signInRequest,
+            HttpServletResponse httpServletResponse) {
 
         Member member = memberRepository.findByUsername(signInRequest.username())
                 .orElseThrow(
