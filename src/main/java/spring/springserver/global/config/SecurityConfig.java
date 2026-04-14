@@ -54,6 +54,7 @@ public class SecurityConfig {
 
 	@Bean
 	public org.springframework.web.filter.CorsFilter corsFilter() {
+
 		CorsConfiguration config = new CorsConfiguration();
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");
