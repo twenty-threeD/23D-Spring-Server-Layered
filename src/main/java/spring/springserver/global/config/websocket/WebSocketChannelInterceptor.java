@@ -1,4 +1,4 @@
-package spring.springserver.global.config;
+package spring.springserver.global.config.websocket;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

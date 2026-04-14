@@ -33,16 +33,36 @@ public class SecurityConfig {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
-				.formLogin(AbstractHttpConfigurer::disable)
-				.csrf(AbstractHttpConfigurer::disable)
-				.cors(cors -> {})
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(auth
-						-> auth
-						.requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
-						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-						.anyRequest().authenticated()
-				).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+					.formLogin(AbstractHttpConfigurer::disable)
+					.csrf(AbstractHttpConfigurer::disable)
+					.cors(cors -> {})
+					.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+					.authorizeHttpRequests(auth
+							-> auth
+							.requestMatchers(
+									"/api/auth/signup",
+									"/api/auth/signin",
+									"/api/auth/signout",
+									"api/auth/password/reset"
+							).permitAll()
+
+							.requestMatchers(
+									"/api/auth/password/reset/check",
+									"/api/delete/account"
+							).hasRole("USER")
+
+							.requestMatchers(
+									"/swagger-ui/**",
+									"/v3/api-docs/**"
+							).permitAll()
+
+							.anyRequest().authenticated()
+					)
+
+					.addFilterBefore(
+							jwtAuthFilter,
+							UsernamePasswordAuthenticationFilter.class
+					);
 
 		return httpSecurity.build();
 	}

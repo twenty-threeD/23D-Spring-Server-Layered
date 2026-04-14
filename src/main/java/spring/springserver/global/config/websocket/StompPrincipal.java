@@ -1,8 +1,7 @@
-package spring.springserver.global.config;
+package spring.springserver.global.config.websocket;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.security.Principal;
 
