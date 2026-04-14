@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import java.util.Date;
 
 @Component
 public class JwtProvider implements TokenProvider {
+
 	private final SecretKey secretKey;
 	private final Long refreshTokenExpiration;
 	private final Long accessTokenExpiration;
@@ -32,6 +34,7 @@ public class JwtProvider implements TokenProvider {
 
 	@Override
 	public String generateRefreshToken(GenerateTokenRequest generateTokenRequest) {
+
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + refreshTokenExpiration);
 
@@ -49,6 +52,7 @@ public class JwtProvider implements TokenProvider {
 
 	@Override
 	public String generateAccessToken(GenerateTokenRequest generateTokenRequest) {
+
 		Date now = new Date();
 		Date expiration = new Date(now.getTime() + accessTokenExpiration);
 
@@ -67,17 +71,21 @@ public class JwtProvider implements TokenProvider {
 
 	@Override
 	public String getUsernameFromToken(String token) {
+
 		return getClaims(token).getSubject();
 	}
 
 	@Override
 	public Role getRole(String token) {
-		return getClaims(token).get("role", Role.class);
+
+		String role = getClaims(token).get("role", String.class);
+		return role == null ? null : Role.valueOf(role);
 	}
 
 	// 해당 메서드는 유효한 경우 항상 false를, 유효하지 않은 경우 true를 반환합니다
 	@Override
 	public boolean isValidToken(String token) {
+
 		try {
 			getClaims(token);
 			return false;
@@ -88,6 +96,7 @@ public class JwtProvider implements TokenProvider {
 
 	@Override
 	public String resolveToken(HttpServletRequest request) {
+
 		String token = request.getHeader("Authorization");
 		if (token != null && token.startsWith("Bearer ")) {
 			return token.substring(7);
@@ -96,9 +105,11 @@ public class JwtProvider implements TokenProvider {
 	}
 
 	private Claims getClaims(String token) {
+
 		return Jwts.parser()
-				.build()
-				.parseSignedClaims(token)
-				.getPayload();
+					.verifyWith(secretKey)
+					.build()
+					.parseSignedClaims(token)
+					.getPayload();
 	}
 }

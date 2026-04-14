@@ -38,6 +38,17 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${CLIENT_ID}
+            client-secret: ${CLIENT_SECRET}
+            scope:
+              - profile
+              - email
+
 springdoc:
   api-docs:
     path: /v3/api-docs
