@@ -1,9 +1,6 @@
 package spring.springserver.domain.auth.data.request;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import com.l98293.phone.Phone;
 import com.l98293.phone.Region;
 import spring.springserver.domain.member.entity.Member;
@@ -18,6 +15,7 @@ public record SignUpRequest(
         @NotBlank
         String username,
 
+        @Email
         @NotBlank
         String email,
 

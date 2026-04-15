@@ -3,6 +3,7 @@ package spring.springserver.global.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -29,40 +30,48 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
-					.formLogin(AbstractHttpConfigurer::disable)
-					.csrf(AbstractHttpConfigurer::disable)
-					.cors(cors -> {})
-					.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-					.authorizeHttpRequests(auth
-							-> auth
-							.requestMatchers(
-									"/api/auth/signup",
-									"/api/auth/signin",
-									"/api/auth/signout",
-									"api/auth/password/reset"
-							).permitAll()
+				.formLogin(AbstractHttpConfigurer::disable)
+				.csrf(AbstractHttpConfigurer::disable)
+				.cors(cors -> {})
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+				.authorizeHttpRequests(auth
+						-> auth
 
-							.requestMatchers(
-									"/api/auth/password/reset/check",
-									"/api/delete/account"
-							).hasRole("USER")
+						.requestMatchers(
+								HttpMethod.POST,
+								"/api/auth/signup",
+								"/api/auth/signin",
+								"/api/auth/signout",
+								"/api/auth/password/reset"
+						).permitAll()
 
-							.requestMatchers(
-									"/swagger-ui/**",
-									"/v3/api-docs/**"
-							).permitAll()
+						.requestMatchers(
+								HttpMethod.POST,
+								"/api/auth/password/reset/check"
+						).hasRole("USER")
 
-							.anyRequest().authenticated()
-					)
+						.requestMatchers(
+								HttpMethod.DELETE,
+								"/api/delete/account"
+						).hasRole("USER")
 
-					.addFilterBefore(
-							jwtAuthFilter,
-							UsernamePasswordAuthenticationFilter.class
-					);
+						.requestMatchers(
+								HttpMethod.GET,
+								"/swagger-ui/**",
+								"/v3/api-docs/**"
+						).permitAll()
+
+						.anyRequest().authenticated()
+				)
+
+				.addFilterBefore(
+						jwtAuthFilter,
+						UsernamePasswordAuthenticationFilter.class
+				);
 
 		return httpSecurity.build();
 	}
