@@ -5,8 +5,17 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import spring.springserver.domain.auth.data.request.*;
-import spring.springserver.domain.auth.data.response.*;
+import spring.springserver.domain.auth.data.request.SignUpRequest;
+import spring.springserver.domain.auth.data.request.SignInRequest;
+import spring.springserver.domain.auth.data.request.PasswordResetRequest;
+import spring.springserver.domain.auth.data.request.ChangeUsernameRequest;
+import spring.springserver.domain.auth.data.request.FindUsernameRequest;
+import spring.springserver.domain.auth.data.response.PasswordResetResponse;
+import spring.springserver.domain.auth.data.response.SignInResponse;
+import spring.springserver.domain.auth.data.response.SignOutResponse;
+import spring.springserver.domain.auth.data.response.SignUpResponse;
+import spring.springserver.domain.auth.data.response.FindUsernameResponse;
+import spring.springserver.domain.auth.data.response.ChangeUsernameResponse;
 import spring.springserver.domain.auth.service.AuthService;
 import spring.springserver.global.data.BaseResponse;
 
@@ -73,7 +82,10 @@ public class AuthController {
                                                                @RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest) {
 
         return BaseResponse.ok(
-                authService.resetUsernameWithAuth(httpServletRequest, httpServletResponse, changeUsernameRequest)
+                authService.resetUsernameWithAuth(
+                        httpServletRequest,
+                        httpServletResponse,
+                        changeUsernameRequest)
         );
     }
 }

@@ -151,9 +151,7 @@ public class AuthService {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        String currentUsername = tokenService.getCurrentUsername(httpServletRequest);
-
-        Member member = memberRepository.findByUsername(currentUsername)
+        Member member = memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );

@@ -21,7 +21,6 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-    @Setter
 	private String username;
 
 	private String name;
@@ -31,9 +30,16 @@ public class Member {
 	@Phone(region = Region.KR)
 	private String phone;
 
-    @Setter
 	private String password;
 
 	@Enumerated(EnumType.STRING)
 	private Role role;
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
 }

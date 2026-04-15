@@ -1,5 +1,6 @@
 package spring.springserver.domain.auth.data.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
@@ -10,6 +11,7 @@ public record ChangeUsernameRequest(
         String email,
 
         @NotBlank
+        @JsonProperty("new_username")
         String newUsername
 ) {
 }

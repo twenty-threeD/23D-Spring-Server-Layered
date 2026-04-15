@@ -32,7 +32,12 @@ public class TokenService {
 				TimeUnit.HOURS
 		);
 
-		addCookie("accessToken", accessToken, 60 * 60, true, httpServletResponse);
+		addCookie(
+                "accessToken",
+                accessToken,
+                60 * 60,
+                true,
+                httpServletResponse);
 
 		return accessToken;
 	}
@@ -49,7 +54,12 @@ public class TokenService {
 				TimeUnit.DAYS
 				);
 
-		addCookie("refreshToken", refreshToken, 60 * 60 * 24 * 7, true, httpServletResponse);
+		addCookie(
+                "refreshToken",
+                refreshToken,
+                60 * 60 * 24 * 7,
+                true,
+                httpServletResponse);
 
 		return refreshToken;
 	}
@@ -72,10 +82,20 @@ public class TokenService {
 			throw new ApplicationException(AuthStatusCode.ALREADY_LOGGED_OUT);
 		} else {
 			// 엑세스 토큰 만료(쿠키)
-			addCookie("accessToken", null, 0, false, httpServletResponse);
+			addCookie(
+                    "accessToken",
+                    null,
+                    0,
+                    false,
+                    httpServletResponse);
 
 			// 리프레시 토큰 만료(쿠키)
-			addCookie("refreshToken", null, 0, true, httpServletResponse);
+			addCookie(
+                    "refreshToken",
+                    null,
+                    0,
+                    true,
+                    httpServletResponse);
 
 			// Redis에서 삭제
 			redisTemplate.delete("accessToken:" + username);
