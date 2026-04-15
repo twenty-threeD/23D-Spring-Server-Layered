@@ -57,7 +57,12 @@ public class TokenService {
 	public void deleteTokens(HttpServletRequest httpServletRequest,
 							 HttpServletResponse httpServletResponse) {
 
-		String username = jwtProvider.getUsernameFromToken(String.valueOf(httpServletRequest));
+		String accessToken = extractTokenFromCookie(httpServletRequest, "accessToken");
+		if (accessToken == null || accessToken.isBlank() || jwtProvider.isValidToken(accessToken)) {
+			throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+		}
+
+		String username = jwtProvider.getUsernameFromToken(accessToken);
 
 		String savedRefreshToken = redisTemplate.opsForValue().get("refreshToken:" + username);
 		String savedAccessToken = redisTemplate.opsForValue().get("accessToken:" + username);

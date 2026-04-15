@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
-import spring.springserver.global.config.StompPrincipal;
+import spring.springserver.global.config.websocket.StompPrincipal;
 
 import java.security.Principal;
 import java.util.Map;
