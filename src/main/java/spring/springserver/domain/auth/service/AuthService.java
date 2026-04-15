@@ -134,12 +134,12 @@ public class AuthService {
 
     public FindUsernameResponse findUsername(FindUsernameRequest findUsernameRequest) {
 
-        Member member = memberRepository.findByEmail(findUsernameRequest.email())
+        String username = memberRepository.findUsernameByEmail(findUsernameRequest.email())
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
-        return FindUsernameResponse.of("아이디를 찾았습니다.", member.getUsername());
+        return FindUsernameResponse.of("아이디를 찾았습니다.", username);
     }
 
     public ChangeUsernameResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
