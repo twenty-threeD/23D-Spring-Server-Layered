@@ -2,7 +2,8 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        // 'url' 뒤에 '='를 추가하여 명시적으로 값을 할당합니다.
+        maven { url = 'https://jitpack.io' }
     }
 }
 
