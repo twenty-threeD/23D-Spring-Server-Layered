@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.auth.service.TokenService;
-import spring.springserver.domain.member.data.response.MessageResponse;
+import spring.springserver.domain.member.data.response.DeleteAccountResponse;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
@@ -20,8 +20,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final TokenService tokenService;
 
-    public MessageResponse deleteAccount(HttpServletRequest httpServletRequest,
-                                         HttpServletResponse httpServletResponse) {
+    public DeleteAccountResponse deleteAccount(HttpServletRequest httpServletRequest,
+                                               HttpServletResponse httpServletResponse) {
 
         String username = tokenService.getCurrentUsername(httpServletRequest);
 
@@ -37,6 +37,6 @@ public class MemberService {
 
         memberRepository.delete(member);
 
-        return MessageResponse.of("탈퇴되었습니다.");
+        return DeleteAccountResponse.of("탈퇴되었습니다.");
     }
 }
