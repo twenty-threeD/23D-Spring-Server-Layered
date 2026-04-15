@@ -116,7 +116,8 @@ public class TokenService {
 
     private static void addCookie(String name,
                                   String value,
-                                  int age, boolean httpOnly,
+                                  int age,
+                                  boolean httpOnly,
                                   HttpServletResponse response) {
 
         Cookie cookie = new Cookie(name, value);
