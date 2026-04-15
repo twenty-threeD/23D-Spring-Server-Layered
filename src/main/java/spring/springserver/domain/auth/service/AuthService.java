@@ -6,7 +6,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import spring.springserver.domain.auth.data.request.*;
+import spring.springserver.domain.auth.data.request.ChangeUsernameRequest;
+import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
+import spring.springserver.domain.auth.data.request.SignInRequest;
+import spring.springserver.domain.auth.data.request.SignUpRequest;
+import spring.springserver.domain.auth.data.request.FindUsernameRequest;
+import spring.springserver.domain.auth.data.request.PasswordResetRequest;
 import spring.springserver.domain.auth.data.response.FindUsernameResponse;
 import spring.springserver.domain.auth.data.response.PasswordResetResponse;
 import spring.springserver.domain.auth.data.response.SignInResponse;
@@ -90,14 +95,14 @@ public class AuthService {
         return SignOutResponse.of("로그아웃 되었습니다.");
     }
 
-    public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest request) {
+    public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest passwordResetRequest) {
 
-        Member member = memberRepository.findByUsername(request.username())
+        Member member = memberRepository.findByUsername(passwordResetRequest.username())
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
-        String encoded = passwordEncoder.encode(request.newPassword());
+        String encoded = passwordEncoder.encode(passwordResetRequest.newPassword());
         member.setPassword(encoded);
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
@@ -105,19 +110,19 @@ public class AuthService {
 
     public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                        HttpServletResponse httpServletResponse,
-                                                       PasswordResetRequest request) {
+                                                       PasswordResetRequest passwordResetRequest) {
 
         String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
         if (accessToken == null || accessToken.isBlank()) {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        Member member = memberRepository.findByUsername(request.username())
+        Member member = memberRepository.findByUsername(passwordResetRequest.username())
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
-        String encoded = passwordEncoder.encode(request.newPassword());
+        String encoded = passwordEncoder.encode(passwordResetRequest.newPassword());
         member.setPassword(encoded);
 
         tokenService.deleteTokens(
