@@ -118,13 +118,13 @@ public class TokenService {
                                   String value,
                                   int age,
                                   boolean httpOnly,
-                                  HttpServletResponse response) {
+                                  HttpServletResponse httpServletResponse) {
 
         Cookie cookie = new Cookie(name, value);
         cookie.setPath("/");
         cookie.setHttpOnly(httpOnly);
         cookie.setMaxAge(age);
 
-        response.addCookie(cookie);
+        httpServletResponse.addCookie(cookie);
     }
 }
