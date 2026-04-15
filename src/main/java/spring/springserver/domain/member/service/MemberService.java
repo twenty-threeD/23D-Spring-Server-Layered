@@ -7,12 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.auth.service.TokenService;
-import spring.springserver.domain.member.data.DeleteAccountResponse;
+import spring.springserver.domain.member.data.response.MessageResponse;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
-import spring.springserver.global.data.BaseResponse;
 import spring.springserver.global.exception.exception.ApplicationException;
-import spring.springserver.global.jwt.JwtProvider;
 
 @Service
 @RequiredArgsConstructor
@@ -20,14 +18,12 @@ import spring.springserver.global.jwt.JwtProvider;
 public class MemberService {
 
     private final MemberRepository memberRepository;
-    private final JwtProvider jwtProvider;
     private final TokenService tokenService;
 
-    public DeleteAccountResponse deleteAccount(HttpServletRequest httpServletRequest,
-                                                             HttpServletResponse httpServletResponse) {
+    public MessageResponse deleteAccount(HttpServletRequest httpServletRequest,
+                                         HttpServletResponse httpServletResponse) {
 
-        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
-        String username = jwtProvider.getUsernameFromToken(accessToken);
+        String username = tokenService.getCurrentUsername(httpServletRequest);
 
         Member member = memberRepository.findByUsername(username)
                 .orElseThrow(
@@ -41,6 +37,6 @@ public class MemberService {
 
         memberRepository.delete(member);
 
-        return DeleteAccountResponse.of("탈퇴되었습니다.");
+        return MessageResponse.of("탈퇴되었습니다.");
     }
 }

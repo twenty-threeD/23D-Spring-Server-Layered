@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
 @Entity
@@ -20,23 +21,19 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+    @Setter
 	private String username;
 
 	private String name;
 
-	@Email
 	private String email;
 
 	@Phone(region = Region.KR)
 	private String phone;
 
+    @Setter
 	private String password;
 
 	@Enumerated(EnumType.STRING)
 	private Role role;
-
-	public void setPassword(String password) {
-
-		this.password = password;
-	}
 }

@@ -32,11 +32,7 @@ public class TokenService {
 				TimeUnit.HOURS
 		);
 
-		Cookie accessCookie = new Cookie("accessToken", accessToken);
-		accessCookie.setPath("/");
-		accessCookie.setHttpOnly(true);
-		accessCookie.setMaxAge(60 * 60); // 1시간
-		httpServletResponse.addCookie(accessCookie);
+		addCookie("accessToken", accessToken, 60 * 60, true, httpServletResponse);
 
 		return accessToken;
 	}
@@ -53,11 +49,7 @@ public class TokenService {
 				TimeUnit.DAYS
 				);
 
-		Cookie refreshCookie = new Cookie("refreshToken", refreshToken);
-		refreshCookie.setPath("/");
-		refreshCookie.setHttpOnly(true);
-		refreshCookie.setMaxAge(60 * 60 * 24 * 7); // 7일
-		httpServletResponse.addCookie(refreshCookie);
+		addCookie("refreshToken", refreshToken, 60 * 60 * 24 * 7, true, httpServletResponse);
 
 		return refreshToken;
 	}
@@ -75,18 +67,10 @@ public class TokenService {
 			throw new ApplicationException(AuthStatusCode.ALREADY_LOGGED_OUT);
 		} else {
 			// 엑세스 토큰 만료(쿠키)
-			Cookie accessCookie = new Cookie("accessToken", null);
-			accessCookie.setPath("/");
-			accessCookie.setHttpOnly(false);
-			accessCookie.setMaxAge(0); // 즉시 만료
-			httpServletResponse.addCookie(accessCookie);
+			addCookie("accessToken", null, 0, false, httpServletResponse);
 
 			// 리프레시 토큰 만료(쿠키)
-			Cookie refreshCookie = new Cookie("refreshToken", null);
-			refreshCookie.setPath("/");
-			refreshCookie.setHttpOnly(true);
-			refreshCookie.setMaxAge(0); // 즉시 만료
-			httpServletResponse.addCookie(refreshCookie);
+			addCookie("refreshToken", null, 0, true, httpServletResponse);
 
 			// Redis에서 삭제
 			redisTemplate.delete("accessToken:" + username);
@@ -113,4 +97,28 @@ public class TokenService {
 
 		return null;
 	}
+
+    public String getCurrentUsername(HttpServletRequest httpServletRequest) {
+
+        String accessToken = extractTokenFromCookie(httpServletRequest, "accessToken");
+
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+        }
+
+        return jwtProvider.getUsernameFromToken(accessToken);
+    }
+
+    private static void addCookie(String name,
+                                  String value,
+                                  int age, boolean httpOnly,
+                                  HttpServletResponse response) {
+
+        Cookie cookie = new Cookie(name, value);
+        cookie.setPath("/");
+        cookie.setHttpOnly(httpOnly);
+        cookie.setMaxAge(age);
+
+        response.addCookie(cookie);
+    }
 }

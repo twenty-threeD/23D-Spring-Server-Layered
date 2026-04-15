@@ -3,23 +3,15 @@ package spring.springserver.domain.auth.service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
-import spring.springserver.domain.auth.data.request.PasswordResetRequest;
-import spring.springserver.domain.auth.data.request.SignInRequest;
-import spring.springserver.domain.auth.data.request.SignUpRequest;
-import spring.springserver.domain.auth.data.response.PasswordResetResponse;
-import spring.springserver.domain.auth.data.response.SignOutResponse;
-import spring.springserver.domain.auth.data.response.SignUpResponse;
-import spring.springserver.domain.auth.data.response.SignInResponse;
+import spring.springserver.domain.auth.data.request.*;
+import spring.springserver.domain.auth.data.response.*;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
-import spring.springserver.global.jwt.JwtProvider;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +27,7 @@ public class AuthService {
      * @param signUpRequest 회원가입 요청 값
      * @return message
      */
-    public SignUpResponse signUp(SignUpRequest signUpRequest) {
+    public MessageResponse signUp(SignUpRequest signUpRequest) {
 
         if (memberRepository.existsByUsername(signUpRequest.username())) {
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
@@ -43,7 +35,7 @@ public class AuthService {
 
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
 
-        return SignUpResponse.of("회원가입이 완료되었습니다.");
+        return MessageResponse.of("회원가입이 완료되었습니다.");
     }
 
     /**
@@ -82,7 +74,7 @@ public class AuthService {
      * @param httpServletResponse 쿠키용
      * @return message
      */
-    public SignOutResponse signOut(HttpServletRequest httpServletRequest,
+    public MessageResponse signOut(HttpServletRequest httpServletRequest,
                                                  HttpServletResponse httpServletResponse) {
 
         tokenService.deleteTokens(
@@ -90,10 +82,10 @@ public class AuthService {
                 httpServletResponse
         );
 
-        return SignOutResponse.of("로그아웃 되었습니다.");
+        return MessageResponse.of("로그아웃 되었습니다.");
     }
 
-    public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest request) {
+    public MessageResponse resetPasswordWithoutAuth(PasswordResetRequest request) {
 
         Member member = memberRepository.findByUsername(request.username())
                 .orElseThrow(
@@ -103,10 +95,10 @@ public class AuthService {
         String encoded = passwordEncoder.encode(request.newPassword());
         member.setPassword(encoded);
 
-        return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
+        return MessageResponse.of("비밀번호가 변경되었습니다.");
     }
 
-    public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
+    public MessageResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                        HttpServletResponse httpServletResponse,
                                                        PasswordResetRequest request) {
 
@@ -127,6 +119,50 @@ public class AuthService {
                 httpServletRequest,
                 httpServletResponse);
 
-        return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
+        return MessageResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
+    }
+
+    public FindUsernameResponse findUsername(EmailRequest usernameResetRequest) {
+
+        Member member = memberRepository.findByEmail(usernameResetRequest.email())
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        return FindUsernameResponse.of("아이디를 찾았습니다.", member.getUsername());
+    }
+
+    public MessageResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
+                                                 HttpServletResponse httpServletResponse,
+                                                 ChangeUsernameRequest changeUsernameRequest) {
+
+        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+        }
+
+        String currentUsername = tokenService.getCurrentUsername(httpServletRequest);
+
+        Member member = memberRepository.findByUsername(currentUsername)
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        if (!member.getEmail().equals(changeUsernameRequest.email())) {
+            throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
+        }
+
+        if (memberRepository.existsByUsername(changeUsernameRequest.newUsername())) {
+            throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
+        }
+
+        member.setUsername(changeUsernameRequest.newUsername());
+
+        tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse
+        );
+
+        return MessageResponse.of("아이디가 변경 되었습니다. 다시 로그인 해주세요.");
     }
 }

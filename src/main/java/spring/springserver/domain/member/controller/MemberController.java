@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import spring.springserver.domain.member.data.DeleteAccountResponse;
+import spring.springserver.domain.member.data.response.MessageResponse;
 import spring.springserver.domain.member.service.MemberService;
 import spring.springserver.global.data.BaseResponse;
 
@@ -18,7 +18,7 @@ public class MemberController {
     private final MemberService memberService;
 
     @DeleteMapping("/delete/account")
-    public BaseResponse<DeleteAccountResponse> deleteAccount(
+    public BaseResponse<MessageResponse> deleteAccount(
             HttpServletRequest httpServletRequest,
             HttpServletResponse httpServletResponse) {
 
