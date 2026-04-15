@@ -18,7 +18,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/signup")
-    public BaseResponse<MessageResponse> signUp(@RequestBody @Valid final SignUpRequest signUpRequest) {
+    public BaseResponse<SignUpResponse> signUp(@RequestBody @Valid final SignUpRequest signUpRequest) {
 
         return BaseResponse.ok(authService.signUp(signUpRequest));
     }
@@ -35,7 +35,7 @@ public class AuthController {
     }
 
     @PostMapping("/signout")
-    public BaseResponse<MessageResponse> signOut(HttpServletRequest httpServletRequest,
+    public BaseResponse<SignOutResponse> signOut(HttpServletRequest httpServletRequest,
                                                  HttpServletResponse httpServletResponse) {
 
         return BaseResponse.ok(authService.signOut(
@@ -46,13 +46,13 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
-    public BaseResponse<MessageResponse> resetPasswordWithoutAuth(@RequestBody @Valid final PasswordResetRequest request) {
+    public BaseResponse<PasswordResetResponse> resetPasswordWithoutAuth(@RequestBody @Valid final PasswordResetRequest passwordResetRequest) {
 
-        return BaseResponse.ok(authService.resetPasswordWithoutAuth(request));
+        return BaseResponse.ok(authService.resetPasswordWithoutAuth(passwordResetRequest));
     }
 
     @PostMapping("/password/reset/check")
-    public BaseResponse<MessageResponse> resetPasswordWithAuth(HttpServletRequest httpServletRequest,
+    public BaseResponse<PasswordResetResponse> resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                                      HttpServletResponse httpServletResponse,
                                                                      @RequestBody @Valid final PasswordResetRequest request) {
         
@@ -62,13 +62,13 @@ public class AuthController {
     }
 
     @GetMapping("/username/reset")
-    public BaseResponse<FindUsernameResponse> findUsername(@RequestBody @Valid final EmailRequest usernameResetRequest) {
+    public BaseResponse<FindUsernameResponse> findUsername(@RequestBody @Valid final FindUsernameRequest findUsernameRequest) {
 
-        return BaseResponse.ok(authService.findUsername(usernameResetRequest));
+        return BaseResponse.ok(authService.findUsername(findUsernameRequest));
     }
 
     @PostMapping("/username/reset")
-    public BaseResponse<MessageResponse> resetUsernameWithAuth(HttpServletRequest httpServletRequest,
+    public BaseResponse<ChangeUsernameResponse> resetUsernameWithAuth(HttpServletRequest httpServletRequest,
                                                                HttpServletResponse httpServletResponse,
                                                                @RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest) {
 
