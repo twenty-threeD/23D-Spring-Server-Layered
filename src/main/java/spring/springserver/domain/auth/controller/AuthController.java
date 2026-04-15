@@ -54,10 +54,10 @@ public class AuthController {
     @PostMapping("/password/reset/check")
     public BaseResponse<PasswordResetResponse> resetPasswordWithAuth(HttpServletRequest httpServletRequest,
                                                                      HttpServletResponse httpServletResponse,
-                                                                     @RequestBody @Valid final PasswordResetRequest request) {
+                                                                     @RequestBody @Valid final PasswordResetRequest passwordResetRequest) {
         
         return BaseResponse.ok(
-                authService.resetPasswordWithAuth(httpServletRequest, httpServletResponse, request)
+                authService.resetPasswordWithAuth(httpServletRequest, httpServletResponse, passwordResetRequest)
         );
     }
 
