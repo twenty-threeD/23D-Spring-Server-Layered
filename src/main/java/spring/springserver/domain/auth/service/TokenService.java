@@ -144,7 +144,6 @@ public class TokenService {
         cookie.setPath("/");
         cookie.setHttpOnly(httpOnly);
         cookie.setMaxAge(age);
-
         httpServletResponse.addCookie(cookie);
     }
 }

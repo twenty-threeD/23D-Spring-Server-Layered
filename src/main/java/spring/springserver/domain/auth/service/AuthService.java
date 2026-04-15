@@ -102,8 +102,7 @@ public class AuthService {
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
-        String encoded = passwordEncoder.encode(passwordResetRequest.newPassword());
-        member.setPassword(encoded);
+        member.setPassword(passwordEncoder.encode(passwordResetRequest.newPassword()));
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
     }
@@ -112,7 +111,11 @@ public class AuthService {
                                                        HttpServletResponse httpServletResponse,
                                                        PasswordResetRequest passwordResetRequest) {
 
-        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
+        String accessToken = tokenService.extractTokenFromCookie(
+                httpServletRequest,
+                "accessToken"
+        );
+
         if (accessToken == null || accessToken.isBlank()) {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
@@ -127,7 +130,8 @@ public class AuthService {
 
         tokenService.deleteTokens(
                 httpServletRequest,
-                httpServletResponse);
+                httpServletResponse
+        );
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
     }
@@ -139,12 +143,12 @@ public class AuthService {
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
-        return FindUsernameResponse.of("아이디를 찾았습니다.", username);
+        return FindUsernameResponse.of(username);
     }
 
     public ChangeUsernameResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
-                                                 HttpServletResponse httpServletResponse,
-                                                 ChangeUsernameRequest changeUsernameRequest) {
+                                                        HttpServletResponse httpServletResponse,
+                                                        ChangeUsernameRequest changeUsernameRequest) {
 
         String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
         if (accessToken == null || accessToken.isBlank()) {

@@ -4,7 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import spring.springserver.domain.auth.data.request.SignUpRequest;
 import spring.springserver.domain.auth.data.request.SignInRequest;
 import spring.springserver.domain.auth.data.request.PasswordResetRequest;
@@ -66,11 +71,15 @@ public class AuthController {
                                                                      @RequestBody @Valid final PasswordResetRequest passwordResetRequest) {
         
         return BaseResponse.ok(
-                authService.resetPasswordWithAuth(httpServletRequest, httpServletResponse, passwordResetRequest)
+                authService.resetPasswordWithAuth(
+                        httpServletRequest,
+                        httpServletResponse,
+                        passwordResetRequest
+                )
         );
     }
 
-    @GetMapping("/username/reset")
+    @GetMapping("/username")
     public BaseResponse<FindUsernameResponse> findUsername(@RequestBody @Valid final FindUsernameRequest findUsernameRequest) {
 
         return BaseResponse.ok(authService.findUsername(findUsernameRequest));
@@ -78,8 +87,8 @@ public class AuthController {
 
     @PostMapping("/username/reset")
     public BaseResponse<ChangeUsernameResponse> resetUsernameWithAuth(HttpServletRequest httpServletRequest,
-                                                               HttpServletResponse httpServletResponse,
-                                                               @RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest) {
+                                                                      HttpServletResponse httpServletResponse,
+                                                                      @RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest) {
 
         return BaseResponse.ok(
                 authService.resetUsernameWithAuth(
