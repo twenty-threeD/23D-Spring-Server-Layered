@@ -1,4 +1,4 @@
-package spring.springserver.global.config;
+package spring.springserver.global.config.redis;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
