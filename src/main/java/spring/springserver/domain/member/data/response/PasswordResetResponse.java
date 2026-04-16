@@ -1,4 +1,4 @@
-package spring.springserver.domain.auth.data.response;
+package spring.springserver.domain.member.data.response;
 
 public record PasswordResetResponse(
 
