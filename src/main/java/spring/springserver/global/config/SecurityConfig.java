@@ -3,6 +3,7 @@ package spring.springserver.global.config;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -44,18 +45,39 @@ public class SecurityConfig {
 						.requestMatchers(
 								"/api/auth/signup",
 								"/api/auth/signin",
+              	"/api/auth/signout",
+								"/api/auth/password/reset",
 								"/oauth2/**",
 								"/login/**",
 								"/loginSuccess"
 						).permitAll()
-						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+            
+            .requestMatchers(
+								HttpMethod.POST,
+								"/api/auth/password/reset/check"
+						).hasRole("USER")
+                               
+            .requestMatchers(
+								HttpMethod.DELETE,
+								"/api/delete/account"
+						).hasRole("USER")
+                               
+						.requestMatchers(
+              "/swagger-ui/**",
+              "/v3/api-docs/**"
+            ).permitAll()
+                               
 						.anyRequest().authenticated()
 				).oauth2Login(oauth2 -> oauth2
 						.defaultSuccessUrl("/loginSuccess", true)
 						.userInfoEndpoint(userInfo -> userInfo
 								.userService(customOAuth2UserService)
 						)
-				).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+				)
+        .addFilterBefore(
+            jwtAuthFilter,
+            UsernamePasswordAuthenticationFilter.class
+        );
 
 		return httpSecurity.build();
 	}

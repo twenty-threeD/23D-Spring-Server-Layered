@@ -3,23 +3,19 @@ package spring.springserver.domain.auth.service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
-import spring.springserver.domain.auth.data.request.PasswordResetRequest;
 import spring.springserver.domain.auth.data.request.SignInRequest;
 import spring.springserver.domain.auth.data.request.SignUpRequest;
-import spring.springserver.domain.auth.data.response.PasswordResetResponse;
-import spring.springserver.domain.auth.data.response.SignOutResponse;
-import spring.springserver.domain.auth.data.response.SignUpResponse;
 import spring.springserver.domain.auth.data.response.SignInResponse;
+import spring.springserver.domain.auth.data.response.SignUpResponse;
+import spring.springserver.domain.auth.data.response.SignOutResponse;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
-import spring.springserver.global.jwt.JwtProvider;
 
 @Service
 @RequiredArgsConstructor
@@ -83,7 +79,7 @@ public class AuthService {
      * @return message
      */
     public SignOutResponse signOut(HttpServletRequest httpServletRequest,
-                                                 HttpServletResponse httpServletResponse) {
+                                   HttpServletResponse httpServletResponse) {
 
         tokenService.deleteTokens(
                 httpServletRequest,
@@ -91,42 +87,5 @@ public class AuthService {
         );
 
         return SignOutResponse.of("로그아웃 되었습니다.");
-    }
-
-    public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest request) {
-
-        Member member = memberRepository.findByUsername(request.username())
-                .orElseThrow(
-                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-                );
-
-        String encoded = passwordEncoder.encode(request.newPassword());
-        member.setPassword(encoded);
-
-        return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
-    }
-
-    public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
-                                                       HttpServletResponse httpServletResponse,
-                                                       PasswordResetRequest request) {
-
-        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
-        if (accessToken == null || accessToken.isBlank()) {
-            throw new ApplicationException(AuthStatusCode.INVALID_JWT);
-        }
-
-        Member member = memberRepository.findByUsername(request.username())
-                .orElseThrow(
-                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-                );
-
-        String encoded = passwordEncoder.encode(request.newPassword());
-        member.setPassword(encoded);
-
-        tokenService.deleteTokens(
-                httpServletRequest,
-                httpServletResponse);
-
-        return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
     }
 }

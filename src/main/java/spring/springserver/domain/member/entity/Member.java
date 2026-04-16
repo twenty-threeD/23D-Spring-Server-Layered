@@ -3,7 +3,6 @@ package spring.springserver.domain.member.entity;
 import com.l98293.phone.Phone;
 import com.l98293.phone.Region;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,7 +23,6 @@ public class Member {
 
 	private String name;
 
-	@Email
 	private String email;
 
 	@Phone(region = Region.KR)
@@ -35,13 +33,16 @@ public class Member {
 	@Enumerated(EnumType.STRING)
 	private Role role;
 
-	public void setPassword(String password) {
+    public void setPassword(String password) {
+        this.password = password;
+    }
+  
+    public void updateName(String name) {
 
-		this.password = password;
-	}
-
-	public void updateName(String name) {
-
-		this.name = name;
-	}
+      this.name = name;
+    }
+  
+    public void setUsername(String username) {
+        this.username = username;
+    }
 }

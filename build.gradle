@@ -10,7 +10,7 @@ description = 'springServer'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
 }
 
@@ -29,7 +29,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // phone
-    implementation 'com.github.l98293:phone:1.1.0'
+    implementation 'com.github.l98293:phone:1.2.1'
 
     // lombok
     compileOnly 'org.projectlombok:lombok'
@@ -69,13 +69,16 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
     // swagger
-    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.0'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
     // spring boot test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
-    //WebSocket
+    // WebSocket
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // OAuth
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 }
 
 tasks.named('test') {

@@ -1,4 +1,4 @@
-package spring.springserver.domain.member.data;
+package spring.springserver.domain.member.data.response;
 
 public record DeleteAccountResponse(
 
