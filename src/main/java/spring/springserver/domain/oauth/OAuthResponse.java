@@ -10,7 +10,8 @@ public record OAuthResponse(
 
     public static OAuthResponse of(
             String accessToken,
-            String refreshToken) {
+            String refreshToken
+    ) {
 
         return new OAuthResponse(
                 accessToken,
