@@ -3,8 +3,15 @@ package spring.springserver.domain.member.service;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import spring.springserver.domain.member.data.request.ChangeUsernameRequest;
+import spring.springserver.domain.member.data.request.FindUsernameRequest;
+import spring.springserver.domain.member.data.request.PasswordResetRequest;
+import spring.springserver.domain.member.data.response.ChangeUsernameResponse;
+import spring.springserver.domain.member.data.response.FindUsernameResponse;
+import spring.springserver.domain.member.data.response.PasswordResetResponse;
 import spring.springserver.domain.auth.exception.AuthStatusCode;
 import spring.springserver.domain.auth.service.TokenService;
 import spring.springserver.domain.member.data.response.DeleteAccountResponse;
@@ -19,6 +26,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final TokenService tokenService;
+    private final PasswordEncoder passwordEncoder;
 
     public DeleteAccountResponse deleteAccount(HttpServletRequest httpServletRequest,
                                                HttpServletResponse httpServletResponse) {
@@ -38,5 +46,88 @@ public class MemberService {
         memberRepository.delete(member);
 
         return DeleteAccountResponse.of("탈퇴되었습니다.");
+    }
+
+    public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest passwordResetRequest) {
+
+        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        member.setPassword(passwordEncoder.encode(passwordResetRequest.newPassword()));
+
+        return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
+    }
+
+    public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
+                                                       HttpServletResponse httpServletResponse,
+                                                       PasswordResetRequest passwordResetRequest) {
+
+        String accessToken = tokenService.extractTokenFromCookie(
+                httpServletRequest,
+                "accessToken"
+        );
+
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+        }
+
+        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        String encoded = passwordEncoder.encode(passwordResetRequest.newPassword());
+        member.setPassword(encoded);
+
+        tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse
+        );
+
+        return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.");
+    }
+
+    public FindUsernameResponse findUsername(FindUsernameRequest findUsernameRequest) {
+
+        String username = memberRepository.findUsernameByEmail(findUsernameRequest.email())
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        return FindUsernameResponse.of(username);
+    }
+
+    public ChangeUsernameResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
+                                                        HttpServletResponse httpServletResponse,
+                                                        ChangeUsernameRequest changeUsernameRequest) {
+
+        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new ApplicationException(AuthStatusCode.INVALID_JWT);
+        }
+
+        Member member = memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
+                .orElseThrow(
+                        () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+                );
+
+        if (!member.getEmail().equals(changeUsernameRequest.email())) {
+            throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
+        }
+
+        if (memberRepository.existsByUsername(changeUsernameRequest.newUsername())) {
+            throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
+        }
+
+        member.setUsername(changeUsernameRequest.newUsername());
+
+        tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse
+        );
+
+        return ChangeUsernameResponse.of("아이디가 변경 되었습니다. 다시 로그인 해주세요.");
     }
 }
