@@ -30,7 +30,7 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) {
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -60,7 +60,15 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								HttpMethod.POST,
+								"/api/files/upload",
+								"/api/images/upload"
+						).permitAll()
+
+						.requestMatchers(
 								HttpMethod.GET,
+								"/files/**",
+								"/images/**",
 								"/swagger-ui/**",
 								"/v3/api-docs/**"
 						).permitAll()
