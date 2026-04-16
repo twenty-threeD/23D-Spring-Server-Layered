@@ -15,6 +15,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import spring.springserver.domain.oauth.CustomOAuth2UserService;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -30,7 +31,8 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception{
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
+                                           CustomOAuth2UserService customOAuth2UserService) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -40,38 +42,42 @@ public class SecurityConfig {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.authorizeHttpRequests(auth
 						-> auth
-
 						.requestMatchers(
-								HttpMethod.POST,
 								"/api/auth/signup",
 								"/api/auth/signin",
-								"/api/auth/signout",
-								"/api/auth/password/reset"
+              	"/api/auth/signout",
+								"/api/auth/password/reset",
+								"/oauth2/**",
+								"/login/**",
+								"/loginSuccess"
 						).permitAll()
-
-						.requestMatchers(
+            
+            .requestMatchers(
 								HttpMethod.POST,
 								"/api/auth/password/reset/check"
 						).hasRole("USER")
-
-						.requestMatchers(
+                               
+            .requestMatchers(
 								HttpMethod.DELETE,
 								"/api/delete/account"
 						).hasRole("USER")
-
+                               
 						.requestMatchers(
-								HttpMethod.GET,
-								"/swagger-ui/**",
-								"/v3/api-docs/**"
-						).permitAll()
-
+              "/swagger-ui/**",
+              "/v3/api-docs/**"
+            ).permitAll()
+                               
 						.anyRequest().authenticated()
+				).oauth2Login(oauth2 -> oauth2
+						.defaultSuccessUrl("/loginSuccess", true)
+						.userInfoEndpoint(userInfo -> userInfo
+								.userService(customOAuth2UserService)
+						)
 				)
-
-				.addFilterBefore(
-						jwtAuthFilter,
-						UsernamePasswordAuthenticationFilter.class
-				);
+        .addFilterBefore(
+            jwtAuthFilter,
+            UsernamePasswordAuthenticationFilter.class
+        );
 
 		return httpSecurity.build();
 	}
@@ -83,6 +89,7 @@ public class SecurityConfig {
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");
 		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);

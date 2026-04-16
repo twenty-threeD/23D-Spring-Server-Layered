@@ -36,7 +36,12 @@ public class Member {
     public void setPassword(String password) {
         this.password = password;
     }
+  
+    public void updateName(String name) {
 
+      this.name = name;
+    }
+  
     public void setUsername(String username) {
         this.username = username;
     }
