@@ -49,6 +49,11 @@ spring:
               - profile
               - email
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -57,3 +62,8 @@ springdoc:
     path: /swagger-ui.html
     display-request-duration: true
     enabled: true # 배포할 때 false로 변경
+
+app:
+  upload:
+    file-dir: ./files
+    image-dir: ./images

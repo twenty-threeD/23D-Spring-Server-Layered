@@ -28,7 +28,8 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+
+		return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -36,38 +37,46 @@ public class SecurityConfig {
                                            CustomOAuthUserService customOAuth2UserService,
                                            OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
-        httpSecurity
-                .httpBasic(AbstractHttpConfigurer::disable)
-                .formLogin(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> {})
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                .authorizeHttpRequests(auth
-                        -> auth
-                        .requestMatchers(
-                                "/api/auth/signup",
-                                "/api/auth/signin",
-                                "/api/auth/signout",
-                                "/api/auth/password/reset",
-                                "/oauth2",
-                                "/login",
-                                "/loginSuccess"
-                        ).permitAll()
+		httpSecurity
+				.httpBasic(AbstractHttpConfigurer::disable)
+				.formLogin(AbstractHttpConfigurer::disable)
+				.csrf(AbstractHttpConfigurer::disable)
+				.cors(cors -> {})
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+				.authorizeHttpRequests(auth
+						-> auth
 
-                        .requestMatchers(
-                                HttpMethod.POST,
-                                "/api/auth/password/reset/check"
-                        ).hasRole("USER")
+						.requestMatchers(
+								HttpMethod.POST,
+								"/api/auth/signup",
+								"/api/auth/signin",
+								"/api/auth/signout",
+								"/api/auth/password/reset"
+						).permitAll()
+
+						.requestMatchers(
+								HttpMethod.POST,
+								"/api/auth/password/reset/check"
+						).hasRole("USER")
 
                         .requestMatchers(
                                 HttpMethod.DELETE,
                                 "/api/delete/account"
                         ).hasRole("USER")
 
-                        .requestMatchers(
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**"
-                        ).permitAll()
+						.requestMatchers(
+								HttpMethod.POST,
+								"/api/files/upload",
+								"/api/images/upload"
+						).permitAll()
+
+						.requestMatchers(
+								HttpMethod.GET,
+								"/files/**",
+								"/images/**",
+								"/swagger-ui/**",
+								"/v3/api-docs/**"
+						).permitAll()
 
                         .anyRequest().authenticated()
                 ).oauth2Login(oauth2 -> oauth2
