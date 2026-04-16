@@ -39,15 +39,9 @@ public class Member {
 
 		this.password = password;
 	}
-    // Member.java 엔티티 클래스 내부
-    public Member update(String name) {
 
-        this.name = name; // nane -> name으로 수정
-        return this;
-    }
+	public void updateName(String name) {
 
-    public String getRoleKey() {
-
-        return this.role.name(); // 또는 role.getKey() 등 Role 이늄 구조에 맞게 설정
-    }
+		this.name = name;
+	}
 }
