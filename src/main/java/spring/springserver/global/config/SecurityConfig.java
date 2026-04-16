@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import spring.springserver.domain.oauth.CustomOAuth2UserService;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -29,19 +30,30 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity, CustomOAuth2UserService customOAuth2UserService) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(cors -> {})
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.authorizeHttpRequests(auth
 						-> auth
-						.requestMatchers("/api/auth/signup", "/api/auth/signin").permitAll()
+						.requestMatchers(
+								"/api/auth/signup",
+								"/api/auth/signin",
+								"/oauth2/**",
+								"/login/**",
+								"/loginSuccess"
+						).permitAll()
 						.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 						.anyRequest().authenticated()
+				).oauth2Login(oauth2 -> oauth2
+						.defaultSuccessUrl("/loginSuccess", true)
+						.userInfoEndpoint(userInfo -> userInfo
+								.userService(customOAuth2UserService)
+						)
 				).addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
 		return httpSecurity.build();
@@ -54,6 +66,7 @@ public class SecurityConfig {
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");
 		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
