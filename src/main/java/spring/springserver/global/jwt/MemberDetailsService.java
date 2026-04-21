@@ -20,8 +20,11 @@ public class MemberDetailsService implements UserDetailsService {
 	@Override
 	@Transactional(readOnly = true)
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		Member member = memberRepository.findByUsername(username).orElseThrow(()
-				-> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND));
+
+		Member member = memberRepository.findByUsername(username)
+				.orElseThrow(
+						() -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+				);
 
 		return MemberDetails.from(member);
 	}

@@ -79,6 +79,7 @@ public class JwtProvider implements TokenProvider {
 	public Role getRole(String token) {
 
 		String role = getClaims(token).get("role", String.class);
+
 		return role == null ? null : Role.valueOf(role);
 	}
 
@@ -88,8 +89,10 @@ public class JwtProvider implements TokenProvider {
 
 		try {
 			getClaims(token);
+
 			return false;
 		} catch (JwtException | IllegalArgumentException e) {
+
 			return true;
 		}
 	}
@@ -99,8 +102,10 @@ public class JwtProvider implements TokenProvider {
 
 		String token = request.getHeader("Authorization");
 		if (token != null && token.startsWith("Bearer ")) {
+
 			return token.substring(7);
 		}
+
 		return null;
 	}
 

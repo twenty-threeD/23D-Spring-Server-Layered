@@ -22,11 +22,13 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
         String role = Objects.toString(attributes.get("role"), null);
 
         if (username != null && role != null) {
+
             log.info("Principal 생성 - 사용자: {}, 권한: {}", username, role);
             return new StompPrincipal(username, role);
         }
 
         log.warn("토큰 검증 실패: username={}, role={}", username, role);
+
         return null;
     }
 }
