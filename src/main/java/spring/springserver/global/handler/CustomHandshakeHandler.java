@@ -1,6 +1,7 @@
 package spring.springserver.global.handler;
 
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler;
@@ -14,9 +15,9 @@ import java.util.Objects;
 public class CustomHandshakeHandler extends DefaultHandshakeHandler {
 
     @Override
-    protected Principal determineUser(ServerHttpRequest request,
-                                      WebSocketHandler wsHandler,
-                                      Map<String, Object> attributes) {
+    protected Principal determineUser(@NonNull ServerHttpRequest serverHttpRequest,
+                                      @NonNull WebSocketHandler webSocketHandler,
+                                      @NonNull Map<String, Object> attributes) {
 
         String username = Objects.toString(attributes.get("username"), null);
         String role = Objects.toString(attributes.get("role"), null);

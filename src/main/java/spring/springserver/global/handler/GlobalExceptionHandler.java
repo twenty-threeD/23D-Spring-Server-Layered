@@ -31,6 +31,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<BaseResponse<Void>> handleApplicationException(ApplicationException applicationException) {
 
     StatusCode statusCode = applicationException.getStatusCode();
+
     ErrorResponse error = ErrorResponse.of(
         statusCode.getCode(),
             applicationException.getMessage() != null ? applicationException.getMessage() : statusCode.getMessage()
@@ -45,16 +46,18 @@ public class GlobalExceptionHandler {
   public ResponseEntity<BaseResponse<Void>> handleValidationException(MethodArgumentNotValidException methodArgumentNotValidException) {
 
     Map<String, String> details = new HashMap<>();
-    methodArgumentNotValidException.getBindingResult().getAllErrors().forEach(error -> {
 
-      String field = ((FieldError) error).getField();
-      String message = error.getDefaultMessage() != null ? error.getDefaultMessage() : "잘못된 입력값 입니다.";
+    methodArgumentNotValidException.getBindingResult().getAllErrors()
+            .forEach(error -> {
 
-      details.put(
-              field,
-              message
-      );
-    });
+              String field = ((FieldError) error).getField();
+              String message = error.getDefaultMessage() != null ? error.getDefaultMessage() : "잘못된 입력값 입니다.";
+
+              details.put(
+                      field,
+                      message
+              );
+            });
 
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INVALID_ARGUMENT.getCode(),
@@ -66,7 +69,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INVALID_ARGUMENT.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -74,15 +78,18 @@ public class GlobalExceptionHandler {
   public ResponseEntity<BaseResponse<Void>> handleConstraintViolationException(ConstraintViolationException constraintViolationException) {
 
     Map<String, String> details = new HashMap<>();
-    constraintViolationException.getConstraintViolations().forEach(violation -> {
-      String fieldName = violation.getPropertyPath().toString();
-      String message = violation.getMessage();
+    constraintViolationException.getConstraintViolations()
+            .forEach(
+                    violation -> {
 
-      details.put(
-              fieldName,
-              message
-      );
-    });
+                      String fieldName = violation.getPropertyPath().toString();
+                      String message = violation.getMessage();
+
+                      details.put(
+                              fieldName,
+                              message
+                      );
+                    });
 
     ErrorResponse error = ErrorResponse.of(
         CommonStatusCode.INVALID_ARGUMENT.getCode(),
@@ -94,7 +101,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INVALID_ARGUMENT.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -110,7 +118,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INVALID_ARGUMENT.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -126,7 +135,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INVALID_ARGUMENT.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -142,7 +152,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INVALID_ARGUMENT.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -157,7 +168,8 @@ public class GlobalExceptionHandler {
         .status(AuthStatusCode.INVALID_CREDENTIALS.getHttpStatus())
         .body(BaseResponse.error(
                 AuthStatusCode.INVALID_CREDENTIALS.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -173,7 +185,8 @@ public class GlobalExceptionHandler {
         .status(AuthStatusCode.ACCOUNT_LOCKED.getHttpStatus())
         .body(BaseResponse.error(
                 AuthStatusCode.ACCOUNT_LOCKED.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -189,7 +202,8 @@ public class GlobalExceptionHandler {
         .status(AuthStatusCode.ACCOUNT_DISABLED.getHttpStatus())
         .body(BaseResponse.error(
                 AuthStatusCode.ACCOUNT_DISABLED.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -205,7 +219,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 
@@ -223,7 +238,8 @@ public class GlobalExceptionHandler {
         .status(CommonStatusCode.INTERNAL_SERVER_ERROR.getHttpStatus())
         .body(BaseResponse.error(
                 CommonStatusCode.INTERNAL_SERVER_ERROR.getHttpStatus(),
-                error)
+                error
+                )
         );
   }
 }

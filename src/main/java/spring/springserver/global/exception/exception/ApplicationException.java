@@ -15,9 +15,9 @@ public class ApplicationException extends RuntimeException {
   }
 
   public ApplicationException(StatusCode statusCode,
-                              Throwable cause) {
+                              Throwable throwable) {
 
-    super(statusCode.getMessage(), cause);
+    super(statusCode.getMessage(), throwable);
     this.statusCode = statusCode;
   }
 
@@ -33,15 +33,17 @@ public class ApplicationException extends RuntimeException {
     return new ApplicationException(statusCode);
   }
 
-  public static ApplicationException of(StatusCode statusCode, Throwable cause) {
+  public static ApplicationException of(StatusCode statusCode,
+                                        Throwable throwable) {
 
     return new ApplicationException(
             statusCode,
-            cause
+            throwable
     );
   }
 
-  public static ApplicationException of(StatusCode statusCode, String customMessage) {
+  public static ApplicationException of(StatusCode statusCode,
+                                        String customMessage) {
 
     return new ApplicationException(
             statusCode,
