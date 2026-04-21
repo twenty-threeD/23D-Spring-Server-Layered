@@ -23,15 +23,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 	private final TokenProvider tokenProvider;
 
 	@Override
-	protected void doFilterInternal(@NonNull HttpServletRequest request,
-									@NonNull HttpServletResponse response,
+	protected void doFilterInternal(@NonNull HttpServletRequest httpServletRequest,
+									@NonNull HttpServletResponse httpServletResponse,
 									@NonNull FilterChain filterChain) throws ServletException, IOException {
 
-		String token = tokenProvider.resolveToken(request);
+		String token = tokenProvider.resolveToken(httpServletRequest);
 
 		if (token == null || tokenProvider.isValidToken(token)) {
 
-			filterChain.doFilter(request, response);
+			filterChain.doFilter(
+					httpServletRequest,
+					httpServletResponse
+			);
+
 			return;
 		}
 
@@ -47,6 +51,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 		);
 
 		SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-		filterChain.doFilter(request, response);
+		filterChain.doFilter(
+				httpServletRequest,
+				httpServletResponse
+		);
 	}
 }
