@@ -14,7 +14,10 @@ public record ErrorResponse(
     LocalDateTime timestamp,
     Map<String, String> details
 ) {
-    public static ErrorResponse of(String code, String message) {
+
+    public static ErrorResponse of(String code,
+                                   String message) {
+
         return ErrorResponse.builder()
             .code(code)
             .message(message)
@@ -22,7 +25,10 @@ public record ErrorResponse(
             .build();
     }
     
-    public static ErrorResponse of(String code, String message, Map<String, String> details) {
+    public static ErrorResponse of(String code,
+                                   String message,
+                                   Map<String, String> details) {
+
         return ErrorResponse.builder()
             .code(code)
             .message(message)

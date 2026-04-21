@@ -18,8 +18,11 @@ public record MemberDetails(Long id,
 							Collection<? extends GrantedAuthority> authorities) implements UserDetails {
 
 	public static MemberDetails from(Member member) {
+
 		String role = member.getRole().name();
+
 		if (!role.startsWith("ROLE_")) {
+
 			role = "ROLE_" + role;
 		}
 
@@ -34,16 +37,19 @@ public record MemberDetails(Long id,
 
 	@Override
 	public @NonNull Collection<? extends GrantedAuthority> getAuthorities() {
+
 		return authorities;
 	}
 
 	@Override
 	public @Nullable String getPassword() {
+
 		return password();
 	}
 
 	@Override
 	public @NonNull String getUsername() {
+
 		return username();
 	}
 }

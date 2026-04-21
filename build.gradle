@@ -22,51 +22,50 @@ configurations {
 
 dependencies {
 
-    // spring security
+    // Spring Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.security:spring-security-messaging'
 
-    // phone
+    // Phone
     implementation 'com.github.l98293:phone:1.2.1'
 
-    // lombok
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // postgresQL
+    // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
 
-    // redis
+    // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    runtimeOnly 'org.postgresql:postgresql'
 
-    // junit
+    // unit
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // jwt
+    // JJWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     implementation 'io.jsonwebtoken:jjwt-impl:0.13.0'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
-    // env
+    // Dotenv
     developmentOnly 'me.paulschwarz:springboot3-dotenv:5.1.0'
 
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-    // web
+    // Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // validation
+    // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // mail
+    // Mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-    // thymeleaf
+    // Thymeleaf
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 
-    // swagger
+    // Swagger
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
     // spring boot test

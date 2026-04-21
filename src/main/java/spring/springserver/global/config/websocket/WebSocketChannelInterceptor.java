@@ -23,18 +23,22 @@ public class WebSocketChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+
             log.info("STOMP CONNECT 요청");
 
             // Header에서 JWT 토큰 추출
             String token = accessor.getFirstNativeHeader("Authorization");
 
             if (token != null && token.startsWith("Bearer ")) {
+
                 token = token.substring(7);
             }
 
             // 토큰 검증
             if (token == null || jwtProvider.isValidToken(token)) {
+
                 log.error("유효하지 않은 토큰");
+
                 throw new IllegalArgumentException("유효하지 않은 토큰");
             }
 
