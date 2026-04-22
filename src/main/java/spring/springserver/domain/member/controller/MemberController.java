@@ -22,14 +22,13 @@ public class MemberController {
 
     private final MemberService memberService;
 
-    @DeleteMapping("/delete/account")
-    public BaseResponse<DeleteAccountResponse> deleteAccount(
-            HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse) {
+    @DeleteMapping("/account")
+    public BaseResponse<DeleteAccountResponse> deleteAccount(HttpServletRequest httpServletRequest,
+                                                             HttpServletResponse httpServletResponse) {
 
         return BaseResponse.ok(memberService.deleteAccount(
-                        httpServletRequest,
-                        httpServletResponse)
+                httpServletRequest,
+                httpServletResponse)
         );
     }
 
@@ -40,15 +39,14 @@ public class MemberController {
     }
 
     @PostMapping("/password/reset/check")
-    public BaseResponse<PasswordResetResponse> resetPasswordWithAuth(HttpServletRequest httpServletRequest,
-                                                                     HttpServletResponse httpServletResponse,
-                                                                     @RequestBody @Valid final PasswordResetRequest passwordResetRequest) {
+    public BaseResponse<PasswordResetResponse> resetPasswordWithAuth(@RequestBody @Valid final PasswordResetRequest passwordResetRequest,
+                                                                     HttpServletRequest httpServletRequest,
+                                                                     HttpServletResponse httpServletResponse) {
 
-        return BaseResponse.ok(
-                memberService.resetPasswordWithAuth(
-                        httpServletRequest,
-                        httpServletResponse,
-                        passwordResetRequest
+        return BaseResponse.ok(memberService.resetPasswordWithAuth(
+                passwordResetRequest,
+                httpServletRequest,
+                httpServletResponse
                 )
         );
     }
@@ -60,15 +58,15 @@ public class MemberController {
     }
 
     @PostMapping("/username/reset")
-    public BaseResponse<ChangeUsernameResponse> resetUsernameWithAuth(HttpServletRequest httpServletRequest,
-                                                                      HttpServletResponse httpServletResponse,
-                                                                      @RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest) {
+    public BaseResponse<ChangeUsernameResponse> resetUsernameWithAuth(@RequestBody @Valid final ChangeUsernameRequest changeUsernameRequest,
+                                                                      HttpServletRequest httpServletRequest,
+                                                                      HttpServletResponse httpServletResponse) {
 
-        return BaseResponse.ok(
-                memberService.resetUsernameWithAuth(
-                        httpServletRequest,
-                        httpServletResponse,
-                        changeUsernameRequest)
+        return BaseResponse.ok(memberService.resetUsernameWithAuth(
+                changeUsernameRequest,
+                httpServletRequest,
+                httpServletResponse
+                )
         );
     }
 }

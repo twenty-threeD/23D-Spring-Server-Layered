@@ -78,7 +78,10 @@ public class JwtProvider implements TokenProvider {
 	@Override
 	public Role getRole(String token) {
 
-		String role = getClaims(token).get("role", String.class);
+		String role = getClaims(token).get(
+				"role",
+				String.class
+		);
 
 		return role == null ? null : Role.valueOf(role);
 	}

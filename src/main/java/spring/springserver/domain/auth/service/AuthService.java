@@ -34,6 +34,7 @@ public class AuthService {
     public SignUpResponse signUp(SignUpRequest signUpRequest) {
 
         if (memberRepository.existsByUsername(signUpRequest.username())) {
+
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 
@@ -48,9 +49,8 @@ public class AuthService {
      * @return accessToken, refreshToken
      */
     @Transactional(readOnly = true)
-    public SignInResponse signIn(
-            SignInRequest signInRequest,
-            HttpServletResponse httpServletResponse) {
+    public SignInResponse signIn(SignInRequest signInRequest,
+                                 HttpServletResponse httpServletResponse) {
 
         Member member = memberRepository.findByUsername(signInRequest.username())
                 .orElseThrow(
@@ -58,6 +58,7 @@ public class AuthService {
                 );
 
         if (!passwordEncoder.matches(signInRequest.password(), member.getPassword())) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
         }
 
@@ -67,8 +68,14 @@ public class AuthService {
         );
 
         return SignInResponse.of(
-                tokenService.generateAccessToken(generateTokenRequest, httpServletResponse),
-                tokenService.generateRefreshToken(generateTokenRequest, httpServletResponse)
+                tokenService.generateAccessToken(
+                        generateTokenRequest,
+                        httpServletResponse
+                ),
+                tokenService.generateRefreshToken(
+                        generateTokenRequest,
+                        httpServletResponse
+                )
         );
     }
 

@@ -11,7 +11,7 @@ public record ChangeUsernameRequest(
         String email,
 
         @NotBlank
-        @JsonProperty("new_username")
+        @JsonProperty(value = "new_username")
         String newUsername
 ) {
 }

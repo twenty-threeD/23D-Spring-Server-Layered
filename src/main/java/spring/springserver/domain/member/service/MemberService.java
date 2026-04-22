@@ -60,16 +60,17 @@ public class MemberService {
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
     }
 
-    public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
-                                                       HttpServletResponse httpServletResponse,
-                                                       PasswordResetRequest passwordResetRequest) {
+    public PasswordResetResponse resetPasswordWithAuth(PasswordResetRequest passwordResetRequest,
+                                                       HttpServletRequest httpServletRequest,
+                                                       HttpServletResponse httpServletResponse) {
 
         String accessToken = tokenService.extractTokenFromCookie(
-                httpServletRequest,
-                "accessToken"
+                "accessToken",
+                httpServletRequest
         );
 
         if (accessToken == null || accessToken.isBlank()) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
@@ -99,12 +100,17 @@ public class MemberService {
         return FindUsernameResponse.of(username);
     }
 
-    public ChangeUsernameResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
-                                                        HttpServletResponse httpServletResponse,
-                                                        ChangeUsernameRequest changeUsernameRequest) {
+    public ChangeUsernameResponse resetUsernameWithAuth(ChangeUsernameRequest changeUsernameRequest,
+                                                        HttpServletRequest httpServletRequest,
+                                                        HttpServletResponse httpServletResponse) {
 
-        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
+        String accessToken = tokenService.extractTokenFromCookie(
+                "accessToken",
+                httpServletRequest
+        );
+
         if (accessToken == null || accessToken.isBlank()) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
@@ -114,10 +120,12 @@ public class MemberService {
                 );
 
         if (!member.getEmail().equals(changeUsernameRequest.email())) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
         }
 
         if (memberRepository.existsByUsername(changeUsernameRequest.newUsername())) {
+
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 
