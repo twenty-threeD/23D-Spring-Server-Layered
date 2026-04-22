@@ -67,7 +67,11 @@ public class TokenService {
 	public void deleteTokens(HttpServletRequest httpServletRequest,
 							 HttpServletResponse httpServletResponse) {
 
-		String accessToken = extractTokenFromCookie(httpServletRequest, "accessToken");
+		String accessToken = extractTokenFromCookie(
+				"accessToken",
+				httpServletRequest
+		);
+		
 		if (accessToken == null || accessToken.isBlank() || jwtProvider.isValidToken(accessToken)) {
 
 			throw new ApplicationException(AuthStatusCode.INVALID_JWT);
