@@ -67,8 +67,13 @@ public class TokenService {
 	public void deleteTokens(HttpServletRequest httpServletRequest,
 							 HttpServletResponse httpServletResponse) {
 
-		String accessToken = extractTokenFromCookie(httpServletRequest, "accessToken");
+		String accessToken = extractTokenFromCookie(
+				"accessToken",
+				httpServletRequest
+		);
+		
 		if (accessToken == null || accessToken.isBlank() || jwtProvider.isValidToken(accessToken)) {
+
 			throw new ApplicationException(AuthStatusCode.INVALID_JWT);
 		}
 
@@ -103,8 +108,8 @@ public class TokenService {
 		}
 	}
 
-    public String extractTokenFromCookie(HttpServletRequest httpServletRequest,
-                                         String cookieName) {
+    public String extractTokenFromCookie(String cookieName,
+										 HttpServletRequest httpServletRequest) {
 
         Cookie[] cookies = httpServletRequest.getCookies();
 
@@ -125,7 +130,7 @@ public class TokenService {
 
     public String getCurrentUsername(HttpServletRequest httpServletRequest) {
 
-        String accessToken = extractTokenFromCookie(httpServletRequest, "accessToken");
+        String accessToken = extractTokenFromCookie("accessToken", httpServletRequest);
 
         if (accessToken == null || accessToken.isBlank()) {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
