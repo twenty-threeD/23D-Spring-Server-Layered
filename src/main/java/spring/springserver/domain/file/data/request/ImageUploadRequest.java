@@ -6,6 +6,6 @@ import org.springframework.web.multipart.MultipartFile;
 public record ImageUploadRequest(
 
         @NotNull
-        MultipartFile file
+        MultipartFile multipartFile
 ) {
 }

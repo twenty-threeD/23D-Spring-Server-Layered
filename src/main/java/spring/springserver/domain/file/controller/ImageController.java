@@ -20,6 +20,7 @@ public class ImageController {
 
     @PostMapping("/upload")
     public BaseResponse<ImageUploadResponse> uploadImage(
+
             @ModelAttribute @Valid final ImageUploadRequest imageUploadRequest) {
 
         return BaseResponse.ok(imageService.uploadImage(imageUploadRequest));
