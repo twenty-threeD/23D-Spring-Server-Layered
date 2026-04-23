@@ -3,7 +3,6 @@ package spring.springserver.domain.file.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import spring.springserver.domain.file.data.request.FileUploadRequest;
 import spring.springserver.domain.file.data.response.FileUploadResponse;
@@ -18,34 +17,34 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(rollbackFor = Exception.class)
 public class FileService {
 
     @Value("${app.upload.file-dir}")
-    private String fileDir;
+    private String fileDirectory;
 
     public FileUploadResponse uploadFile(FileUploadRequest fileUploadRequest) {
 
-        MultipartFile file = fileUploadRequest.file();
+        MultipartFile multipartFile = fileUploadRequest.multipartFile();
 
-        if (file == null || file.isEmpty()) {
+        if (multipartFile == null || multipartFile.isEmpty()) {
             throw new ApplicationException(FileStatusCode.FILE_EMPTY);
         }
 
         try {
-            Path uploadPath = Path.of(fileDir).toAbsolutePath().normalize();
+            Path uploadPath = Path.of(fileDirectory).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
 
-            String originalFilename = file.getOriginalFilename();
+            String originalFilename = multipartFile.getOriginalFilename();
             String storedFileName = UUID.randomUUID() + "_" + originalFilename;
             Path targetPath = uploadPath.resolve(storedFileName);
 
-            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(multipartFile.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
             return FileUploadResponse.of(
                     "/files/" + storedFileName,
                     "파일 업로드가 완료되었습니다."
             );
+
         } catch (IOException e) {
             throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED, e);
         }

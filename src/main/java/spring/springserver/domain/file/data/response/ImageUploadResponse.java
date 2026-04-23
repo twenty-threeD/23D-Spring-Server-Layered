@@ -6,9 +6,12 @@ public record ImageUploadResponse(
 
         String message
 ) {
-    public static ImageUploadResponse of(String image_url,
-                                        String message) {
+    public static ImageUploadResponse of(
+            String image_url,
+            String message) {
 
-        return new ImageUploadResponse(image_url, message);
+        return new ImageUploadResponse(
+                image_url,
+                message);
     }
 }

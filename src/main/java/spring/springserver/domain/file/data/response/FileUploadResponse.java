@@ -6,9 +6,12 @@ public record FileUploadResponse(
 
         String message
 ) {
-    public static FileUploadResponse of(String file_url,
-                                        String message) {
+    public static FileUploadResponse of(
+            String file_url,
+            String message) {
 
-        return new FileUploadResponse(file_url, message);
+        return new FileUploadResponse(
+                file_url,
+                message);
     }
 }
