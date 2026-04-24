@@ -19,10 +19,12 @@ public class Member {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(unique = true)
 	private String username;
 
 	private String name;
 
+	@Column(unique = true)
 	private String email;
 
 	@Phone(region = Region.KR)
