@@ -60,6 +60,8 @@ public class SecurityConfig {
 								"/api/delete/account"
 						).hasRole("USER")
 
+						.requestMatchers("/ws-stomp/**").permitAll()
+
 						.requestMatchers(
 								HttpMethod.GET,
 								"/swagger-ui/**",
