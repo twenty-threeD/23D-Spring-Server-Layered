@@ -38,6 +38,16 @@ public class AuthService {
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 
+        if (memberRepository.existsByEmail(signUpRequest.email())) {
+
+            throw new ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST);
+        }
+
+        if (memberRepository.existsByPhone(signUpRequest.phone())) {
+
+            throw new ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST);
+        }
+
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
 
         return SignUpResponse.of("회원가입이 완료되었습니다.");
