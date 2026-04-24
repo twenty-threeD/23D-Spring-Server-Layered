@@ -10,6 +10,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 import java.time.Instant;
 
@@ -24,9 +25,13 @@ import spring.springserver.domain.member.entity.Member;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
         name = "chat_room",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_chat_room_direct_key", columnNames = "direct_chat_key")
+        },
         indexes = {
-                @Index(name = "idx_chat_room_member_a", columnList = "member_a_id"),
-                @Index(name = "idx_chat_room_member_b", columnList = "member_b_id")
+                @Index(name = "idx_chat_room_client", columnList = "client_id"),
+                @Index(name = "idx_chat_room_professional", columnList = "professional_id"),
+                @Index(name = "idx_chat_room_direct_key", columnList = "direct_chat_key")
         }
 )
 public class ChatRoom {
@@ -36,12 +41,15 @@ public class ChatRoom {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "member_a_id", nullable = false)
-    private Member memberA;
+    @JoinColumn(name = "client_id", nullable = false)
+    private Member client;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "member_b_id", nullable = false)
-    private Member memberB;
+    @JoinColumn(name = "professionl_id", nullable = false)
+    private Member professional;
+
+    @Column(name = "direct_chat_key", nullable = false, length = 100, updatable = false)
+    private String directChatKey;
 
     /**
      *  있으면 정렬하기 편해짐(마지막에 올라온 메세지 시간)
@@ -52,13 +60,27 @@ public class ChatRoom {
     @Column(name = "last_message_preview", length = 200)
     private String lastMessagePreview;
 
-    public ChatRoom(Member memberA, Member memberB) {
-        this.memberA = memberA;
-        this.memberB = memberB;
+    public ChatRoom(Member client,
+                    Member professional) {
+
+        this.client = client;
+        this.professional = professional;
+        this.directChatKey = generateDirectChatKey(client.getId(), professional.getId());
     }
 
-    public void updateLastMessageMeta(Instant at, String preview) {
+    public void updateLastMessageMeta(Instant at,
+                                      String preview) {
+
         this.lastMessageAt = at;
         this.lastMessagePreview = preview;
+    }
+
+    public static String generateDirectChatKey(Long memberId1,
+                                               Long memberId2) {
+
+        long first = Math.min(memberId1, memberId2);
+        long second = Math.max(memberId1, memberId2);
+
+        return first + ":" + second;
     }
 }

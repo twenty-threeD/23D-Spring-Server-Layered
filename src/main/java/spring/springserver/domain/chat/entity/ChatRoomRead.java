@@ -26,12 +26,14 @@ import spring.springserver.domain.member.entity.Member;
 @Table(
         name = "chat_room_read",
         uniqueConstraints = {
+
                 @UniqueConstraint(
                         name = "uk_room_member",
                         columnNames = {"chat_room_id", "member_id"}
                 )
         },
         indexes = {
+
                 @Index(name = "idx_room_read_room", columnList = "chat_room_id"),
                 @Index(name = "idx_room_read_member", columnList = "member_id")
         }
@@ -64,7 +66,9 @@ public class ChatRoomRead {
     private Instant updatedAt;
 
     //어디까지 읽었는지
-    public ChatRoomRead(ChatRoom chatRoom, Member member) {
+    public ChatRoomRead(ChatRoom chatRoom,
+                        Member member) {
+
         this.chatRoom = chatRoom;
         this.member = member;
         this.lastReadSeq = 0L;
@@ -73,7 +77,9 @@ public class ChatRoomRead {
 
     //읽음 처리
     public void markRead(long seq) {
+
         if (seq > this.lastReadSeq) {
+
             this.lastReadSeq = seq;
             this.updatedAt = Instant.now();
         }
