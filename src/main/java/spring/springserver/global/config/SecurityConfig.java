@@ -61,7 +61,15 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								HttpMethod.POST,
+								"/api/files/upload",
+								"/api/images/upload"
+						).permitAll()
+
+						.requestMatchers(
 								HttpMethod.GET,
+								"/files/*",
+								"/images/*",
 								"/swagger-ui/**",
 								"/v3/api-docs/**"
 						).permitAll()
