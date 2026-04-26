@@ -5,6 +5,7 @@ import spring.springserver.domain.chat.entity.ChatMessageDocument;
 import java.time.Instant;
 
 public record ChatMessageResponse(
+
         String messageId,
         Long roomId,
         String senderUsername,

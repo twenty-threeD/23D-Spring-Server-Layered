@@ -91,7 +91,9 @@ public class ChatServiceImpl implements ChatService {
                                            SendChatMessageRequest sendChatMessageRequest) {
 
         ChatRoom room = getAuthorizedRoom(sendChatMessageRequest.roomId(), username);
+
         Member sender = getParticipant(room, username);
+
         String normalizedMessage = normalizeMessage(sendChatMessageRequest.message());
         Instant createdAt = Instant.now();
 
@@ -137,7 +139,8 @@ public class ChatServiceImpl implements ChatService {
 
         ChatRoom room = chatRoomRepository.findByIdWithParticipants(roomId)
                 .orElseThrow(
-                        () -> ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND, "존재하지 않는 채팅방입니다."));
+                        () -> ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND, "존재하지 않는 채팅방입니다.")
+                );
 
         if (!isParticipant(room, username)) {
 
@@ -152,8 +155,7 @@ public class ChatServiceImpl implements ChatService {
 
         return memberRepository.findByUsername(username)
                 .orElseThrow(
-                        () -> ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT,
-                                        "존재하지 않는 사용자입니다: " + username)
+                        () -> ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT, "존재하지 않는 사용자입니다: " + username)
                 );
     }
 
