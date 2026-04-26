@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateChatRoomRequest(
 
-        @NotBlank
+        @NotBlank(message = "상대 username은 필수입니다.")
         String username
 ) {
 }

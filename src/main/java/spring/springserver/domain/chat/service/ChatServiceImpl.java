@@ -8,26 +8,23 @@ import spring.springserver.domain.chat.data.request.SendChatMessageRequest;
 import spring.springserver.domain.chat.data.response.ChatMessageResponse;
 import spring.springserver.domain.chat.data.response.ChatRoomResponse;
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse;
-import spring.springserver.domain.chat.entity.ChatMessageDocument;
+import spring.springserver.domain.chat.entity.ChatMessage;
 import spring.springserver.domain.chat.entity.ChatRoom;
-import spring.springserver.domain.chat.repository.ChatMessageMongoRepository;
+import spring.springserver.domain.chat.repository.ChatMessageRepository;
 import spring.springserver.domain.chat.repository.ChatRoomRepository;
 import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
 import spring.springserver.global.exception.status_code.CommonStatusCode;
 
-import java.time.Instant;
 import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ChatServiceImpl implements ChatService {
 
-    private static final String LAST_MESSAGE_PLACEHOLDER = "새 메시지";
-
     private final ChatRoomRepository chatRoomRepository;
-    private final ChatMessageMongoRepository chatMessageMongoRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final MemberRepository memberRepository;
 
     @Override
@@ -59,17 +56,17 @@ public class ChatServiceImpl implements ChatService {
 
         return chatRoomRepository.findAllByParticipantUsername(username)
                 .stream()
-                .map(room -> {
-                    Member other = getOtherParticipant(room, username);
-
-                    return new ChatRoomResponse(
-                            room.getId(),
-                            other.getUsername(),
-                            other.getName(),
-                            room.getLastMessagePreview(),
-                            room.getLastMessageAt()
-                    );
-                })
+                .map(
+                        (
+                                room
+                                        -> ChatRoomResponse.from(
+                                                room,
+                                                getOtherParticipant(
+                                                        room,
+                                                        username)
+                                )
+                        )
+                )
                 .toList();
     }
 
@@ -79,9 +76,15 @@ public class ChatServiceImpl implements ChatService {
 
         ChatRoom room = getAuthorizedRoom(roomId, username);
 
-        return chatMessageMongoRepository.findAllByRoomIdOrderByCreatedAtAsc(room.getId())
+        return chatMessageRepository.findAllByRoomIdOrderByCreatedAtAsc(room.getId())
                 .stream()
-                .map(ChatMessageResponse::from)
+                .map(
+                        message
+                                -> ChatMessageResponse.from(
+                                        message,
+                                        room.getId()
+                        )
+                )
                 .toList();
     }
 
@@ -95,27 +98,12 @@ public class ChatServiceImpl implements ChatService {
         Member sender = getParticipant(room, username);
 
         String normalizedMessage = normalizeMessage(sendChatMessageRequest.message());
-        Instant createdAt = Instant.now();
 
-        ChatMessageDocument chatMessageDocument = chatMessageMongoRepository.save(
-                new ChatMessageDocument(
-                        room.getId(),
-                        sender.getId(),
-                        sender.getUsername(),
-                        sender.getName(),
-                        normalizedMessage,
-                        createdAt
-                )
-        );
-        room.updateLastMessageMeta(createdAt, LAST_MESSAGE_PLACEHOLDER);
-        return ChatMessageResponse.from(chatMessageDocument);
-    }
+        ChatMessage chatMessage = chatMessageRepository.save(new ChatMessage(normalizedMessage, room, sender));
 
-    @Override
-    public boolean canAccessRoom(String username,
-                                 Long roomId) {
+        room.updateLastMessageMeta(chatMessage.getCreatedAt(), normalizedMessage);
 
-        return chatRoomRepository.existsAuthorizedRoom(roomId, username);
+        return ChatMessageResponse.from(chatMessage, room.getId());
     }
 
     private CreateChatRoomResponse createRoom(Member professional,
