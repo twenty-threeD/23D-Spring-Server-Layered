@@ -22,7 +22,7 @@ public class WebSocketChannelInterceptor implements ChannelInterceptor {
 
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
 
-        if (StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (StompCommand.CONNECT.equals(accessor.getCommand()) && accessor.getUser() == null) {
 
             log.info("STOMP CONNECT 요청");
 
@@ -44,7 +44,10 @@ public class WebSocketChannelInterceptor implements ChannelInterceptor {
 
             // JWT에서 사용자 정보 추출
             String username = jwtProvider.getUsernameFromToken(token);
-            String role = jwtProvider.getRole(token).toString();
+
+            var parsedRole = jwtProvider.getRole(token);
+
+            String role = parsedRole != null ? parsedRole.toString() : null;
 
             // Principal 설정
             accessor.setUser(new StompPrincipal(username, role));

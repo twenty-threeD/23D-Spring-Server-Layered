@@ -23,7 +23,6 @@ public class ChatMessageController {
                             Principal principal) {
 
         ChatMessageResponse response = chatService.sendMessage(principal.getName(), sendChatMessageRequest);
-
         messagingTemplate.convertAndSend("/topic/chat/rooms/" + response.roomId(), response);
     }
 }

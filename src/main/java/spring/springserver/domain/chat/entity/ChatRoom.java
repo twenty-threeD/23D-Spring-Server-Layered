@@ -30,7 +30,7 @@ import spring.springserver.domain.member.entity.Member;
         },
         indexes = {
                 @Index(name = "idx_chat_room_client", columnList = "client_id"),
-                @Index(name = "idx_chat_room_professional", columnList = "professional_id"),
+                @Index(name = "idx_chat_room_professional", columnList = "professionl_id"),
                 @Index(name = "idx_chat_room_direct_key", columnList = "direct_chat_key")
         }
 )
