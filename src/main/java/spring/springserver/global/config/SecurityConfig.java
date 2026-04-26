@@ -62,9 +62,12 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								"/ws-stomp",
-								"/ws-stomp/info",
-								"/ws-stomp/*/*/websocket"
-						).authenticated()
+								"/ws-stomp/**"
+						).permitAll()
+						.requestMatchers(
+								HttpMethod.POST,
+								"/chat-test"
+						).permitAll()
 
 						.requestMatchers(
 								HttpMethod.GET,
