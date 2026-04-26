@@ -18,7 +18,6 @@ import spring.springserver.global.exception.exception.ApplicationException;
 import spring.springserver.global.exception.status_code.CommonStatusCode;
 
 import java.util.List;
-
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

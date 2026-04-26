@@ -60,7 +60,11 @@ public class SecurityConfig {
 								"/api/delete/account"
 						).hasRole("USER")
 
-						.requestMatchers("/ws-stomp/**").permitAll()
+						.requestMatchers(
+								"/ws-stomp",
+								"/ws-stomp/info",
+								"/ws-stomp/*/*/websocket"
+						).authenticated()
 
 						.requestMatchers(
 								HttpMethod.GET,
@@ -87,6 +91,7 @@ public class SecurityConfig {
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");
 		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);

@@ -106,6 +106,12 @@ public class JwtProvider implements TokenProvider {
 			return token.substring(7);
 		}
 
+		String queryToken = request.getParameter("token");
+		if (queryToken != null && !queryToken.isBlank()) {
+
+			return queryToken;
+		}
+
 		return null;
 	}
 
