@@ -11,7 +11,7 @@ import java.util.List;
 public interface ChatService {
 
     CreateChatRoomResponse createOrGetDirectRoom(String requesterUsername,
-                                                 CreateChatRoomRequest request);
+                                                 CreateChatRoomRequest createChatRoomRequest);
 
     List<ChatRoomResponse> getMyChatRooms(String username);
 
@@ -19,5 +19,5 @@ public interface ChatService {
                                               Long roomId);
 
     ChatMessageResponse sendMessage(String senderUsername,
-                                    SendChatMessageRequest request);
+                                    SendChatMessageRequest sendChatMessageRequest);
 }

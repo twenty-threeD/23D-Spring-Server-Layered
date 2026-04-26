@@ -48,7 +48,7 @@ public class ChatRoom {
     @JoinColumn(name = "professionl_id", nullable = false)
     private Member professional;
 
-    @Column(name = "direct_chat_key", nullable = false, length = 100, updatable = false)
+    @Column(name = "direct_chat_key", length = 100, updatable = false)
     private String directChatKey;
 
     /**

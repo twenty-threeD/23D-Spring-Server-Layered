@@ -56,17 +56,17 @@ public class ChatServiceImpl implements ChatService {
 
         return chatRoomRepository.findAllByParticipantUsername(username)
                 .stream()
-                .map(room -> {
-                    Member other = getOtherParticipant(room, username);
-
-                    return new ChatRoomResponse(
-                            room.getId(),
-                            other.getUsername(),
-                            other.getName(),
-                            room.getLastMessagePreview(),
-                            room.getLastMessageAt()
-                    );
-                })
+                .map(
+                        (
+                                room
+                                        -> ChatRoomResponse.from(
+                                                room,
+                                                getOtherParticipant(
+                                                        room,
+                                                        username)
+                                )
+                        )
+                )
                 .toList();
     }
 
@@ -78,7 +78,13 @@ public class ChatServiceImpl implements ChatService {
 
         return chatMessageRepository.findAllByRoomIdOrderByCreatedAtAsc(room.getId())
                 .stream()
-                .map(message -> ChatMessageResponse.from(message, room.getId()))
+                .map(
+                        message
+                                -> ChatMessageResponse.from(
+                                        message,
+                                        room.getId()
+                        )
+                )
                 .toList();
     }
 
@@ -88,10 +94,13 @@ public class ChatServiceImpl implements ChatService {
                                            SendChatMessageRequest sendChatMessageRequest) {
 
         ChatRoom room = getAuthorizedRoom(sendChatMessageRequest.roomId(), username);
+
         Member sender = getParticipant(room, username);
+
         String normalizedMessage = normalizeMessage(sendChatMessageRequest.message());
 
         ChatMessage chatMessage = chatMessageRepository.save(new ChatMessage(normalizedMessage, room, sender));
+
         room.updateLastMessageMeta(chatMessage.getCreatedAt(), normalizedMessage);
 
         return ChatMessageResponse.from(chatMessage, room.getId());
@@ -118,7 +127,8 @@ public class ChatServiceImpl implements ChatService {
 
         ChatRoom room = chatRoomRepository.findByIdWithParticipants(roomId)
                 .orElseThrow(
-                        () -> ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND, "존재하지 않는 채팅방입니다."));
+                        () -> ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND, "존재하지 않는 채팅방입니다.")
+                );
 
         if (!isParticipant(room, username)) {
 
@@ -133,8 +143,7 @@ public class ChatServiceImpl implements ChatService {
 
         return memberRepository.findByUsername(username)
                 .orElseThrow(
-                        () -> ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT,
-                                        "존재하지 않는 사용자입니다: " + username)
+                        () -> ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT, "존재하지 않는 사용자입니다: " + username)
                 );
     }
 
