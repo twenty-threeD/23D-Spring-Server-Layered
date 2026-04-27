@@ -45,9 +45,9 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
         return new StompPrincipal(username, role != null ? role.name() : null);
     }
 
-    private String extractToken(ServerHttpRequest request) {
+    private String extractToken(ServerHttpRequest serverHttpRequest) {
 
-        MultiValueMap<String, String> queryParams = UriComponentsBuilder.fromUri(request.getURI())
+        MultiValueMap<String, String> queryParams = UriComponentsBuilder.fromUri(serverHttpRequest.getURI())
                 .build()
                 .getQueryParams();
 
@@ -56,7 +56,7 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
             return token;
         }
 
-        String authorization = request.getHeaders().getFirst("Authorization");
+        String authorization = serverHttpRequest.getHeaders().getFirst("Authorization");
         if (authorization != null && authorization.startsWith("Bearer ")) {
             return authorization.substring(7);
         }

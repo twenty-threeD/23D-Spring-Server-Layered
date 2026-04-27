@@ -20,4 +20,7 @@ public interface ChatService {
 
     ChatMessageResponse sendMessage(String senderUsername,
                                     SendChatMessageRequest request);
+
+    boolean canAccessRoom(String username,
+                          Long roomId);
 }

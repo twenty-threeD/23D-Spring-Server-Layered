@@ -39,6 +39,9 @@ dependencies {
     // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+    // MongoDB
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
     // unit
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
