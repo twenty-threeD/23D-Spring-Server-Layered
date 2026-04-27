@@ -4,10 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 public record SendChatMessageRequest(
-        @NotNull(message = "roomId는 필수입니다.")
+
+        @NotNull
         Long roomId,
 
-        @NotBlank(message = "메시지 내용은 필수입니다.")
+        @NotBlank
         String message
 ) {
 }

@@ -45,4 +45,15 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
             where cr.id = :roomId
             """)
     Optional<ChatRoom> findByIdWithParticipants(@Param("roomId") Long roomId);
+
+    @Query("""
+            select count(cr) > 0
+            from ChatRoom cr
+            join cr.client c
+            join cr.professional p
+            where cr.id = :roomId
+              and (c.username = :username or p.username = :username)
+            """)
+    boolean existsAuthorizedRoom(@Param("roomId") Long roomId,
+                                 @Param("username") String username);
 }
