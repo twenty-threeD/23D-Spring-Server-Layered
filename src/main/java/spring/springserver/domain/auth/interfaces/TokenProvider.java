@@ -15,5 +15,5 @@ public interface TokenProvider {
 
 	String resolveToken(HttpServletRequest httpServletRequest);
 
-	boolean isValidToken(String token);
+	boolean isNotValidToken(String token);
 }
