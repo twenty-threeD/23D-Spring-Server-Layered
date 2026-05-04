@@ -35,7 +35,6 @@ class JwtAuthFilter(private val tokenProvider: TokenProvider): OncePerRequestFil
         val username = tokenProvider.getUsernameFromToken(token)
         val role = tokenProvider.getRole(token).name
 
-
         val authority = SimpleGrantedAuthority(role.takeIf { it.startsWith("ROLE_") } ?: "ROLE_$role")
 
         val authenticationToken = UsernamePasswordAuthenticationToken (
