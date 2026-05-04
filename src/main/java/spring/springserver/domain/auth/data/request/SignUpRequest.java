@@ -38,13 +38,13 @@ public record SignUpRequest(
 
     public Member toEntity(String encodedPassword) {
 
-        return Member.builder()
-                .username(username)
-                .email(email)
-                .phone(phone)
-                .name(name)
-                .password(encodedPassword)
-                .role(role)
-                .build();
+        return new Member(
+                username,
+                name,
+                email,
+                phone,
+                encodedPassword,
+                role
+        );
     }
 }

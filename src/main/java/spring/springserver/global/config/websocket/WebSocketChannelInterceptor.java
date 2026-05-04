@@ -35,7 +35,7 @@ public class WebSocketChannelInterceptor implements ChannelInterceptor {
             }
 
             // 토큰 검증
-            if (token == null || jwtProvider.isValidToken(token)) {
+            if (token == null || jwtProvider.isNotValidToken(token)) {
 
                 log.error("유효하지 않은 토큰");
 

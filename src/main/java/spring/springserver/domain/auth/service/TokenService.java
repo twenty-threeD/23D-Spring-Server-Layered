@@ -72,7 +72,7 @@ public class TokenService {
 				httpServletRequest
 		);
 		
-		if (accessToken == null || accessToken.isBlank() || jwtProvider.isValidToken(accessToken)) {
+		if (accessToken == null || accessToken.isBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
 			throw new ApplicationException(AuthStatusCode.INVALID_JWT);
 		}
