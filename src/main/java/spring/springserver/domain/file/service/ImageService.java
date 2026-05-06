@@ -23,7 +23,6 @@ public class ImageService {
     private static final List<String> ALLOWED_CONTENT_TYPES = List.of(
             "image/jpeg",
             "image/png",
-            "image/gif",
             "image/webp"
     );
 
@@ -43,6 +42,7 @@ public class ImageService {
         }
 
         try {
+
             Path uploadPath = Path.of(imageDirectory).toAbsolutePath().normalize();
             Files.createDirectories(uploadPath);
 
