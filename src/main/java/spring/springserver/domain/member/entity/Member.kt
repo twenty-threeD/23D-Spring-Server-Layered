@@ -9,6 +9,8 @@ import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.PrePersist
+import java.time.LocalDateTime
 
 @Entity
 class Member (
@@ -32,6 +34,15 @@ class Member (
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
+
+    private var createdAt: LocalDateTime? = null
+
+    @PrePersist
+    fun prePersistDate() {
+
+        createdAt = LocalDateTime.now()
+    }
+
 
    fun getId(): Long? = id
 }
