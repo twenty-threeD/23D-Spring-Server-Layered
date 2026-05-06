@@ -23,7 +23,7 @@ public class FileService {
     private String fileDirectory;
 
     private static final Set<String> ALLOWED_EXT = Set.of(
-            "jpg", "jpeg", "png", "gif", "pdf"
+            "jpg", "jpeg", "png", "pdf"
     );
 
     public FileUploadResponse uploadFile(FileUploadRequest fileUploadRequest) {
@@ -62,7 +62,7 @@ public class FileService {
             );
 
         } catch (IOException e) {
-            
+
             throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED, e);
         }
     }
