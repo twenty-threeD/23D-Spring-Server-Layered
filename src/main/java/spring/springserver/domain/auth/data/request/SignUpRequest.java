@@ -1,5 +1,7 @@
 package spring.springserver.domain.auth.data.request;
 
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.*;
 import com.l98293.phone.Phone;
 import com.l98293.phone.Region;
@@ -30,18 +32,19 @@ public record SignUpRequest(
         String password,
 
         @NotNull
+        @Enumerated(EnumType.STRING)
         Role role
 ) {
 
     public Member toEntity(String encodedPassword) {
 
-        return Member.builder()
-                .username(username)
-                .email(email)
-                .phone(phone)
-                .name(name)
-                .password(encodedPassword)
-                .role(role)
-                .build();
+        return new Member(
+                username,
+                name,
+                email,
+                phone,
+                encodedPassword,
+                role
+        );
     }
 }

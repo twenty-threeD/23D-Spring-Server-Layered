@@ -17,6 +17,8 @@ import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(rollbackFor = Exception.class)
@@ -34,7 +36,18 @@ public class AuthService {
     public SignUpResponse signUp(SignUpRequest signUpRequest) {
 
         if (memberRepository.existsByUsername(signUpRequest.username())) {
+
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
+        }
+
+        if (memberRepository.existsByEmail(signUpRequest.email())) {
+
+            throw new ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST);
+        }
+
+        if (memberRepository.existsByPhone(signUpRequest.phone())) {
+
+            throw new ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST);
         }
 
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password())));
@@ -48,16 +61,16 @@ public class AuthService {
      * @return accessToken, refreshToken
      */
     @Transactional(readOnly = true)
-    public SignInResponse signIn(
-            SignInRequest signInRequest,
-            HttpServletResponse httpServletResponse) {
+    public SignInResponse signIn(SignInRequest signInRequest,
+                                 HttpServletResponse httpServletResponse) {
 
-        Member member = memberRepository.findByUsername(signInRequest.username())
+        Member member = Optional.ofNullable(memberRepository.findByUsername(signInRequest.username()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
                 );
 
         if (!passwordEncoder.matches(signInRequest.password(), member.getPassword())) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
         }
 
@@ -67,8 +80,14 @@ public class AuthService {
         );
 
         return SignInResponse.of(
-                tokenService.generateAccessToken(generateTokenRequest, httpServletResponse),
-                tokenService.generateRefreshToken(generateTokenRequest, httpServletResponse)
+                tokenService.generateAccessToken(
+                        generateTokenRequest,
+                        httpServletResponse
+                ),
+                tokenService.generateRefreshToken(
+                        generateTokenRequest,
+                        httpServletResponse
+                )
         );
     }
 
