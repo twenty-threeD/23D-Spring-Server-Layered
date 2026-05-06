@@ -19,6 +19,8 @@ import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(rollbackFor = Exception.class)
@@ -33,7 +35,7 @@ public class MemberService {
 
         String username = tokenService.getCurrentUsername(httpServletRequest);
 
-        Member member = memberRepository.findByUsername(username)
+        Member member = Optional.ofNullable(memberRepository.findByUsername(username))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -50,7 +52,7 @@ public class MemberService {
 
     public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest passwordResetRequest) {
 
-        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+        Member member = Optional.ofNullable(memberRepository.findByUsername(passwordResetRequest.username()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -74,7 +76,7 @@ public class MemberService {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+        Member member = Optional.ofNullable(memberRepository.findByUsername(passwordResetRequest.username()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -92,7 +94,7 @@ public class MemberService {
 
     public FindUsernameResponse findUsername(FindUsernameRequest findUsernameRequest) {
 
-        String username = memberRepository.findUsernameByEmail(findUsernameRequest.email())
+        String username = Optional.ofNullable(memberRepository.findUsernameByEmail(findUsernameRequest.email()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -114,7 +116,7 @@ public class MemberService {
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        Member member = memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
+        Member member = Optional.ofNullable(memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest)))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
