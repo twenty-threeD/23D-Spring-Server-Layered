@@ -96,11 +96,11 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 );
 
-        return httpSecurity.build();
-    }
+		return httpSecurity.build();
+	}
 
-    @Bean
-    public CorsFilter corsFilter() {
+	@Bean
+	public CorsFilter corsFilter() {
 
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
