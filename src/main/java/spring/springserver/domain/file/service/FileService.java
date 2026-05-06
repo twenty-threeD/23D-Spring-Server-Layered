@@ -31,6 +31,7 @@ public class FileService {
         MultipartFile multipartFile = fileUploadRequest.multipartFile();
 
         if (multipartFile == null || multipartFile.isEmpty()) {
+
             throw new ApplicationException(FileStatusCode.FILE_EMPTY);
         }
 
@@ -42,7 +43,9 @@ public class FileService {
             String originalFilename = multipartFile.getOriginalFilename();
 
             String ext = StringUtils.getFilenameExtension(originalFilename);
+
             if (ext == null || !ALLOWED_EXT.contains(ext.toLowerCase())) {
+
                 throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
@@ -51,6 +54,7 @@ public class FileService {
             Path targetPath = uploadPath.resolve(storedFileName).normalize();
 
             if (!targetPath.startsWith(uploadPath)) {
+                
                 throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
