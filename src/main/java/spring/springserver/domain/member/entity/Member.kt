@@ -43,6 +43,5 @@ class Member (
         createdAt = LocalDateTime.now()
     }
 
-
    fun getId(): Long? = id
 }
