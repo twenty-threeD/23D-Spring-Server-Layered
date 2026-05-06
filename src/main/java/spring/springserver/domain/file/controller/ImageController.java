@@ -19,9 +19,7 @@ public class ImageController {
     private final ImageService imageService;
 
     @PostMapping("/upload")
-    public BaseResponse<ImageUploadResponse> uploadImage(
-
-            @ModelAttribute @Valid final ImageUploadRequest imageUploadRequest) {
+    public BaseResponse<ImageUploadResponse> uploadImage(@ModelAttribute @Valid final ImageUploadRequest imageUploadRequest) {
 
         return BaseResponse.ok(imageService.uploadImage(imageUploadRequest));
     }

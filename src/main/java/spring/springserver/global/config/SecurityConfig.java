@@ -78,6 +78,12 @@ public class SecurityConfig {
 								"/v3/api-docs/**"
 						).permitAll()
 
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/files/*",
+                                "/images/*"
+                        ).permitAll()
+
                         .anyRequest().authenticated()
                 ).oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
