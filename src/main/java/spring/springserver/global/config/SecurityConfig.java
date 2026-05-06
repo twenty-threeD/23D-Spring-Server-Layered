@@ -77,7 +77,8 @@ public class SecurityConfig {
                                 "/images/*"
                         ).permitAll()
 
-						.anyRequest().authenticated()
+						.anyRequest()
+                        .authenticated()
 				)
 
 				.addFilterBefore(
