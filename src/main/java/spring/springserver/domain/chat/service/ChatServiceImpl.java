@@ -41,6 +41,7 @@ public class ChatServiceImpl implements ChatService {
                                                         CreateChatRoomRequest createChatRoomRequest) {
 
         if (username.equals(createChatRoomRequest.username())) {
+            
             throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT,
                     "자기 자신과는 채팅방을 만들 수 없습니다.");
         }
