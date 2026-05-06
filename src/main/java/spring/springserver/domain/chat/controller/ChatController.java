@@ -2,6 +2,7 @@ package spring.springserver.domain.chat.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,5 +44,13 @@ public class ChatController {
                                                                Principal principal) {
 
         return BaseResponse.ok(chatService.getRoomMessages(principal.getName(), roomId));
+    }
+
+    @DeleteMapping("/rooms/{roomId}")
+    public BaseResponse<Void> leaveRoom(@PathVariable Long roomId,
+                                        Principal principal) {
+
+        chatService.leaveRoom(principal.getName(), roomId);
+        return BaseResponse.ok(null);
     }
 }

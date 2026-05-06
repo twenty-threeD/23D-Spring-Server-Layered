@@ -23,4 +23,7 @@ public interface ChatService {
 
     boolean canAccessRoom(String username,
                           Long roomId);
+
+    void leaveRoom(String username,
+                   Long roomId);
 }
