@@ -19,8 +19,7 @@ public class FileController {
     private final FileService fileService;
 
     @PostMapping("/upload")
-    public BaseResponse<FileUploadResponse> uploadFile(
-            @ModelAttribute @Valid final FileUploadRequest fileUploadRequest) {
+    public BaseResponse<FileUploadResponse> uploadFile(@ModelAttribute @Valid final FileUploadRequest fileUploadRequest) {
 
         return BaseResponse.ok(fileService.uploadFile(fileUploadRequest));
     }
