@@ -84,6 +84,8 @@ dependencies {
 
     // OAuth
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
 
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-reflect'

@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import spring.springserver.domain.oauth.CustomOAuth2UserService;
+import spring.springserver.domain.oauth.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -22,73 +24,77 @@ import spring.springserver.global.jwt.JwtAuthFilter;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
 
-	@Bean
-	public PasswordEncoder passwordEncoder() {
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-		return new BCryptPasswordEncoder();
-	}
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
+                                           CustomOAuth2UserService customOAuth2UserService,
+                                           OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
-	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception{
+        httpSecurity
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> {})
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .authorizeHttpRequests(auth
+                        -> auth
+                        .requestMatchers(
+                                "/api/auth/signup",
+                                "/api/auth/signin",
+                                "/api/auth/signout",
+                                "/api/auth/password/reset",
+                                "/oauth2",
+                                "/login",
+                                "/loginSuccess"
+                        ).permitAll()
 
-		httpSecurity
-				.httpBasic(AbstractHttpConfigurer::disable)
-				.formLogin(AbstractHttpConfigurer::disable)
-				.csrf(AbstractHttpConfigurer::disable)
-				.cors(cors -> {})
-				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-				.authorizeHttpRequests(auth
-						-> auth
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/auth/password/reset/check"
+                        ).hasRole("USER")
 
-						.requestMatchers(
-								HttpMethod.POST,
-								"/api/auth/signup",
-								"/api/auth/signin",
-								"/api/auth/password/reset"
-						).permitAll()
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/delete/account"
+                        ).hasRole("USER")
 
-						.requestMatchers(
-								HttpMethod.POST,
-								"/api/auth/signout",
-								"/api/auth/password/reset/check"
-						).hasRole("USER")
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
 
-						.requestMatchers(
-								HttpMethod.DELETE,
-								"/api/delete/account"
-						).hasRole("USER")
+                        .anyRequest().authenticated()
+                ).oauth2Login(oauth2 -> oauth2
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2SuccessHandler)
+                )
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                );
 
-						.requestMatchers(
-								HttpMethod.GET,
-								"/swagger-ui/**",
-								"/v3/api-docs/**"
-						).permitAll()
+        return httpSecurity.build();
+    }
 
-						.anyRequest()
-						.authenticated()
-				)
+    @Bean
+    public CorsFilter corsFilter() {
 
-				.addFilterBefore(
-						jwtAuthFilter,
-						UsernamePasswordAuthenticationFilter.class
-				);
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.addAllowedOriginPattern("*");
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
 
-		return httpSecurity.build();
-	}
-
-	@Bean
-	public CorsFilter corsFilter() {
-
-		CorsConfiguration config = new CorsConfiguration();
-		config.setAllowCredentials(true);
-		config.addAllowedOriginPattern("*");
-		config.addAllowedHeader("*");
-
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", config);
-
-		return new CorsFilter(source);
-	}
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return new CorsFilter(source);
+    }
 }
