@@ -28,32 +28,69 @@ public class ImageService {
             "image/webp"
     );
 
+    private static final Set<String> ALLOWED_EXT = Set.of(
+            "jpg",
+            "jpeg",
+            "png",
+            "webp"
+    );
+
     private final Tika tika = new Tika();
 
     @Value("${app.upload.image-dir}")
     private String imageDirectory;
 
-    public ImageUploadResponse uploadImage(ImageUploadRequest imageUploadRequest) {
+    public ImageUploadResponse uploadImage(
+            ImageUploadRequest imageUploadRequest
+    ) {
 
-        MultipartFile multipartFile = imageUploadRequest.multipartFile();
+        MultipartFile multipartFile =
+                imageUploadRequest.multipartFile();
 
         if (multipartFile == null || multipartFile.isEmpty()) {
 
-            throw new ApplicationException(FileStatusCode.FILE_EMPTY);
+            throw new ApplicationException(
+                    FileStatusCode.FILE_EMPTY
+            );
         }
 
         try {
 
             String detectedType;
 
-            try (InputStream inputStream = multipartFile.getInputStream()) {
+            try (InputStream inputStream =
+                         multipartFile.getInputStream()) {
 
                 detectedType = tika.detect(inputStream);
             }
 
             if (!ALLOWED_MIME.contains(detectedType)) {
 
-                throw new ApplicationException(FileStatusCode.INVALID_IMAGE_TYPE);
+                throw new ApplicationException(
+                        FileStatusCode.INVALID_IMAGE_TYPE
+                );
+            }
+
+            String originalFilename =
+                    multipartFile.getOriginalFilename();
+
+            if (originalFilename == null
+                    || !originalFilename.contains(".")) {
+
+                throw new ApplicationException(
+                        FileStatusCode.INVALID_IMAGE_TYPE
+                );
+            }
+
+            String ext = originalFilename.substring(
+                    originalFilename.lastIndexOf('.') + 1
+            ).toLowerCase();
+
+            if (!ALLOWED_EXT.contains(ext)) {
+
+                throw new ApplicationException(
+                        FileStatusCode.INVALID_IMAGE_TYPE
+                );
             }
 
             Path uploadPath = Path.of(imageDirectory)
@@ -62,10 +99,8 @@ public class ImageService {
 
             Files.createDirectories(uploadPath);
 
-            String originalFilename = multipartFile.getOriginalFilename();
-
             String storedFileName =
-                    UUID.randomUUID() + "_" + originalFilename;
+                    UUID.randomUUID() + "." + ext;
 
             Path targetPath = uploadPath
                     .resolve(storedFileName)
