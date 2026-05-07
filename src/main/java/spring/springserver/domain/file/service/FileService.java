@@ -85,11 +85,11 @@ public class FileService {
                     "파일 업로드가 완료되었습니다."
             );
 
-        } catch (IOException e) {
+        } catch (IOException ioException) {
 
             throw new ApplicationException(
                     FileStatusCode.FILE_UPLOAD_FAILED,
-                    e
+                    ioException
             );
         }
     }
