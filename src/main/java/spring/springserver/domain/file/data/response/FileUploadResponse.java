@@ -12,6 +12,7 @@ public record FileUploadResponse(
 
         return new FileUploadResponse(
                 fileUrl,
-                message);
+                message
+        );
     }
 }
