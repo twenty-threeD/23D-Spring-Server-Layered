@@ -10,7 +10,8 @@ public record FileUploadResponse(
     public static FileUploadResponse of(String fileUrl,
                                         String message) {
 
-        return new FileUploadResponse(fileUrl,
-                                      message);
+        return new FileUploadResponse(
+                fileUrl,
+                message);
     }
 }

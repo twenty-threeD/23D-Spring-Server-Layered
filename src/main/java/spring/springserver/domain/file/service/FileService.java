@@ -25,6 +25,7 @@ public class FileService {
     private static final Set<String> ALLOWED_MIME = Set.of(
             "image/jpeg",
             "image/png",
+            "image/webp",
             "application/pdf"
     );
 
@@ -32,6 +33,7 @@ public class FileService {
             "jpg",
             "jpeg",
             "png",
+            "webp",
             "pdf"
     );
 
@@ -40,57 +42,43 @@ public class FileService {
     @Value("${app.upload.file-dir}")
     private String fileDirectory;
 
-    public FileUploadResponse uploadFile(
-            FileUploadRequest fileUploadRequest
-    ) {
+    public FileUploadResponse uploadFile(FileUploadRequest fileUploadRequest) {
 
-        MultipartFile multipartFile =
-                fileUploadRequest.multipartFile();
+        MultipartFile multipartFile = fileUploadRequest.multipartFile();
 
         if (multipartFile == null || multipartFile.isEmpty()) {
 
-            throw new ApplicationException(
-                    FileStatusCode.FILE_EMPTY
-            );
+            throw new ApplicationException(FileStatusCode.FILE_EMPTY);
         }
 
         try {
 
             String detectedType;
 
-            try (InputStream inputStream =
-                         multipartFile.getInputStream()) {
+            try (InputStream inputStream = multipartFile.getInputStream()) {
 
                 detectedType = tika.detect(inputStream);
             }
 
             if (!ALLOWED_MIME.contains(detectedType)) {
 
-                throw new ApplicationException(
-                        FileStatusCode.FILE_UPLOAD_FAILED
-                );
+                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
-            String originalFilename =
-                    multipartFile.getOriginalFilename();
+            String originalFilename = multipartFile.getOriginalFilename();
 
-            if (originalFilename == null
-                    || !originalFilename.contains(".")) {
+            if (originalFilename == null || !originalFilename.contains(".")) {
 
-                throw new ApplicationException(
-                        FileStatusCode.FILE_UPLOAD_FAILED
-                );
+                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
             String ext = originalFilename.substring(
-                    originalFilename.lastIndexOf('.') + 1
-            ).toLowerCase();
+                    originalFilename.lastIndexOf('.') + 1)
+                    .toLowerCase();
 
             if (!ALLOWED_EXT.contains(ext)) {
 
-                throw new ApplicationException(
-                        FileStatusCode.FILE_UPLOAD_FAILED
-                );
+                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
             Path uploadPath = Path.of(fileDirectory)
@@ -99,8 +87,7 @@ public class FileService {
 
             Files.createDirectories(uploadPath);
 
-            String storedFileName =
-                    UUID.randomUUID() + "." + ext;
+            String storedFileName = UUID.randomUUID() + "." + ext;
 
             Path targetPath = uploadPath
                     .resolve(storedFileName)
@@ -108,16 +95,17 @@ public class FileService {
 
             if (!targetPath.startsWith(uploadPath)) {
 
-                throw new ApplicationException(
-                        FileStatusCode.FILE_UPLOAD_FAILED
-                );
+                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
             }
 
-            Files.copy(
-                    multipartFile.getInputStream(),
-                    targetPath,
-                    StandardCopyOption.REPLACE_EXISTING
-            );
+            try (InputStream inputStream = multipartFile.getInputStream()) {
+
+                Files.copy(
+                        inputStream,
+                        targetPath,
+                        StandardCopyOption.REPLACE_EXISTING
+                );
+            }
 
             return FileUploadResponse.of(
                     "/files/" + storedFileName,

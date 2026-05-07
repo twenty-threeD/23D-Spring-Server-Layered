@@ -66,4 +66,3 @@ springdoc:
 app:
   upload:
     file-dir: ./files
-    image-dir: ./images

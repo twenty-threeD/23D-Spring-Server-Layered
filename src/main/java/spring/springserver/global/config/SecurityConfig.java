@@ -66,8 +66,7 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.POST,
-								"/api/files/upload",
-								"/api/images/upload"
+								"/api/files/upload"
 						).permitAll()
 
 						.requestMatchers(
