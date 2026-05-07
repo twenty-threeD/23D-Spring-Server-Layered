@@ -1,9 +1,9 @@
 package spring.springserver.domain.auth.exception;
 
-import spring.springserver.global.exception.status_code.StatusCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import spring.springserver.global.exception.status_code.StatusCode;
 
 @Getter
 @RequiredArgsConstructor

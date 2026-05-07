@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import spring.springserver.domain.oauth.CustomOAuth2UserService;
+import spring.springserver.domain.oauth.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -32,7 +33,7 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
-                                           CustomOAuth2UserService customOAuth2UserService) throws Exception {
+                                           CustomOAuth2UserService customOAuth2UserService, OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -45,10 +46,10 @@ public class SecurityConfig {
 						.requestMatchers(
 								"/api/auth/signup",
 								"/api/auth/signin",
-              	"/api/auth/signout",
+              	                "/api/auth/signout",
 								"/api/auth/password/reset",
-								"/oauth2/**",
-								"/login/**",
+								"/oauth2",
+								"/login",
 								"/loginSuccess"
 						).permitAll()
             
@@ -69,10 +70,10 @@ public class SecurityConfig {
                                
 						.anyRequest().authenticated()
 				).oauth2Login(oauth2 -> oauth2
-						.defaultSuccessUrl("/loginSuccess", true)
 						.userInfoEndpoint(userInfo -> userInfo
 								.userService(customOAuth2UserService)
 						)
+                        .successHandler(oAuth2SuccessHandler)
 				)
         .addFilterBefore(
             jwtAuthFilter,

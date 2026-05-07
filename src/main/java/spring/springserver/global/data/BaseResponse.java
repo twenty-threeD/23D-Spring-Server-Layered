@@ -1,8 +1,8 @@
 package spring.springserver.global.data;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import spring.springserver.global.exception.status_code.StatusCode;
 import org.springframework.http.HttpStatus;
+import spring.springserver.global.exception.status_code.StatusCode;
 
 import java.util.Map;
 

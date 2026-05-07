@@ -1,11 +1,5 @@
 package spring.springserver.global.handler;
 
-import spring.springserver.domain.auth.exception.AuthStatusCode;
-import spring.springserver.global.data.BaseResponse;
-import spring.springserver.global.data.ErrorResponse;
-import spring.springserver.global.exception.exception.ApplicationException;
-import spring.springserver.global.exception.status_code.CommonStatusCode;
-import spring.springserver.global.exception.status_code.StatusCode;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +13,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import spring.springserver.domain.auth.exception.AuthStatusCode;
+import spring.springserver.global.data.BaseResponse;
+import spring.springserver.global.data.ErrorResponse;
+import spring.springserver.global.exception.exception.ApplicationException;
+import spring.springserver.global.exception.status_code.CommonStatusCode;
+import spring.springserver.global.exception.status_code.StatusCode;
 
 import java.util.HashMap;
 import java.util.Map;

@@ -1,7 +1,7 @@
 package spring.springserver.global.exception.exception;
 
-import spring.springserver.global.exception.status_code.StatusCode;
 import lombok.Getter;
+import spring.springserver.global.exception.status_code.StatusCode;
 
 @Getter
 public class ApplicationException extends RuntimeException {
