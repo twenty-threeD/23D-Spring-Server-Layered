@@ -10,11 +10,9 @@ import org.springframework.stereotype.Component;
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest;
 import spring.springserver.domain.auth.interfaces.TokenProvider;
 import spring.springserver.domain.member.entity.Role;
-
-import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
-
+import java.util.*;
+import javax.crypto.SecretKey;
 @Component
 public class JwtProvider implements TokenProvider {
 
