@@ -33,7 +33,8 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
-                                           CustomOAuth2UserService customOAuth2UserService, OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
+                                           CustomOAuth2UserService customOAuth2UserService,
+                                           OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)

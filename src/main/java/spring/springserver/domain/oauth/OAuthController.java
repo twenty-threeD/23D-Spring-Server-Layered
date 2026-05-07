@@ -14,11 +14,8 @@ import spring.springserver.global.data.BaseResponse;
 @RequestMapping("/api/oauth")
 public class OAuthController {
 
-    private final CustomOAuth2UserService customOAuth2UserService;
-
     @GetMapping("/signin/success")
-//    @GetMapping("/loginSuccess")
-    public BaseResponse<OAuthResponse> getProfile(@Valid @AuthenticationPrincipal OAuth2User oAuth2User) {
+    public BaseResponse<OAuthResponse> getProfile(@Valid final @AuthenticationPrincipal OAuth2User oAuth2User) {
 
         String email = oAuth2User.getAttribute("email");
         String name = oAuth2User.getAttribute("name");

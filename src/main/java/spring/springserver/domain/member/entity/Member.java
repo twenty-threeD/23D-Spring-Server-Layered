@@ -42,6 +42,7 @@ public class Member {
     public Member update(String name) {
 
         this.name = name;
+
         return this; // 이 부분이 있어야 .map() 체이닝이 정상 작동합니다.
     }
   

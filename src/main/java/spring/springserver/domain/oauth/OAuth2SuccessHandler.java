@@ -16,6 +16,7 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
+
     private final ObjectMapper objectMapper;
 
     @Override
