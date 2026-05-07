@@ -12,7 +12,9 @@ import spring.springserver.global.exception.exception.ApplicationException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,58 +22,95 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileService {
 
-    @Value("${app.upload.file-dir}")
-    private String fileDirectory;
-
     private static final Set<String> ALLOWED_MIME = Set.of(
-            "files/jpg",
-            "files/jpeg",
-            "files/png",
-            "files/pdf"
+            "image/jpeg",
+            "image/png",
+            "application/pdf"
+    );
+
+    private static final Set<String> ALLOWED_EXT = Set.of(
+            "jpg",
+            "jpeg",
+            "png",
+            "pdf"
     );
 
     private final Tika tika = new Tika();
 
-    public FileUploadResponse uploadFile(FileUploadRequest fileUploadRequest) {
+    @Value("${app.upload.file-dir}")
+    private String fileDirectory;
 
-        MultipartFile multipartFile = fileUploadRequest.multipartFile();
+    public FileUploadResponse uploadFile(
+            FileUploadRequest fileUploadRequest
+    ) {
+
+        MultipartFile multipartFile =
+                fileUploadRequest.multipartFile();
 
         if (multipartFile == null || multipartFile.isEmpty()) {
 
-            throw new ApplicationException(FileStatusCode.FILE_EMPTY);
+            throw new ApplicationException(
+                    FileStatusCode.FILE_EMPTY
+            );
         }
 
         try {
 
-            Path uploadPath = Path.of(fileDirectory).toAbsolutePath().normalize();
-
-            Files.createDirectories(uploadPath);
-
             String detectedType;
 
-            try (InputStream inputStream = multipartFile.getInputStream()) {
+            try (InputStream inputStream =
+                         multipartFile.getInputStream()) {
 
                 detectedType = tika.detect(inputStream);
             }
 
             if (!ALLOWED_MIME.contains(detectedType)) {
 
-                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
+                throw new ApplicationException(
+                        FileStatusCode.FILE_UPLOAD_FAILED
+                );
             }
 
-            String originalFilename = multipartFile.getOriginalFilename();
+            String originalFilename =
+                    multipartFile.getOriginalFilename();
+
+            if (originalFilename == null
+                    || !originalFilename.contains(".")) {
+
+                throw new ApplicationException(
+                        FileStatusCode.FILE_UPLOAD_FAILED
+                );
+            }
 
             String ext = originalFilename.substring(
                     originalFilename.lastIndexOf('.') + 1
-            );
+            ).toLowerCase();
 
-            String storedFileName = UUID.randomUUID() + "." + ext;
+            if (!ALLOWED_EXT.contains(ext)) {
 
-            Path targetPath = uploadPath.resolve(storedFileName).normalize();
+                throw new ApplicationException(
+                        FileStatusCode.FILE_UPLOAD_FAILED
+                );
+            }
+
+            Path uploadPath = Path.of(fileDirectory)
+                    .toAbsolutePath()
+                    .normalize();
+
+            Files.createDirectories(uploadPath);
+
+            String storedFileName =
+                    UUID.randomUUID() + "." + ext;
+
+            Path targetPath = uploadPath
+                    .resolve(storedFileName)
+                    .normalize();
 
             if (!targetPath.startsWith(uploadPath)) {
 
-                throw new ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED);
+                throw new ApplicationException(
+                        FileStatusCode.FILE_UPLOAD_FAILED
+                );
             }
 
             Files.copy(
