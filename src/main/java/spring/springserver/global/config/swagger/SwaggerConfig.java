@@ -26,10 +26,12 @@ public class SwaggerConfig {
                         .bearerFormat("JWT"));
 
         return new OpenAPI()
-                .info(new Info()
-                        .title("Spring Server API")
-                        .description("Spring Server API 문서")
-                        .version("1.0.0"))
+                .info(
+                        new Info()
+                                .title("Spring Server API")
+                                .description("Spring Server API 문서")
+                                .version("1.0.0")
+                )
                 .addSecurityItem(securityRequirement)
                 .components(components);
     }

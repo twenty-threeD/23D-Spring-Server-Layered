@@ -13,12 +13,12 @@ public class RedisConfig {
 
 	@Value("${spring.data.redis.host}")
 	private String host;
-
 	@Value("${spring.data.redis.port}")
 	private int port;
 
 	@Bean
 	public RedisConnectionFactory redisConnectionFactory() {
+
 		return new LettuceConnectionFactory(host, port);
 	}
 
@@ -29,6 +29,7 @@ public class RedisConfig {
 		redisTemplate.setKeySerializer(new StringRedisSerializer());
 		redisTemplate.setValueSerializer(new StringRedisSerializer());
 		redisTemplate.setConnectionFactory(redisConnectionFactory());
+		
 		return redisTemplate;
 	}
 }

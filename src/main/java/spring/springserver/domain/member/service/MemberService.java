@@ -19,6 +19,8 @@ import spring.springserver.domain.member.entity.Member;
 import spring.springserver.domain.member.repository.MemberRepository;
 import spring.springserver.global.exception.exception.ApplicationException;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(rollbackFor = Exception.class)
@@ -33,7 +35,7 @@ public class MemberService {
 
         String username = tokenService.getCurrentUsername(httpServletRequest);
 
-        Member member = memberRepository.findByUsername(username)
+        Member member = Optional.ofNullable(memberRepository.findByUsername(username))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -50,7 +52,7 @@ public class MemberService {
 
     public PasswordResetResponse resetPasswordWithoutAuth(PasswordResetRequest passwordResetRequest) {
 
-        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+        Member member = Optional.ofNullable(memberRepository.findByUsername(passwordResetRequest.username()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -60,20 +62,21 @@ public class MemberService {
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.");
     }
 
-    public PasswordResetResponse resetPasswordWithAuth(HttpServletRequest httpServletRequest,
-                                                       HttpServletResponse httpServletResponse,
-                                                       PasswordResetRequest passwordResetRequest) {
+    public PasswordResetResponse resetPasswordWithAuth(PasswordResetRequest passwordResetRequest,
+                                                       HttpServletRequest httpServletRequest,
+                                                       HttpServletResponse httpServletResponse) {
 
         String accessToken = tokenService.extractTokenFromCookie(
-                httpServletRequest,
-                "accessToken"
+                "accessToken",
+                httpServletRequest
         );
 
         if (accessToken == null || accessToken.isBlank()) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        Member member = memberRepository.findByUsername(passwordResetRequest.username())
+        Member member = Optional.ofNullable(memberRepository.findByUsername(passwordResetRequest.username()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -91,7 +94,7 @@ public class MemberService {
 
     public FindUsernameResponse findUsername(FindUsernameRequest findUsernameRequest) {
 
-        String username = memberRepository.findUsernameByEmail(findUsernameRequest.email())
+        String username = Optional.ofNullable(memberRepository.findUsernameByEmail(findUsernameRequest.email()))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
@@ -99,25 +102,32 @@ public class MemberService {
         return FindUsernameResponse.of(username);
     }
 
-    public ChangeUsernameResponse resetUsernameWithAuth(HttpServletRequest httpServletRequest,
-                                                        HttpServletResponse httpServletResponse,
-                                                        ChangeUsernameRequest changeUsernameRequest) {
+    public ChangeUsernameResponse resetUsernameWithAuth(ChangeUsernameRequest changeUsernameRequest,
+                                                        HttpServletRequest httpServletRequest,
+                                                        HttpServletResponse httpServletResponse) {
 
-        String accessToken = tokenService.extractTokenFromCookie(httpServletRequest, "accessToken");
+        String accessToken = tokenService.extractTokenFromCookie(
+                "accessToken",
+                httpServletRequest
+        );
+
         if (accessToken == null || accessToken.isBlank()) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_JWT);
         }
 
-        Member member = memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
+        Member member = Optional.ofNullable(memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest)))
                 .orElseThrow(
                         () -> new ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
                 );
 
         if (!member.getEmail().equals(changeUsernameRequest.email())) {
+
             throw new ApplicationException(AuthStatusCode.INVALID_CREDENTIALS);
         }
 
         if (memberRepository.existsByUsername(changeUsernameRequest.newUsername())) {
+
             throw new ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST);
         }
 

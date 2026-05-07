@@ -26,6 +26,7 @@ public class SecurityConfig {
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
+
 		return new BCryptPasswordEncoder();
 	}
 
@@ -45,12 +46,12 @@ public class SecurityConfig {
 								HttpMethod.POST,
 								"/api/auth/signup",
 								"/api/auth/signin",
-								"/api/auth/signout",
 								"/api/auth/password/reset"
 						).permitAll()
 
 						.requestMatchers(
 								HttpMethod.POST,
+								"/api/auth/signout",
 								"/api/auth/password/reset/check"
 						).hasRole("USER")
 
@@ -71,14 +72,14 @@ public class SecurityConfig {
 								"/v3/api-docs/**"
 						).permitAll()
 
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                "/files/*",
-                                "/images/*"
-                        ).permitAll()
+            .requestMatchers(
+                HttpMethod.GET,
+                "/files/*",
+                "/images/*"
+            ).permitAll()
 
 						.anyRequest()
-                        .authenticated()
+            .authenticated()
 				)
 
 				.addFilterBefore(
@@ -99,6 +100,7 @@ public class SecurityConfig {
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
+
 		return new CorsFilter(source);
 	}
 }
