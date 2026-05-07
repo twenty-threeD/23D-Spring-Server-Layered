@@ -27,11 +27,14 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
                                       @NonNull Map<String, Object> attributes) {
 
         String token = extractToken(serverHttpRequest);
+
         if (token == null || token.isBlank()) {
+
             return null;
         }
 
         if (jwtProvider.isValidToken(token)) {
+
             return null;
         }
 
@@ -39,6 +42,7 @@ public class CustomHandshakeHandler extends DefaultHandshakeHandler {
         Role role = jwtProvider.getRole(token);
 
         if (username == null || username.isBlank()) {
+            
             return null;
         }
 
