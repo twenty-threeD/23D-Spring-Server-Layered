@@ -15,8 +15,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
-import spring.springserver.domain.oauth.CustomOAuth2UserService;
-import spring.springserver.domain.oauth.OAuth2SuccessHandler;
+import spring.springserver.domain.oauth.service.CustomOAuthUserService;
+import spring.springserver.global.handler.oauth.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -33,7 +33,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
-                                           CustomOAuth2UserService customOAuth2UserService,
+                                           CustomOAuthUserService customOAuth2UserService,
                                            OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
         httpSecurity
