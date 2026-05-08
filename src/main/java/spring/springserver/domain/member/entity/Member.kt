@@ -28,7 +28,10 @@ class Member (
     var password: String?,
 
     @Enumerated(EnumType.STRING)
-    var role: Role
+    var role: Role,
+
+    @Enumerated(EnumType.STRING)
+    val provider: Provider
 ) {
 
     @Id

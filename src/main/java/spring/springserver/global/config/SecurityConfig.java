@@ -16,7 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import spring.springserver.domain.oauth.service.CustomOAuthUserService;
-import spring.springserver.global.handler.oauth.OAuth2SuccessHandler;
+import spring.springserver.domain.oauth.handler.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration

@@ -13,10 +13,8 @@ data class OAuthResponse(
 
     companion object {
 
-        fun of(
-            accessToken: String,
-            refreshToken: String
-        ): OAuthResponse {
+        fun of(accessToken: String,
+               refreshToken: String): OAuthResponse {
 
             return OAuthResponse(
                 accessToken,
