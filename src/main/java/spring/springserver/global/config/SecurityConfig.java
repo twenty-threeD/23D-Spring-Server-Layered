@@ -34,7 +34,7 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
-                                           CustomOAuthUserService customOAuth2UserService,
+                                           CustomOAuthUserService customOAuthUserService,
                                            OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
 		httpSecurity
@@ -51,7 +51,10 @@ public class SecurityConfig {
 								"/api/auth/signup",
 								"/api/auth/signin",
 								"/api/auth/signout",
-								"/api/auth/password/reset"
+								"/api/auth/password/reset",
+								"/oauth2",
+								"/login",
+								"/loginSuccess"
 						).permitAll()
 
 						.requestMatchers(
@@ -59,10 +62,10 @@ public class SecurityConfig {
 								"/api/auth/password/reset/check"
 						).hasRole("USER")
 
-                        .requestMatchers(
-                                HttpMethod.DELETE,
-                                "/api/delete/account"
-                        ).hasRole("USER")
+						.requestMatchers(
+								HttpMethod.DELETE,
+								"/api/delete/account"
+						).hasRole("USER")
 
 						.requestMatchers(
 								HttpMethod.POST,
@@ -86,7 +89,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 ).oauth2Login(oauth2 -> oauth2
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService)
+                                .userService(customOAuthUserService)
                         )
                         .successHandler(oAuth2SuccessHandler)
                 )
@@ -95,8 +98,8 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class
                 );
 
-		return httpSecurity.build();
-	}
+        return httpSecurity.build();
+    }
 
 	@Bean
 	public CorsFilter corsFilter() {
@@ -107,8 +110,9 @@ public class SecurityConfig {
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return new CorsFilter(source);
-    }
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", config);
+
+		return new CorsFilter(source);
+	}
 }
