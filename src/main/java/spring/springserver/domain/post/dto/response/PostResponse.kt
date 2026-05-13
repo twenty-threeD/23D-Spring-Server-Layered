@@ -20,11 +20,13 @@ data class PostResponse(
     val created_at: LocalDateTime?,
     val updated_at: LocalDateTime?,
 ) {
+
     companion object {
 
         fun of (post: Post) : PostResponse {
 
             return PostResponse(
+
                 post.id,
                 post.title,
                 post.content,

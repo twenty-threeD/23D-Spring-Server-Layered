@@ -15,6 +15,7 @@ import java.time.LocalDateTime
 
 @Entity
 class Post (
+
     @Column(nullable = false)
     var title: String,
 
@@ -30,8 +31,7 @@ class Post (
     @Column(nullable = false, updatable = false)
     var created_at: LocalDateTime? = null,
 
-    var updated_at: LocalDateTime? = null,
-
+    var updated_at: LocalDateTime? = null
 ){
 
     @Id
@@ -43,6 +43,7 @@ class Post (
 
     @PrePersist
     fun prePersist() {
+
         val now = LocalDateTime.now()
         created_at = now
         updated_at = null
@@ -50,6 +51,7 @@ class Post (
 
     @PreUpdate
     fun preUpdate() {
+
         updated_at = LocalDateTime.now()
     }
 }

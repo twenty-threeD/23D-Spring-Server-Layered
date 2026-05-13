@@ -34,8 +34,9 @@ class PostController(
     }
 
     @PatchMapping("/update")
-    fun updatePost(@Valid @PathVariable id: Long,
-    @RequestBody updatePostRequest: UpdatePostRequest): PostResponse {
+    fun updatePost(
+        @Valid @PathVariable id: Long,
+        @RequestBody updatePostRequest: UpdatePostRequest): PostResponse {
 
         return postService.updatePost(id, updatePostRequest)
     }
