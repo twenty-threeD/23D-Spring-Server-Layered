@@ -7,6 +7,7 @@ import spring.springserver.domain.member.entity.Member
 interface MemberRepository: JpaRepository<Member, Long> {
 
     fun findByUsername(username: String): Member?
+    fun findByEmail(email: String): Member?
 
     fun existsByUsername(username: String): Boolean
     fun existsByEmail(email: String): Boolean
