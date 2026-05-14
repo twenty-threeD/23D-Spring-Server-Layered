@@ -26,8 +26,8 @@ class PostController(private val postService: PostService) {
         return BaseResponse.ok(postService.createPost(createPostRequest))
     }
 
-    @GetMapping("/findById")
-    fun findPostById(@RequestBody id: Long): BaseResponse<PostResponse> {
+    @GetMapping("/find")
+    fun findPost(@RequestBody id: Long): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.findPost(id))
     }
@@ -36,10 +36,10 @@ class PostController(private val postService: PostService) {
     fun updatePost(@Valid @RequestBody id: Long,
                    @Valid @RequestBody updatePostRequest: UpdatePostRequest): BaseResponse<PostResponse> {
 
-        return BaseResponse.ok(postService.updatePost(
-            id,
-            updatePostRequest
-        )
+            return BaseResponse.ok(postService.updatePost(
+                id,
+                updatePostRequest
+            )
         )
     }
 

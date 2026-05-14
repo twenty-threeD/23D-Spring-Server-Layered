@@ -37,7 +37,9 @@ class PostService (private val postRepository: PostRepository) {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
+
         post.viewCount += 1
+        
         return PostResponse.of(post)
     }
 
