@@ -18,7 +18,6 @@ class PostService (private val postRepository: PostRepository) {
             title = createRequest.title,
             content = createRequest.content,
             image_url = createRequest.image_url,
-            status = createRequest.status,
             created_at = null
         )
 
@@ -55,7 +54,6 @@ class PostService (private val postRepository: PostRepository) {
         post.title = updateRequest.title
         post.content = updateRequest.content
         post.image_url = updateRequest.image_url
-        post.status = updateRequest.status
 
         post.preUpdate()
 

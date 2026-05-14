@@ -2,8 +2,6 @@ package spring.springserver.domain.post.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
@@ -22,9 +20,6 @@ class Post (
     var content: String? = null,
 
     var image_url: String? = null,
-
-    @Enumerated(EnumType.STRING)
-    var status: Status,
 
     var view_count: Int = 0,
 
