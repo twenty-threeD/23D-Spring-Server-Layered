@@ -7,7 +7,7 @@ import spring.springserver.domain.post.dto.request.CreatePostRequest
 import spring.springserver.domain.post.dto.request.UpdatePostRequest
 import spring.springserver.domain.post.dto.response.PostResponse
 import spring.springserver.domain.post.entity.Post
-import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.post.interfaces.PostRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 
