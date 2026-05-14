@@ -12,11 +12,7 @@ data class PostResponse(
 
     val content: String?,
 
-    val image_url: String?,
-
     val view_count: Int,
-
-    val created_at: LocalDateTime?,
 
     val updated_at: LocalDateTime?,
 ) {
@@ -29,9 +25,7 @@ data class PostResponse(
                 post.id,
                 post.title,
                 post.content,
-                post.image_url,
                 post.view_count,
-                post.created_at,
                 post.updated_at
             )
         }

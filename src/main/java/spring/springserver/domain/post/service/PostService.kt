@@ -7,7 +7,7 @@ import spring.springserver.domain.post.dto.request.CreatePostRequest
 import spring.springserver.domain.post.dto.request.UpdatePostRequest
 import spring.springserver.domain.post.dto.response.PostResponse
 import spring.springserver.domain.post.entity.Post
-import spring.springserver.domain.post.interfaces.PostRepository
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 
@@ -15,23 +15,25 @@ import java.time.LocalDateTime
 @Transactional
 class PostService (private val postRepository: PostRepository) {
 
-    fun createPost(createRequest: CreatePostRequest): Long {
+    fun createPost(createPostRequest: CreatePostRequest): PostResponse {
 
         val post = Post(
-            title = createRequest.title,
-            content = createRequest.content,
-            image_url = createRequest.image_url,
-            created_at = LocalDateTime.now(),
-            updated_at = null
+            title = createPostRequest.title,
+
+            content = createPostRequest.content,
+
+            updated_at = LocalDateTime.now(),
+
+            member = createPostRequest.member
         )
 
         post.prePersist()
 
-        return postRepository.save(post).id!!
+        return PostResponse.of(postRepository.save(post))
     }
 
     @Transactional(readOnly = true)
-    fun findPostById(id: Long): PostResponse {
+    fun findById(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
@@ -48,9 +50,10 @@ class PostService (private val postRepository: PostRepository) {
 
         post.title = updateRequest.title
         post.content = updateRequest.content
-        post.image_url = updateRequest.image_url
 
         post.preUpdate()
+
+        post.is_updated = true
 
         return PostResponse.of(post)
     }
@@ -60,6 +63,7 @@ class PostService (private val postRepository: PostRepository) {
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
+        post.is_deleted = true
         postRepository.delete(post)
     }
 }

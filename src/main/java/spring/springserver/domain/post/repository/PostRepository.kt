@@ -1,4 +1,4 @@
-package spring.springserver.domain.post.interfaces
+package spring.springserver.domain.post.repository
 
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
