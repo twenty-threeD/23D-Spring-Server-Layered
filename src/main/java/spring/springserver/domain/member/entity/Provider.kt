@@ -6,7 +6,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 enum class Provider {
 
     AUTH,
-    GOOGLE;
+    GOOGLE,
+    KAKAO;
 
     companion object {
 
@@ -15,6 +16,7 @@ enum class Provider {
             return when(registrationId.lowercase()) {
 
                 "google" -> GOOGLE
+                "kakao" -> KAKAO
                 else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
             }
         }

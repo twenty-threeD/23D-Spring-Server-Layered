@@ -6,10 +6,12 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
+import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.entity.Role
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.global.exception.exception.ApplicationException
 
 /**
  * @author @gnlandkmg(개발)
@@ -20,18 +22,49 @@ class CustomOAuthUserService(private val memberRepository: MemberRepository): De
 
     override fun loadUser(oAuth2UserRequest: OAuth2UserRequest): OAuth2User {
 
-        val attributes = super.loadUser(oAuth2UserRequest).attributes
+        val oAuth2User = super.loadUser(oAuth2UserRequest)
+        val attributes = oAuth2User.attributes
+        val provider = Provider.getRegistrationId(oAuth2UserRequest.clientRegistration.registrationId)
 
         val customAttributes = attributes.toMutableMap()
 
-        val email = attributes["email"].toString()
-        val name = attributes["name"].toString()
-        val provider = Provider.getRegistrationId(oAuth2UserRequest.clientRegistration.registrationId)
+        val email: String
+        val name: String
+        val nameAttributeKey: String
+
+        when (provider) {
+
+            Provider.KAKAO -> {
+
+                val kakaoAccount = attributes["kakao_account"] as? Map<*, *>
+                    ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
+
+                email = kakaoAccount["email"].toString()
+
+                val profile = kakaoAccount["profile"] as? Map<*, *>
+                    ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
+
+                name = profile["nickname"].toString()
+
+                nameAttributeKey = "id"
+            }
+
+            Provider.GOOGLE -> {
+
+                email = attributes["email"].toString()
+
+                name = attributes["name"].toString()
+
+                nameAttributeKey = "email"
+            }
+
+            else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
+        }
 
         val member = memberRepository.findByEmail(email)
             ?.apply { update(name) }
             ?: Member(
-                username = email, // 소셜 사용자의 경우, 사용자명을 이메일로 사용
+                username = email,
                 name = name,
                 email = email,
                 phone = null,
@@ -49,7 +82,7 @@ class CustomOAuthUserService(private val memberRepository: MemberRepository): De
         return DefaultOAuth2User(
             setOf(SimpleGrantedAuthority("ROLE_${member.role.name}")),
             customAttributes,
-            "email"
+            nameAttributeKey
         )
     }
 }
