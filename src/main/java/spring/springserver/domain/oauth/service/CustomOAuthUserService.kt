@@ -34,11 +34,12 @@ class CustomOAuthUserService(private val memberRepository: MemberRepository): De
 
         when (provider) {
             Provider.KAKAO -> {
-                @Suppress("UNCHECKED_CAST")
-                val kakaoAccount = attributes["kakao_account"] as Map<String, Any>
+                val kakaoAccount = attributes["kakao_account"] as? Map<*, *>
+                    ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
                 email = kakaoAccount["email"].toString()
-                @Suppress("UNCHECKED_CAST")
-                val profile = kakaoAccount["profile"] as Map<String, Any>
+
+                val profile = kakaoAccount["profile"] as? Map<*, *>
+                    ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
                 name = profile["nickname"].toString()
                 nameAttributeKey = "id"
             }
