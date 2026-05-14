@@ -1,7 +1,7 @@
 package spring.springserver.domain.post.service
 
-import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.post.dto.request.CreatePostRequest
 import spring.springserver.domain.post.dto.request.UpdatePostRequest
@@ -30,6 +30,7 @@ class PostService (private val postRepository: PostRepository) {
         return postRepository.save(post).id!!
     }
 
+    @Transactional(readOnly = true)
     fun findPostById(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
