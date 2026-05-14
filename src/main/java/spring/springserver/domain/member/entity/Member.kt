@@ -44,6 +44,7 @@ class Member (
     }
 
     fun update(name: String) {
+
         this.name = name
     }
 

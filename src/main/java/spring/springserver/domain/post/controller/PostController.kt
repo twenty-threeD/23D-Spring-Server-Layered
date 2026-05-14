@@ -17,9 +17,7 @@ import spring.springserver.domain.post.service.PostService
 
 @RestController
 @RequestMapping("/api/post")
-class PostController(
-    private val postService: PostService
-) {
+class PostController(private val postService: PostService) {
 
     @PostMapping("/create")
     fun createPost(@Valid @RequestBody createPostRequest: CreatePostRequest): ResponseEntity<Long> {
@@ -27,21 +25,21 @@ class PostController(
         return ResponseEntity.ok(postService.createPost(createPostRequest))
     }
 
-    @GetMapping("/findById")
+    @GetMapping("/{id}")
     fun findPostById(@PathVariable id: Long): PostResponse {
 
-        return postService.findPostById(id)
+        return postService.findById(id)
     }
 
-    @PatchMapping("/update")
+    @PatchMapping("/{id}")
     fun updatePost(
         @Valid @PathVariable id: Long,
-        @RequestBody updatePostRequest: UpdatePostRequest): PostResponse {
+        @Valid @RequestBody updatePostRequest: UpdatePostRequest): PostResponse {
 
         return postService.updatePost(id, updatePostRequest)
     }
 
-    @DeleteMapping("/delete")
+    @DeleteMapping("/{id}")
     fun deletePost(@PathVariable id: Long) {
 
         postService.deletePost(id)
