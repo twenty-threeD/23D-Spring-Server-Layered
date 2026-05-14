@@ -22,7 +22,7 @@ class PostService (private val postRepository: PostRepository) {
 
             content = createPostRequest.content,
 
-            updated_at = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now(),
 
             member = createPostRequest.member
         )
@@ -33,11 +33,11 @@ class PostService (private val postRepository: PostRepository) {
     }
 
     @Transactional(readOnly = true)
-    fun findById(id: Long): PostResponse {
+    fun findPost(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
-
+        post.viewCount += 1
         return PostResponse.of(post)
     }
 
@@ -53,17 +53,19 @@ class PostService (private val postRepository: PostRepository) {
 
         post.preUpdate()
 
-        post.is_updated = true
+        post.isUpdated = true
 
         return PostResponse.of(post)
     }
 
-    fun deletePost(id: Long) {
+    fun deletePost(id: Long) : PostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
-        post.is_deleted = true
+        post.isDeleted = true
         postRepository.delete(post)
+
+        return PostResponse.of(post)
     }
 }

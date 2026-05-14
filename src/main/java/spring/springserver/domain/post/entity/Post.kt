@@ -22,14 +22,14 @@ class Post (
     @Column(length = 2000)
     var content: String?,
 
-    var view_count: Int = 0,
+    var viewCount: Int = 0,
 
     @Column(nullable = false, updatable = false)
-    var updated_at: LocalDateTime?,
+    var updatedAt: LocalDateTime?,
 
-    var is_updated: Boolean = false,
+    var isUpdated: Boolean = false,
 
-    var is_deleted: Boolean = false,
+    var isDeleted: Boolean = false,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
@@ -43,12 +43,12 @@ class Post (
     @PrePersist
     fun prePersist() {
 
-        updated_at = LocalDateTime.now()
+        updatedAt = LocalDateTime.now()
     }
 
     @PreUpdate
     fun preUpdate() {
 
-        updated_at = LocalDateTime.now()
+        updatedAt = LocalDateTime.now()
     }
 }

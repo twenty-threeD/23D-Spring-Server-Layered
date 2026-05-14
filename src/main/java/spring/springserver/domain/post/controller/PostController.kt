@@ -26,22 +26,26 @@ class PostController(private val postService: PostService) {
         return BaseResponse.ok(postService.createPost(createPostRequest))
     }
 
-    @GetMapping("/dealete")
-    fun findPostById(@PathVariable id: Long): PostResponse {
+    @GetMapping("/findById")
+    fun findPostById(@RequestBody id: Long): BaseResponse<PostResponse> {
 
-        return postService.findById(id)
+        return BaseResponse.ok(postService.findPost(id))
     }
 
     @PatchMapping("/update")
-    fun updatePost(@Valid @PathVariable id: Long,
-        @Valid @RequestBody updatePostRequest: UpdatePostRequest): PostResponse {
+    fun updatePost(@Valid @RequestBody id: Long,
+                   @Valid @RequestBody updatePostRequest: UpdatePostRequest): BaseResponse<PostResponse> {
 
-        return postService.updatePost(id, updatePostRequest)
+        return BaseResponse.ok(postService.updatePost(
+            id,
+            updatePostRequest
+        )
+        )
     }
 
     @DeleteMapping("/delete")
-    fun deletePost(@PathVariable id: Long) {
+    fun deletePost(@RequestBody id: Long): BaseResponse<PostResponse> {
 
-        postService.deletePost(id)
+        return BaseResponse.ok(postService.deletePost(id))
     }
 }

@@ -12,7 +12,7 @@ data class PostResponse(
 
     val content: String?,
 
-    val view_count: Int,
+    val ViewCount: Int,
 
     val updated_at: LocalDateTime?,
 ) {
@@ -25,8 +25,8 @@ data class PostResponse(
                 post.id,
                 post.title,
                 post.content,
-                post.view_count,
-                post.updated_at
+                post.viewCount,
+                post.updatedAt
             )
         }
     }
