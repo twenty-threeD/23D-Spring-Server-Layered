@@ -54,18 +54,9 @@ public class CommunityServiceImpl implements CommunityService {
     }
 
     @Override
-    public List<CommunityPostResponse> getPostsByTitle(String title){
+    public List<CommunityPostResponse> searchPosts(String keyword){
 
-        return communityPostRepository.findByTitleLike(title)
-                .stream()
-                .map(CommunityPostResponse::from)
-                .toList();
-    }
-
-    @Override
-    public List<CommunityPostResponse> getPostsByUsername(String username){
-
-        return communityPostRepository.findByUsernameLike(username)
+        return communityPostRepository.searchPosts(keyword.trim())
                 .stream()
                 .map(CommunityPostResponse::from)
                 .toList();

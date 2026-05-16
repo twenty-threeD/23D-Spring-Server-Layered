@@ -24,15 +24,9 @@ public class CommunityController {
         return BaseResponse.ok(communityService.createPost(createPostRequest));
     }
 
-    @GetMapping("/title")
-    public BaseResponse<List<CommunityPostResponse>> getPostsByTitle(@RequestParam String title){
+    @GetMapping("/search")
+    public BaseResponse<List<CommunityPostResponse>> searchPosts(@RequestParam String keyword){
 
-        return BaseResponse.ok(communityService.getPostsByTitle(title));
-    }
-
-    @GetMapping("/username")
-    public BaseResponse<List<CommunityPostResponse>> getPostsByUsername(@RequestParam String username){
-
-        return BaseResponse.ok(communityService.getPostsByUsername(username));
+        return BaseResponse.ok(communityService.searchPosts(keyword));
     }
 }

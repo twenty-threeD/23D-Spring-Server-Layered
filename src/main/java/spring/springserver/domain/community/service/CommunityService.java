@@ -10,7 +10,5 @@ public interface CommunityService {
 
     CreatePostResponse createPost(CreatePostRequest createPostRequest);
 
-    List<CommunityPostResponse> getPostsByTitle(String title);
-
-    List<CommunityPostResponse> getPostsByUsername(String username);
+    List<CommunityPostResponse> searchPosts(String keyword);
 }
