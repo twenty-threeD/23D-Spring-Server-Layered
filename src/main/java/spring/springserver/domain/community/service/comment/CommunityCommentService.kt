@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.service
+package spring.springserver.domain.community.service.comment
 
 import spring.springserver.domain.community.data.request.CommunityCommentLikeRequest
 import spring.springserver.domain.community.data.request.CreateCommentRequest

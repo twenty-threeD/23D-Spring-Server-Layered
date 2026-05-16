@@ -14,7 +14,7 @@ import spring.springserver.domain.community.data.request.UpdatePostRequest
 import spring.springserver.domain.community.data.response.CommunityPostResponse
 import spring.springserver.domain.community.data.response.CreatePostResponse
 import spring.springserver.domain.community.data.response.UpdatePostResponse
-import spring.springserver.domain.community.service.CommunityPostService
+import spring.springserver.domain.community.service.post.CommunityPostService
 import spring.springserver.global.data.BaseResponse
 
 @RestController

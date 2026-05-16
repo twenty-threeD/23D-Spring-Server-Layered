@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.service
+package spring.springserver.domain.community.service.post
 
 import spring.springserver.domain.community.data.request.CreatePostRequest
 import spring.springserver.domain.community.data.request.UpdatePostRequest

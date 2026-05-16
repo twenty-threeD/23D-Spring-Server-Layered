@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.service
+package spring.springserver.domain.community.service.post
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -10,6 +10,7 @@ import spring.springserver.domain.community.data.response.UpdatePostResponse
 import spring.springserver.domain.community.entity.CommunityPost
 import spring.springserver.domain.community.repository.CommunityCommentRepository
 import spring.springserver.domain.community.repository.CommunityPostRepository
+import spring.springserver.domain.community.service.CommunityAuthorizationService
 import java.time.LocalDateTime
 
 @Service
@@ -17,19 +18,25 @@ import java.time.LocalDateTime
 class CommunityPostServiceImpl(
     private val communityPostRepository: CommunityPostRepository,
     private val communityCommentRepository: CommunityCommentRepository,
-    private val communityAccessSupport: CommunityAccessSupport,
+    private val communityAuthorizationService: CommunityAuthorizationService,
 ) : CommunityPostService {
 
     override fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse {
-        val member = communityAccessSupport.getCurrentMember()
+
+        val member = communityAuthorizationService.getCurrentMember()
+
         val communityPost = communityPostRepository.save(createPostRequest.toEntity(member))
+
         return CreatePostResponse.of(communityPost)
     }
 
     override fun updatePost(updatePostRequest: UpdatePostRequest): UpdatePostResponse {
-        val member = communityAccessSupport.getCurrentMember()
-        val communityPost = communityAccessSupport.getActivePost(updatePostRequest.postId)
-        communityAccessSupport.validateOwner(member, communityPost.member.getId())
+
+        val member = communityAuthorizationService.getCurrentMember()
+
+        val communityPost = communityAuthorizationService.getActivePost(updatePostRequest.postId)
+
+        communityAuthorizationService.validateOwner(member, communityPost.member.getId())
 
         communityPost.update(
             title = updatePostRequest.title.trim(),
@@ -41,27 +48,41 @@ class CommunityPostServiceImpl(
     }
 
     override fun deletePost(postId: Long) {
-        val member = communityAccessSupport.getCurrentMember()
-        val communityPost = communityAccessSupport.getActivePost(postId)
-        communityAccessSupport.validateOwner(member, communityPost.member.getId())
+
+        val member = communityAuthorizationService.getCurrentMember()
+
+        val communityPost = communityAuthorizationService.getActivePost(postId)
+
+        communityAuthorizationService.validateOwner(
+            member,
+            communityPost.member.getId()
+        )
+
         communityPost.softDelete(LocalDateTime.now())
     }
 
     override fun getPost(postId: Long): CommunityPostResponse {
-        val communityPost = communityAccessSupport.getActivePost(postId)
+
+        val communityPost = communityAuthorizationService.getActivePost(postId)
+
         communityPost.increaseViewCount()
+
         return toPostResponse(communityPost)
     }
 
     @Transactional(readOnly = true)
     override fun searchPosts(keyword: String): List<CommunityPostResponse> {
+
         val normalizedKeyword = keyword.trim()
+
         return communityPostRepository.searchPosts(normalizedKeyword)
             .map(::toPostResponse)
     }
 
     private fun toPostResponse(communityPost: CommunityPost): CommunityPostResponse {
+
         val postId = communityPost.getId()!!
+
         return CommunityPostResponse.of(
             communityPost = communityPost,
             commentCount = communityCommentRepository.countByCommunityPostIdAndDeletedAtIsNull(postId),

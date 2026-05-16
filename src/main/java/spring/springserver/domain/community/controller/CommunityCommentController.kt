@@ -14,7 +14,7 @@ import spring.springserver.domain.community.data.request.CreateCommentRequest
 import spring.springserver.domain.community.data.request.UpdateCommentRequest
 import spring.springserver.domain.community.data.response.CommunityCommentResponse
 import spring.springserver.domain.community.data.response.CommunityLikeResponse
-import spring.springserver.domain.community.service.CommunityCommentService
+import spring.springserver.domain.community.service.comment.CommunityCommentService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
