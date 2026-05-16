@@ -85,6 +85,10 @@ dependencies {
     // OAuth
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
+    // tika
+    implementation 'org.apache.tika:tika-core:3.2.1'
+    implementation 'org.apache.tika:tika-parsers-standard-package:3.2.1'
+    
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"

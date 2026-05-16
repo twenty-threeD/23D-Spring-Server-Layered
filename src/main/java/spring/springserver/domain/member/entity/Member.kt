@@ -23,12 +23,15 @@ class Member (
     var email: String,
 
     @field:Phone(region = Region.KR)
-    var phone: String,
+    var phone: String?,
 
-    var password: String,
+    var password: String?,
 
     @Enumerated(EnumType.STRING)
-    var role: Role
+    var role: Role,
+
+    @Enumerated(EnumType.STRING)
+    val provider: Provider
 ) {
 
     @Id
@@ -44,4 +47,6 @@ class Member (
     }
 
    fun getId(): Long? = id
+
+    fun update(name: String) = also { this.name = name }
 }

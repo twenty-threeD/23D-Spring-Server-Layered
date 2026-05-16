@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import com.l98293.phone.Phone;
 import com.l98293.phone.Region;
 import spring.springserver.domain.member.entity.Member;
+import spring.springserver.domain.member.entity.Provider;
 import spring.springserver.domain.member.entity.Role;
 
 
@@ -33,7 +34,11 @@ public record SignUpRequest(
 
         @NotNull
         @Enumerated(EnumType.STRING)
-        Role role
+        Role role,
+
+        @NotNull
+        @Enumerated(EnumType.STRING)
+        Provider provider
 ) {
 
     public Member toEntity(String encodedPassword) {
@@ -44,7 +49,8 @@ public record SignUpRequest(
                 email,
                 phone,
                 encodedPassword,
-                role
+                role,
+                provider
         );
     }
 }
