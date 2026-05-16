@@ -1,6 +1,7 @@
 package spring.springserver.domain.community.entity;
 
 import jakarta.persistence.*;
+import jdk.jfr.Timestamp;
 import lombok.Getter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,16 +30,21 @@ public class CommunityPost {
 
     private String username;
 
+    @Column(length = 255, nullable = false)
     private String title;
 
+    @Column(length = 2000)
     private String content;
 
-    private String imageUrl;
+    @Column(length = 500)
+    private String fileUrl;
 
     private int viewCount;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    private Boolean isEdited;
+
+    @Timestamp
+    private LocalDateTime isDeleted;
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
