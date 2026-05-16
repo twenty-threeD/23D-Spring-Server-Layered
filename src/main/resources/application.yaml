@@ -37,8 +37,6 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
-    mongodb:
-      uri: ${MONGO_URI}
 
   security:
     oauth2:

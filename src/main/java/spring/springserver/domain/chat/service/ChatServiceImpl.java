@@ -13,10 +13,11 @@ import spring.springserver.domain.chat.data.request.SendChatMessageRequest;
 import spring.springserver.domain.chat.data.response.ChatMessageResponse;
 import spring.springserver.domain.chat.data.response.ChatRoomResponse;
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse;
-import spring.springserver.domain.chat.entity.ChatMessageDocument;
+import spring.springserver.domain.chat.entity.ChatMessage;
+import spring.springserver.domain.chat.entity.MessageType;
 import spring.springserver.domain.chat.entity.ChatRoom;
 import spring.springserver.domain.chat.entity.ChatRoomParticipant;
-import spring.springserver.domain.chat.repository.ChatMessageMongoRepository;
+import spring.springserver.domain.chat.repository.ChatMessageRepository;
 import spring.springserver.domain.chat.repository.ChatRoomParticipantRepository;
 import spring.springserver.domain.chat.repository.ChatRoomRepository;
 import spring.springserver.domain.member.entity.Member;
@@ -31,7 +32,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
-    private final ChatMessageMongoRepository chatMessageMongoRepository;
+    private final ChatMessageRepository chatMessageRepository;
     private final MemberRepository memberRepository;
 
     private static final String LAST_MESSAGE_PLACEHOLDER = "새 메시지";
@@ -102,9 +103,9 @@ public class ChatServiceImpl implements ChatService {
                 username
         );
 
-        List<ChatMessageDocument> messages = participant.getDeletedAt() == null
-                ? chatMessageMongoRepository.findAllByRoomIdOrderByCreatedAtAsc(roomId)
-                : chatMessageMongoRepository.findAllByRoomIdAndCreatedAtAfterOrderByCreatedAtAsc(
+        List<ChatMessage> messages = participant.getDeletedAt() == null
+                ? chatMessageRepository.findAllByRoomIdOrderByCreatedAtAsc(roomId)
+                : chatMessageRepository.findAllByRoomIdAndCreatedAtAfterOrderByCreatedAtAsc(
                         roomId,
                         participant.getDeletedAt()
                 );
@@ -132,13 +133,13 @@ public class ChatServiceImpl implements ChatService {
 
         Instant createdAt = Instant.now();
 
-        ChatMessageDocument chatMessageDocument = chatMessageMongoRepository.save(
-                new ChatMessageDocument(
-                        room.getId(),
-                        sender.getId(),
-                        sender.getUsername(),
-                        sender.getName(),
+        ChatMessage chatMessage = chatMessageRepository.save(
+                new ChatMessage(
+                        null,
+                        room,
+                        sender,
                         normalizedMessage,
+                        MessageType.TEXT,
                         createdAt
                 )
         );
@@ -153,7 +154,7 @@ public class ChatServiceImpl implements ChatService {
                 sender.getId()
         );
 
-        return ChatMessageResponse.from(chatMessageDocument);
+        return ChatMessageResponse.of(chatMessage);
     }
 
     @Override

@@ -1,33 +1,31 @@
 package spring.springserver.domain.chat.data.response;
 
-import spring.springserver.domain.chat.entity.ChatMessageDocument;
-
 import java.time.Instant;
+import spring.springserver.domain.chat.entity.ChatMessage;
 
 public record ChatMessageResponse(
 
-        String messageId,
+        Long messageId,
 
         Long roomId,
-
-        String senderUsername,
-
-        String senderName,
 
         String message,
 
         Instant createdAt
 ) {
 
-    public static ChatMessageResponse from(ChatMessageDocument chatMessageDocument) {
+    public static ChatMessageResponse from(ChatMessage chatMessage) {
+
+        return of(chatMessage);
+    }
+
+    public static ChatMessageResponse of(ChatMessage chatMessage) {
 
         return new ChatMessageResponse(
-                chatMessageDocument.getId(),
-                chatMessageDocument.getRoomId(),
-                chatMessageDocument.getSenderUsername(),
-                chatMessageDocument.getSenderName(),
-                chatMessageDocument.getMessage(),
-                chatMessageDocument.getCreatedAt()
+                chatMessage.getId(),
+                chatMessage.getRoom().getId(),
+                chatMessage.getMessage(),
+                chatMessage.getCreatedAt()
         );
     }
 }
