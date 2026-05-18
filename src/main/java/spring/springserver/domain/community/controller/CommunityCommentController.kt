@@ -1,7 +1,6 @@
 package spring.springserver.domain.community.controller
 
 import jakarta.validation.Valid
-import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -15,14 +14,14 @@ import spring.springserver.domain.community.data.request.CreateCommentRequest
 import spring.springserver.domain.community.data.request.UpdateCommentRequest
 import spring.springserver.domain.community.data.response.CommunityCommentResponse
 import spring.springserver.domain.community.data.response.CommunityLikeResponse
+import spring.springserver.domain.community.data.response.DeleteResponse
 import spring.springserver.domain.community.service.comment.CommunityCommentService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/community/comment")
-class CommunityCommentController(
-    private val communityCommentService: CommunityCommentService,
-) {
+class CommunityCommentController(private val communityCommentService: CommunityCommentService) {
+
     @PostMapping
     fun createComment(@RequestBody @Valid createCommentRequest: CreateCommentRequest): BaseResponse<CommunityCommentResponse> {
 
@@ -42,11 +41,11 @@ class CommunityCommentController(
     }
 
     @DeleteMapping
-    fun deleteComment(@RequestParam commentId: Long): BaseResponse<Void> {
+    fun deleteComment(@RequestParam commentId: Long): BaseResponse<DeleteResponse> {
 
         communityCommentService.deleteComment(commentId)
 
-        return BaseResponse.ok(null);
+        return BaseResponse.ok(DeleteResponse.ok())
     }
 
     @PostMapping("/like")

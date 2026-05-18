@@ -14,15 +14,15 @@ import spring.springserver.domain.community.data.request.CreatePostRequest
 import spring.springserver.domain.community.data.request.UpdatePostRequest
 import spring.springserver.domain.community.data.response.CommunityPostResponse
 import spring.springserver.domain.community.data.response.CreatePostResponse
+import spring.springserver.domain.community.data.response.DeleteResponse
 import spring.springserver.domain.community.data.response.UpdatePostResponse
 import spring.springserver.domain.community.service.post.CommunityPostService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/community/post")
-class CommunityPostController(
-    private val communityPostService: CommunityPostService,
-) {
+class CommunityPostController(private val communityPostService: CommunityPostService) {
+
     @PostMapping
     fun createPost(@RequestBody @Valid createPostRequest: CreatePostRequest): BaseResponse<CreatePostResponse> {
 
@@ -36,11 +36,11 @@ class CommunityPostController(
     }
 
     @DeleteMapping
-    fun deletePost(@RequestParam postId: Long): BaseResponse<Void> {
+    fun deletePost(@RequestParam postId: Long): BaseResponse<DeleteResponse> {
 
         communityPostService.deletePost(postId)
 
-        return BaseResponse.ok(null);
+        return BaseResponse.ok(DeleteResponse.ok())
     }
 
     @GetMapping

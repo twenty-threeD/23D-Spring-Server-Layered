@@ -7,10 +7,13 @@ import spring.springserver.domain.member.entity.Member
 data class CreatePostRequest(
     @field:NotBlank
     val title: String,
+
     val content: String?,
+
     val fileUrl: String?,
 ) {
     fun toEntity(member: Member): CommunityPost {
+
         return CommunityPost(
             member = member,
             username = member.username,

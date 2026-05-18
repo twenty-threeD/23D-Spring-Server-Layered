@@ -17,6 +17,7 @@ import java.time.LocalDateTime
 @Entity
 @Table(name = "community_comment")
 class CommunityComment(
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "member_id", nullable = false)
     var member: Member,
@@ -34,6 +35,7 @@ class CommunityComment(
     @Column(name = "deleted_at")
     var deletedAt: LocalDateTime? = null,
 ) {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private val id: Long? = null

@@ -19,6 +19,7 @@ import spring.springserver.domain.member.entity.Member
     ]
 )
 class CommunityCommentLike(
+
     @JoinColumn(name = "member_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     val member: Member,
@@ -27,6 +28,7 @@ class CommunityCommentLike(
     @JoinColumn(name = "community_comment_id", nullable = false)
     val communityComment: CommunityComment,
 ) {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private val id: Long? = null

@@ -18,11 +18,9 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional
-class CommunityCommentServiceImpl(
-    private val communityCommentRepository: CommunityCommentRepository,
-    private val communityCommentLikeRepository: CommunityCommentLikeRepository,
-    private val communityAuthorizationService: CommunityAuthorizationService,
-) : CommunityCommentService {
+class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
+                                        private val communityCommentLikeRepository: CommunityCommentLikeRepository,
+                                        private val communityAuthorizationService: CommunityAuthorizationService, ) : CommunityCommentService {
 
     override fun createComment(createCommentRequest: CreateCommentRequest): CommunityCommentResponse {
 
@@ -47,7 +45,8 @@ class CommunityCommentServiceImpl(
 
         communityAuthorizationService.getActivePost(postId)
 
-        return communityCommentRepository.findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
+        return communityCommentRepository
+            .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
             .map(::toCommentResponse)
     }
 
@@ -89,11 +88,7 @@ class CommunityCommentServiceImpl(
 
         val communityComment = communityAuthorizationService.getActiveComment(commentId)
 
-        if (communityCommentLikeRepository.existsByMemberAndCommunityComment(
-                member,
-                communityComment
-                )
-            ) {
+        if (communityCommentLikeRepository.existsByMemberAndCommunityComment(member, communityComment)) {
 
             throw ApplicationException.of(
                 CommonStatusCode.INVALID_ARGUMENT,

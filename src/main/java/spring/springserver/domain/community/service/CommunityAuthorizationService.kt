@@ -13,11 +13,9 @@ import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @Component
-class CommunityAuthorizationService(
-    private val communityPostRepository: CommunityPostRepository,
-    private val communityCommentRepository: CommunityCommentRepository,
-    private val memberRepository: MemberRepository,
-) {
+class CommunityAuthorizationService(private val communityPostRepository: CommunityPostRepository,
+                                          private val communityCommentRepository: CommunityCommentRepository,
+                                          private val memberRepository: MemberRepository) {
 
     fun getCurrentMember(): Member {
 

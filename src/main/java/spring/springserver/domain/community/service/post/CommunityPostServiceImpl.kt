@@ -15,11 +15,9 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional
-class CommunityPostServiceImpl(
-    private val communityPostRepository: CommunityPostRepository,
-    private val communityCommentRepository: CommunityCommentRepository,
-    private val communityAuthorizationService: CommunityAuthorizationService,
-) : CommunityPostService {
+class CommunityPostServiceImpl(private val communityPostRepository: CommunityPostRepository,
+                                    private val communityCommentRepository: CommunityCommentRepository,
+                                    private val communityAuthorizationService: CommunityAuthorizationService) : CommunityPostService {
 
     override fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse {
 
@@ -34,7 +32,8 @@ class CommunityPostServiceImpl(
 
         val member = communityAuthorizationService.getCurrentMember()
 
-        val communityPost = communityAuthorizationService.getActivePost(updatePostRequest.postId)
+        val communityPost = communityAuthorizationService
+            .getActivePost(updatePostRequest.postId)
 
         communityAuthorizationService.validateOwner(member, communityPost.member.getId())
 

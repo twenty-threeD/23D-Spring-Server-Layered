@@ -7,11 +7,13 @@ import spring.springserver.domain.member.entity.Member
 
 interface CommunityCommentLikeRepository : JpaRepository<CommunityCommentLike, Long> {
 
-    fun existsByMemberAndCommunityComment(member: Member, communityComment: CommunityComment): Boolean
+    fun existsByMemberAndCommunityComment(member: Member,
+                                          communityComment: CommunityComment): Boolean
 
     fun countByCommunityCommentId(communityCommentId: Long): Long
 
-    fun deleteByMemberAndCommunityComment(member: Member, communityComment: CommunityComment): Long
+    fun deleteByMemberAndCommunityComment(member: Member,
+                                          communityComment: CommunityComment): Long
 
     fun deleteAllByCommunityCommentIn(communityComments: Collection<CommunityComment>)
 }

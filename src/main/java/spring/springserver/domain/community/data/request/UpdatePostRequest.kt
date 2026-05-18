@@ -7,6 +7,8 @@ data class UpdatePostRequest(
 
     @field:NotBlank
     val title: String,
+
     val content: String?,
+
     val fileUrl: String?,
 )
