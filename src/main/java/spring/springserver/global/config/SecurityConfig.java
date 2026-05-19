@@ -15,6 +15,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
+import spring.springserver.domain.oauth.service.CustomOAuthUserService;
+import spring.springserver.domain.oauth.handler.OAuth2SuccessHandler;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -31,7 +33,9 @@ public class SecurityConfig {
 	}
 
 	@Bean
-	public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception{
+	public SecurityFilterChain filterChain(HttpSecurity httpSecurity,
+										   CustomOAuthUserService customOAuthUserService,
+										   OAuth2SuccessHandler oAuth2SuccessHandler) throws Exception {
 
 		httpSecurity
 				.httpBasic(AbstractHttpConfigurer::disable)
@@ -46,12 +50,15 @@ public class SecurityConfig {
 								HttpMethod.POST,
 								"/api/auth/signup",
 								"/api/auth/signin",
-								"/api/auth/password/reset"
+								"/api/auth/signout",
+								"/api/auth/password/reset",
+								"/oauth2",
+								"/login",
+								"/loginSuccess"
 						).permitAll()
 
 						.requestMatchers(
 								HttpMethod.POST,
-								"/api/auth/signout",
 								"/api/auth/password/reset/check"
 						).hasRole("USER")
 
@@ -72,19 +79,20 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.GET,
+								"/files/*",
+								"/images/*",
 								"/swagger-ui/**",
 								"/v3/api-docs/**"
 						).permitAll()
 
-            .requestMatchers(
-                HttpMethod.GET,
-                "/files/*"
-            ).permitAll()
-
 						.anyRequest()
-            .authenticated()
+						.authenticated()
+				).oauth2Login(oauth2 -> oauth2
+						.userInfoEndpoint(userInfo -> userInfo
+								.userService(customOAuthUserService)
+						)
+						.successHandler(oAuth2SuccessHandler)
 				)
-
 				.addFilterBefore(
 						jwtAuthFilter,
 						UsernamePasswordAuthenticationFilter.class
@@ -100,6 +108,7 @@ public class SecurityConfig {
 		config.setAllowCredentials(true);
 		config.addAllowedOriginPattern("*");
 		config.addAllowedHeader("*");
+		config.addAllowedMethod("*");
 
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
