@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.post.dto.request.CreatePostRequest
 import spring.springserver.domain.post.dto.request.UpdatePostRequest
@@ -28,7 +29,7 @@ class PostController(private val postService: PostService) {
     }
 
     @GetMapping("/find")
-    fun findPost(@RequestBody @io.swagger.v3.oas.annotations.Parameter id: Long): BaseResponse<PostResponse> {
+    fun findPost(@RequestBody @RequestParam id: Long): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.findPost(id))
     }
@@ -45,7 +46,7 @@ class PostController(private val postService: PostService) {
     }
 
     @DeleteMapping("/delete")
-    fun deletePost(@RequestBody @io.swagger.v3.oas.annotations.Parameter id: Long): BaseResponse<PostResponse> {
+    fun deletePost(@RequestBody @RequestParam id: Long): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.deletePost(id))
     }
