@@ -8,7 +8,8 @@ import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import spring.springserver.domain.email.exception.EmailException
 import spring.springserver.domain.email.service.EmailService
-import spring.springserver.domain.email.service.data.response.SendEmailCodeResponse
+import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
+import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
 import spring.springserver.global.config.redis.RedisConfig
 import spring.springserver.global.exception.exception.ApplicationException
 import java.io.UnsupportedEncodingException
@@ -29,7 +30,7 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         return (1..8).map { chars[SecureRandom().nextInt(chars.length)] }.joinToString("")
     }
 
-    override fun sendEmailCode(email: String): SendEmailCodeResponse {
+    override fun sendVerifyCode(email: String): SendVerifyCodeResponse {
 
         val verifyCode = makeRandomCode()
 
@@ -69,6 +70,21 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
                 TimeUnit.MINUTES
             )
 
-        return SendEmailCodeResponse.of("${email}로 인증코드를 전송했습니다.")
+        return SendVerifyCodeResponse.of("${email}로 인증코드를 전송했습니다.")
+    }
+
+    override fun checkVerifyCode(email: String,
+                                 code: String): CheckVerifyCodeResponse {
+
+        val savedCode = redisConfig.redisTemplate().opsForValue().get(email)
+
+        if (savedCode == code) {
+
+            redisConfig.redisTemplate().delete(email)
+
+            return CheckVerifyCodeResponse.of("이메일이 인증되었습니다.")
+        }
+
+        throw ApplicationException(EmailException.EMAIL_CANNOT_VERIFY)
     }
 }

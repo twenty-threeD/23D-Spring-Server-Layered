@@ -74,7 +74,8 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.POST,
-								"/api/email/code/send"
+								"/api/email/code/send",
+								"/api/email/code/verify"
 						).permitAll()
 
 						.requestMatchers(
