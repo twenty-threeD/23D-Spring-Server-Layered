@@ -14,7 +14,7 @@ data class PostResponse(
 
     val ViewCount: Int,
 
-    val updated_at: LocalDateTime?,
+    val updatedAt: LocalDateTime?,
 ) {
 
     companion object {
