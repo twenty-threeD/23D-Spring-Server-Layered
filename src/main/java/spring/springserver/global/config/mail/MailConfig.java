@@ -5,6 +5,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.thymeleaf.TemplateEngine;
+import spring.springserver.domain.email.service.impl.EmailServiceImpl;
+import spring.springserver.global.config.redis.RedisConfig;
 
 import java.util.Properties;
 
@@ -17,6 +20,18 @@ public class MailConfig {
 	private String password;
 	@Value("${spring.mail.host}")
 	private String host;
+
+	@Bean
+	public EmailServiceImpl emailService(JavaMailSender mailSender,
+										 RedisConfig redisConfig,
+										 TemplateEngine templateEngine) {
+
+		return new EmailServiceImpl(
+				mailSender,
+				redisConfig,
+				templateEngine
+		);
+	}
 
 	@Bean
 	public JavaMailSender mailSender() {
