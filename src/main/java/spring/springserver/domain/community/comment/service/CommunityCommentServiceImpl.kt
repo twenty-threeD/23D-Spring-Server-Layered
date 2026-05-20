@@ -11,7 +11,8 @@ import spring.springserver.domain.community.like.data.request.CommunityCommentLi
 import spring.springserver.domain.community.like.data.response.CommunityLikeResponse
 import spring.springserver.domain.community.like.entity.CommunityCommentLike
 import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
-import spring.springserver.domain.community.shared.service.CommunityAuthorizationService
+import spring.springserver.domain.community.global.data.response.DeleteResponse
+import spring.springserver.domain.community.global.service.CommunityAuthorizationService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.LocalDateTime
@@ -20,7 +21,7 @@ import java.time.LocalDateTime
 @Transactional
 class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
                                         private val communityCommentLikeRepository: CommunityCommentLikeRepository,
-                                        private val communityAuthorizationService: CommunityAuthorizationService, ) : CommunityCommentService {
+                                        private val communityAuthorizationService: CommunityAuthorizationService) : CommunityCommentService {
 
     override fun createComment(createCommentRequest: CreateCommentRequest): CommunityCommentResponse {
 
@@ -37,7 +38,10 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
             )
         )
 
-        return toCommentResponse(communityComment)
+        return CommunityCommentResponse.of(
+            communityComment = communityComment,
+            likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+        )
     }
 
     @Transactional(readOnly = true)
@@ -47,7 +51,12 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         return communityCommentRepository
             .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
-            .map(::toCommentResponse)
+            .map { communityComment ->
+                CommunityCommentResponse.of(
+                    communityComment = communityComment,
+                    likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+                )
+            }
     }
 
     override fun updateComment(updateCommentRequest: UpdateCommentRequest): CommunityCommentResponse {
@@ -63,10 +72,13 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         communityComment.update(updateCommentRequest.content.trim())
 
-        return toCommentResponse(communityComment)
+        return CommunityCommentResponse.of(
+            communityComment = communityComment,
+            likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+        )
     }
 
-    override fun deleteComment(commentId: Long) {
+    override fun deleteComment(commentId: Long): String {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -78,6 +90,8 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
         )
 
         communityComment.softDelete(LocalDateTime.now())
+
+        return DeleteResponse.of("삭제되었습니다.")
     }
 
     override fun likeComment(communityCommentLikeRequest: CommunityCommentLikeRequest): CommunityLikeResponse {
@@ -133,14 +147,6 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
             targetId = commentId,
             likeCount = communityCommentLikeRepository.countByCommunityCommentId(commentId),
             message = "댓글 좋아요가 취소되었습니다.",
-        )
-    }
-
-    private fun toCommentResponse(communityComment: CommunityComment): CommunityCommentResponse {
-
-        return CommunityCommentResponse.of(
-            communityComment = communityComment,
-            likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
         )
     }
 }

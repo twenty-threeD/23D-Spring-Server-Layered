@@ -48,15 +48,10 @@ class CommunityPost(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private val id: Long? = null
 
-    @CreationTimestamp
-    private var createdAt: LocalDateTime? = null
-
     @UpdateTimestamp
     private var updatedAt: LocalDateTime? = null
 
     fun getId(): Long? = id
-
-    fun getCreatedAt(): LocalDateTime? = createdAt
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 

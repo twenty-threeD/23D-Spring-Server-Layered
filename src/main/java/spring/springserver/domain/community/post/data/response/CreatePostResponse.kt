@@ -4,7 +4,7 @@ import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
 data class CreatePostResponse(
-    val postId: Long,
+    val postId: Long?,
 
     val username: String,
 
@@ -14,19 +14,19 @@ data class CreatePostResponse(
 
     val fileUrl: String?,
 
-    val createdAt: LocalDateTime?,
+    val updatedAt: LocalDateTime?,
 ) {
     companion object {
 
         fun of(communityPost: CommunityPost): CreatePostResponse {
 
             return CreatePostResponse(
-                communityPost.getId()!!,
+                communityPost.getId(),
                 communityPost.username,
                 communityPost.title,
                 communityPost.content,
                 communityPost.fileUrl,
-                communityPost.getCreatedAt(),
+                communityPost.getUpdatedAt()
             )
         }
     }

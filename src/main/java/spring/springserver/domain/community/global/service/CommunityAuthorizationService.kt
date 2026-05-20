@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.shared.service
+package spring.springserver.domain.community.global.service
 
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component

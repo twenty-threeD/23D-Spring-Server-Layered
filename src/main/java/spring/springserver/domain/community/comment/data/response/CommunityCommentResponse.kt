@@ -35,5 +35,6 @@ data class CommunityCommentResponse(
                 communityComment.getUpdatedAt(),
             )
         }
+
     }
 }

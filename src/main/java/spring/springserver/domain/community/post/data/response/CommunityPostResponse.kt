@@ -20,8 +20,6 @@ data class CommunityPostResponse(
 
     val commentCount: Long,
 
-    val createdAt: LocalDateTime?,
-
     val updatedAt: LocalDateTime?,
 ) {
     companion object {
@@ -37,7 +35,6 @@ data class CommunityPostResponse(
                 communityPost.viewCount,
                 communityPost.isEdited,
                 commentCount,
-                communityPost.getCreatedAt(),
                 communityPost.getUpdatedAt(),
             )
         }

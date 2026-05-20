@@ -4,7 +4,7 @@ import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
 data class UpdatePostResponse(
-    val postId: Long,
+    val postId: Long?,
 
     val title: String,
 
@@ -21,7 +21,7 @@ data class UpdatePostResponse(
         fun of(communityPost: CommunityPost): UpdatePostResponse {
 
             return UpdatePostResponse(
-                communityPost.getId()!!,
+                communityPost.getId(),
                 communityPost.title,
                 communityPost.content,
                 communityPost.fileUrl,

@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.shared.service
+package spring.springserver.domain.community.global.service
 
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service

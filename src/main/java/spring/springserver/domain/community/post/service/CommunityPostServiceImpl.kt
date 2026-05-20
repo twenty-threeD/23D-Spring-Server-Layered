@@ -10,7 +10,7 @@ import spring.springserver.domain.community.post.data.response.CreatePostRespons
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
 import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
-import spring.springserver.domain.community.shared.service.CommunityAuthorizationService
+import spring.springserver.domain.community.global.service.CommunityAuthorizationService
 import java.time.LocalDateTime
 
 @Service
