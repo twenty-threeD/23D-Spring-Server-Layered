@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
+import spring.springserver.domain.post.data.response.DeletedPostResponse
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.service.PostService
 import spring.springserver.global.data.BaseResponse
@@ -40,7 +41,7 @@ class PostController(private val postService: PostService) {
     }
 
     @DeleteMapping("/delete/{postId}")
-    fun deletePost(@PathVariable postId: Long): BaseResponse<PostResponse> {
+    fun deletePost(@PathVariable postId: Long): BaseResponse<DeletedPostResponse?>? {
 
         return BaseResponse.ok(postService.deletePost(postId))
     }
