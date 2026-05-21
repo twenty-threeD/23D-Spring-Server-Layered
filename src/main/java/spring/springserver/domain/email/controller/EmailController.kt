@@ -17,9 +17,9 @@ import spring.springserver.global.data.BaseResponse
 class EmailController(private val emailService: EmailService) {
 
     @PostMapping("/code/send")
-    fun sendVerifyCode(@Valid @RequestBody sendEmailCodeRequest: SendVerifyCodeRequest): BaseResponse<SendVerifyCodeResponse> {
+    fun sendVerifyCode(@Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest): BaseResponse<SendVerifyCodeResponse> {
 
-        return BaseResponse.ok(emailService.sendVerifyCode(sendEmailCodeRequest.email))
+        return BaseResponse.ok(emailService.sendVerifyCode(sendVerifyCodeRequest.email))
     }
 
     @PostMapping("/code/verify")

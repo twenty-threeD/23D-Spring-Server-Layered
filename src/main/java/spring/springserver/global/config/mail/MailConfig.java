@@ -22,12 +22,12 @@ public class MailConfig {
 	private String host;
 
 	@Bean
-	public EmailServiceImpl emailService(JavaMailSender mailSender,
+	public EmailServiceImpl emailService(JavaMailSender javaMailSender,
 										 RedisConfig redisConfig,
 										 TemplateEngine templateEngine) {
 
 		return new EmailServiceImpl(
-				mailSender,
+				javaMailSender,
 				redisConfig,
 				templateEngine
 		);

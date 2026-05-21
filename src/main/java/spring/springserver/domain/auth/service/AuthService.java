@@ -45,7 +45,7 @@ public class AuthService {
             throw new ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST);
         }
 
-        if (memberRepository.existsByPhone(signUpRequest.phone())) {
+        if (signUpRequest.phone() != null && memberRepository.existsByPhone(signUpRequest.phone())) {
 
             throw new ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST);
         }
