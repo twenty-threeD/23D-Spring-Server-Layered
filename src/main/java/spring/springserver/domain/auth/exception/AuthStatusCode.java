@@ -24,7 +24,10 @@ public enum AuthStatusCode implements StatusCode {
   PASSWORD_IS_WEAK("PASSWORD_IS_WEAK", "비밀번호는 8자 이상이며, 영어 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", HttpStatus.BAD_REQUEST),
 
   CANNOT_SEND_EMAIL("CANNOT_SEND_EMAIL", "이메일을 전송할 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
-  CANNOT_VERIFY_EMAIL("CANNOT_VERIFY_EMAIL", "이메일을 인증할 수 없습니다", HttpStatus.BAD_REQUEST);
+  CANNOT_VERIFY_EMAIL("CANNOT_VERIFY_EMAIL", "이메일을 인증할 수 없습니다.", HttpStatus.BAD_REQUEST),
+
+  FORBIDDEN_POST_ACCESS("FORBIDDEN_POST_ACCESS", "본인이 작성한 게시글만 수정 또는 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
+  INVALID_POST("INVALID_POST","존재하지 않는 게시글입니다.", HttpStatus.BAD_REQUEST);
 
   private final String code;
   private final String message;

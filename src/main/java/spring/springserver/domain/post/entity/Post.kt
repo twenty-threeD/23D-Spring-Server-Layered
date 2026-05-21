@@ -24,7 +24,7 @@ class Post (
 
     var viewCount: Int = 0,
 
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false)
     var updatedAt: LocalDateTime?,
 
     var isUpdated: Boolean = false,
@@ -40,15 +40,4 @@ class Post (
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
 
-    @PrePersist
-    fun prePersist() {
-
-        updatedAt = LocalDateTime.now()
-    }
-
-    @PreUpdate
-    fun preUpdate() {
-
-        updatedAt = LocalDateTime.now()
-    }
 }
