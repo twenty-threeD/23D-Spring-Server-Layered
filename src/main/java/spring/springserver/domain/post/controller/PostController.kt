@@ -35,9 +35,7 @@ class PostController(private val postService: PostService) {
     @PatchMapping("/update")
     fun updatePost(@Valid @RequestBody updatePostRequest: UpdatePostRequest): BaseResponse<PostResponse> {
 
-        return BaseResponse.ok(postService.updatePost(
-                updatePostRequest
-            )
+        return BaseResponse.ok(postService.updatePost(updatePostRequest)
         )
     }
 
