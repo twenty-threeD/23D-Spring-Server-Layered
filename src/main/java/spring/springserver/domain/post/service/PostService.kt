@@ -9,6 +9,7 @@ import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
+import spring.springserver.domain.post.data.response.DeletedPostResponse
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.repository.PostRepository
@@ -47,7 +48,7 @@ class PostService (private val postRepository: PostRepository,
     fun findPost(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
-            ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
 
         post.viewCount += 1
 
@@ -71,7 +72,7 @@ class PostService (private val postRepository: PostRepository,
         return PostResponse.of(post)
     }
 
-    fun deletePost(id: Long) : PostResponse {
+    fun deletePost(id: Long) : DeletedPostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
@@ -80,16 +81,14 @@ class PostService (private val postRepository: PostRepository,
 
         post.isDeleted = true
 
-        return PostResponse.of(post)
+        return DeletedPostResponse.of("삭제되었습니다")
     }
 
-    @PrePersist
     fun prePersist(post: Post) {
 
         post.updatedAt = LocalDateTime.now()
     }
 
-    @PreUpdate
     fun preUpdate(post: Post) {
 
         post.updatedAt = LocalDateTime.now()

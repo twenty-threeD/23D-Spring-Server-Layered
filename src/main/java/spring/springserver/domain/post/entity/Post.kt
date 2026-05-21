@@ -15,7 +15,7 @@ import java.time.LocalDateTime
 
 @Entity
 class Post (
-    @Column(nullable = false, length = 200)
+    @Column(nullable = false, length = 255)
     var title: String,
 
     @Column(length = 2000)
