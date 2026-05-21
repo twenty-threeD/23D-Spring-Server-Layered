@@ -64,18 +64,18 @@
         }
 
         .code-wrapper {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
+            text-align: center;
             margin-bottom: 18px;
-            flex-wrap: wrap;
         }
 
         .code-digit {
             color: #ffffff;
             font-size: 36px;
             font-weight: 700;
-            letter-spacing: 2px;
+            letter-spacing: 12px;
+            text-align: center;
+            display: block;
+            padding-left: 12px;
         }
 
         .expire-text {
@@ -132,12 +132,7 @@
 
         <div class="code-label">인증 코드</div>
 
-        <div class="code-wrapper">
-            <div class="code-digit"
-                 th:each="digit : ${digits}"
-                 th:text="${digit}">
-            </div>
-        </div>
+        <div class="code-digit" th:text="${digits}"></div>
     </div>
 </div>
 </body>

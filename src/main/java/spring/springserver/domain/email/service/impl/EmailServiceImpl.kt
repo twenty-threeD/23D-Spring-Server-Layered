@@ -38,7 +38,7 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
 
             setVariable("serviceName", serviceName)
             setVariable("userEmail", email)
-            setVariable("digits", verifyCode.map { it.toString() })
+            setVariable("digits", verifyCode)
             setVariable("expireMinutes", 3)
         }
 
