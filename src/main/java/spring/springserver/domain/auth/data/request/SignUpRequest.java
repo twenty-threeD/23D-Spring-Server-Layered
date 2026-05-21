@@ -22,6 +22,7 @@ public record SignUpRequest(
         @NotBlank
         String email,
 
+        @NotNull
         @Phone(region = Region.KR)
         String phone,
 
