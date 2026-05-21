@@ -22,7 +22,6 @@ public record SignUpRequest(
         @NotBlank
         String email,
 
-        @NotBlank
         @Phone(region = Region.KR)
         String phone,
 
@@ -49,7 +48,7 @@ public record SignUpRequest(
                 email,
                 phone,
                 encodedPassword,
-                role,
+                Role.USER,
                 provider
         );
     }
