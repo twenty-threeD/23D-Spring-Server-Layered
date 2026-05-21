@@ -47,7 +47,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
 
-        if (post.isDeleted == true) {
+        if (post.isDeleted) {
 
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
@@ -61,7 +61,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         val post = postRepository.findPostById(updatePostRequest.id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
 
-        if (post.isDeleted == true) {
+        if (post.isDeleted) {
 
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
