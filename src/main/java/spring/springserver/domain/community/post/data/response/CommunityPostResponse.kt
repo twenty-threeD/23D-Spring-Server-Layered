@@ -23,6 +23,7 @@ data class CommunityPostResponse(
 
     val updatedAt: LocalDateTime?,
 ) {
+
     companion object {
 
         fun toPostResponse(communityPost: CommunityPost,

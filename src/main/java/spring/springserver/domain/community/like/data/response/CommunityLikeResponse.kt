@@ -7,6 +7,7 @@ data class CommunityLikeResponse(
 
     val message: String,
 ) {
+
     companion object {
 
         fun of(targetId: Long, likeCount: Long, message: String): CommunityLikeResponse {

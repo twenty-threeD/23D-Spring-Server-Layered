@@ -16,13 +16,13 @@ import spring.springserver.global.data.BaseResponse
 @RequestMapping("/api/community/like")
 class CommunityLikeController(private val communityLikeService: CommunityLikeService) {
 
-    @PostMapping()
+    @PostMapping
     fun likeComment(@RequestBody @Valid communityCommentLikeRequest: CommunityCommentLikeRequest): BaseResponse<CommunityLikeResponse> {
 
         return BaseResponse.ok(communityLikeService.likeComment(communityCommentLikeRequest))
     }
 
-    @DeleteMapping()
+    @DeleteMapping
     fun unlikeComment(@RequestParam commentId: Long): BaseResponse<CommunityLikeResponse> {
 
         return BaseResponse.ok(communityLikeService.unlikeComment(commentId))

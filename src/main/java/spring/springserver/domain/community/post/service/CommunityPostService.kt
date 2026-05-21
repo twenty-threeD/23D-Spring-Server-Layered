@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.post.service
 
+import spring.springserver.domain.community.global.data.response.DeleteResponse
 import spring.springserver.domain.community.post.data.request.CreatePostRequest
 import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
@@ -12,7 +13,7 @@ interface CommunityPostService {
 
     fun updatePost(updatePostRequest: UpdatePostRequest): UpdatePostResponse
 
-    fun deletePost(postId: Long): String
+    fun deletePost(postId: Long): DeleteResponse
 
     fun getPost(postId: Long): CommunityPostResponse
 

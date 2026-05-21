@@ -20,6 +20,7 @@ data class CommunityCommentResponse(
 
     val updatedAt: LocalDateTime?,
 ) {
+
     companion object {
 
         fun of(communityComment: CommunityComment, likeCount: Long): CommunityCommentResponse {

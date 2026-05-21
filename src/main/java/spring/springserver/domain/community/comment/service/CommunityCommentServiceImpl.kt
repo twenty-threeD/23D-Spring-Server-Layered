@@ -51,8 +51,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         return communityCommentRepository
             .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
-            .map { communityComment ->
-                CommunityCommentResponse.of(
+            .map {
+
+                communityComment -> CommunityCommentResponse.of(
                     communityComment = communityComment,
                     likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
                 )
@@ -78,7 +79,7 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
         )
     }
 
-    override fun deleteComment(commentId: Long): String {
+    override fun deleteComment(commentId: Long): DeleteResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 

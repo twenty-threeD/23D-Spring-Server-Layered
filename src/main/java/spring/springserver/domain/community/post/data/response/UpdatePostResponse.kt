@@ -16,6 +16,7 @@ data class UpdatePostResponse(
 
     val updatedAt: LocalDateTime?,
 ) {
+    
     companion object {
 
         fun of(communityPost: CommunityPost): UpdatePostResponse {

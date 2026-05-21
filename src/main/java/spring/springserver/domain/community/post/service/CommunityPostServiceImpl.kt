@@ -47,7 +47,7 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
         return UpdatePostResponse.of(communityPost)
     }
 
-    override fun deletePost(postId: Long): String {
+    override fun deletePost(postId: Long): DeleteResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
