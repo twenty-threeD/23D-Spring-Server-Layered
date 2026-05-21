@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size
 
 data class CreatePostRequest(
     @NotBlank(message = "제목은 필수입니다.")
-    @field:Size(max = 200, message = "제목은 200자 이하여야 합니다.")
+    @field:Size(max = 255, message = "제목은 200자 이하여야 합니다.")
     val title: String,
 
     @field:Size(max = 2000, message = "내용은 200자 이하여야 합니다.")
