@@ -76,7 +76,7 @@ public class SecurityConfig {
                                 HttpMethod.POST,
                                 "/api/post/create",
                                 "/api/post/update",
-                                "/api/post/delete/"
+                                "/api/post/delete/*"
                         ).hasRole("USER")
 
 						.requestMatchers(

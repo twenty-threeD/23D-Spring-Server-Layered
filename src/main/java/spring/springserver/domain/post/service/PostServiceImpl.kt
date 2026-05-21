@@ -103,6 +103,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
         if (post.member?.getId() != memberId) {
+
             throw ApplicationException(PostStatusCode.FORBIDDEN_POST_ACCESS)
         }
     }
