@@ -23,7 +23,7 @@ class PostService (private val postRepository: PostRepository,
     fun createPost(createPostRequest: CreatePostRequest): PostResponse {
 
         val username = SecurityContextHolder.getContext().authentication?.name
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+            ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
 
         val member = memberRepository.findByUsername(username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
@@ -48,6 +48,10 @@ class PostService (private val postRepository: PostRepository,
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
 
+        if (post.isDeleted == true) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_POST)
+        }
         post.viewCount += 1
 
         return PostResponse.of(post)
@@ -57,6 +61,11 @@ class PostService (private val postRepository: PostRepository,
 
         val post = postRepository.findPostById(updatePostRequest.id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
+
+        if (post.isDeleted == true) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_POST)
+        }
 
         validatePostAuthor(post)
 
@@ -94,7 +103,7 @@ class PostService (private val postRepository: PostRepository,
 
     private fun validatePostAuthor(post: Post) {
         val username = SecurityContextHolder.getContext().authentication?.name
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+            ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
 
         val memberId = memberRepository.findByUsername(username)?.getId()
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
