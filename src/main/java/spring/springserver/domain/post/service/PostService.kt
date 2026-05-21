@@ -17,12 +17,12 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional
-class PostService (
-    private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
+class PostService (private val postRepository: PostRepository,
+                        private val memberRepository: MemberRepository
 ) {
 
     fun createPost(createPostRequest: CreatePostRequest): PostResponse {
+
         val username = SecurityContextHolder.getContext().authentication?.name
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
@@ -58,6 +58,7 @@ class PostService (
 
         val post = postRepository.findPostById(updatePostRequest.id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
+
         validatePostAuthor(post)
 
         post.title = updatePostRequest.title
@@ -74,6 +75,7 @@ class PostService (
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(AuthStatusCode.INVALID_POST)
+
         validatePostAuthor(post)
 
         post.isDeleted = true
@@ -97,10 +99,10 @@ class PostService (
         val username = SecurityContextHolder.getContext().authentication?.name
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
-        val member = memberRepository.findByUsername(username)
+        val memberId = memberRepository.findByUsername(username)?.getId()
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
-        if (post.member?.getId() != member.getId()) {
+        if (post.member?.getId() != memberId) {
             throw ApplicationException(AuthStatusCode.FORBIDDEN_POST_ACCESS)
         }
     }
