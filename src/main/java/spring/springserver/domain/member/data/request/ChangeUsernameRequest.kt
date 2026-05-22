@@ -1,0 +1,13 @@
+package spring.springserver.domain.member.data.request
+
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
+
+data class ChangeUsernameRequest(
+        @field:Email
+        @field:NotBlank
+        val email: String,
+
+        @field:NotBlank
+        val newUsername: String
+)
