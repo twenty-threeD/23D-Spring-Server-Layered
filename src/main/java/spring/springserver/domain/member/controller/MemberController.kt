@@ -23,18 +23,6 @@ import spring.springserver.global.data.BaseResponse
 @RequestMapping("/api/member")
 class MemberController(val memberService: MemberService) {
 
-    @DeleteMapping("/account")
-    fun deleteAccount(httpServletRequest: HttpServletRequest,
-                            httpServletResponse: HttpServletResponse): BaseResponse<DeleteAccountResponse> {
-
-        return BaseResponse.ok(
-            memberService.deleteAccount(
-                httpServletRequest,
-                httpServletResponse
-            )
-        )
-    }
-
     @PostMapping("/password/reset")
     fun resetPasswordWithoutAuth(@Valid @RequestBody passwordResetRequest: PasswordResetRequest): BaseResponse<PasswordResetResponse> {
 
@@ -55,20 +43,34 @@ class MemberController(val memberService: MemberService) {
         )
     }
 
+    @PostMapping("/username/reset")
+    fun resetUsernameWithAuth(@Valid @RequestBody changeUsernameRequest: ChangeUsernameRequest,
+                                                        httpServletRequest: HttpServletRequest,
+                                                        httpServletResponse: HttpServletResponse): BaseResponse<ChangeUsernameResponse> {
+
+        return BaseResponse.ok(memberService.resetUsernameWithAuth(
+            changeUsernameRequest,
+            httpServletRequest,
+            httpServletResponse
+            )
+       )
+    }
+
     @GetMapping("/username")
     fun findUsername(@Valid @RequestBody findUsernameRequest: FindUsernameRequest): BaseResponse<FindUsernameResponse> {
 
         return BaseResponse.ok(memberService.findUsername(findUsernameRequest))
     }
 
-    @PostMapping("/username/reset")
-    fun resetUsernameWithAuth(@Valid @RequestBody changeUsernameRequest: ChangeUsernameRequest,
-                                                        httpServletRequest: HttpServletRequest,
-                                                        httpServletResponse: HttpServletResponse): BaseResponse<ChangeUsernameResponse> {
+    @DeleteMapping("/account")
+    fun deleteAccount(httpServletRequest: HttpServletRequest,
+                      httpServletResponse: HttpServletResponse): BaseResponse<DeleteAccountResponse> {
 
-        return BaseResponse.ok(memberService.resetUsernameWithAuth(changeUsernameRequest,
-                                                                          httpServletRequest,
-                                                                          httpServletResponse)
-       )
+        return BaseResponse.ok(
+            memberService.deleteAccount(
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
     }
 }

@@ -51,6 +51,7 @@ class MemberServiceImpl(private val memberRepository: MemberRepository,
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
 
+    @Transactional(readOnly = true)
     override fun resetPasswordWithAuth(passwordResetRequest: PasswordResetRequest,
                                        httpServletRequest: HttpServletRequest,
                                        httpServletResponse: HttpServletResponse): PasswordResetResponse {
