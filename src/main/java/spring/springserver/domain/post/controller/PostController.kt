@@ -13,12 +13,13 @@ import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
 import spring.springserver.domain.post.data.response.DeletedPostResponse
 import spring.springserver.domain.post.data.response.PostResponse
+import spring.springserver.domain.post.service.PostService
 import spring.springserver.domain.post.service.PostServiceImpl
 import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/post")
-class PostController(private val postService: PostServiceImpl) {
+class PostController(private val postService: PostService) {
 
     @PostMapping("/create")
     fun createPost(@Valid @RequestBody createPostRequest: CreatePostRequest): BaseResponse<PostResponse> {

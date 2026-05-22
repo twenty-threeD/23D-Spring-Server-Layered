@@ -16,7 +16,7 @@ import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 
 @Service
-@Transactional
+@Transactional(rollbackFor = [Exception::class])
 class PostServiceImpl (private val postRepository: PostRepository,
                        private val memberRepository: MemberRepository) : PostService{
 
@@ -51,9 +51,13 @@ class PostServiceImpl (private val postRepository: PostRepository,
 
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
-        post.viewCount += 1
 
-        return PostResponse.of(post)
+        postRepository.incrementViewCount(id)
+
+        val updatedPost = postRepository.findPostById(id)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        return PostResponse.of(updatedPost)
     }
 
     override fun updatePost(updatePostRequest: UpdatePostRequest): PostResponse {

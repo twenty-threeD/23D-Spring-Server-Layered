@@ -22,7 +22,7 @@ class Post (
     var viewCount: Int = 0,
 
     @Column(nullable = false)
-    var updatedAt: LocalDateTime?,
+    var updatedAt: LocalDateTime,
 
     var isUpdated: Boolean = false,
 
@@ -36,6 +36,4 @@ class Post (
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null
-
-    fun getId() = id
 }
