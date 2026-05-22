@@ -63,6 +63,7 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
         return DeleteResponse.of("삭제되었습니다.")
     }
 
+    @Transactional(readOnly = true)
     override fun getPost(postId: Long): CommunityPostResponse {
 
         val communityPost = communityAuthorizationService.getActivePost(postId)
