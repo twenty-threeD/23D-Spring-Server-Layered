@@ -27,9 +27,9 @@ class PostController(private val postService: PostService) {
     }
 
     @GetMapping("/find/{postId}")
-    fun findPost(@PathVariable postId: Long): BaseResponse<PostResponse> {
+    fun viewPost(@PathVariable postId: Long): BaseResponse<PostResponse> {
 
-        return BaseResponse.ok(postService.getPost(postId))
+        return BaseResponse.ok(postService.viewPost(postId))
     }
 
     @PatchMapping("/update")

@@ -20,7 +20,6 @@ import java.time.LocalDateTime
 class PostServiceImpl (private val postRepository: PostRepository,
                        private val memberRepository: MemberRepository) : PostService{
 
-
     override fun createPost(createPostRequest: CreatePostRequest): PostResponse {
 
         val username = SecurityContextHolder.getContext().authentication?.name
@@ -42,8 +41,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         return PostResponse.of(postRepository.save(post))
     }
 
-    @Transactional(rollbackFor = [Exception::class], readOnly = true)
-    override fun getPost(id: Long): PostResponse {
+    override fun viewPost(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
@@ -55,9 +53,9 @@ class PostServiceImpl (private val postRepository: PostRepository,
 
         postRepository.incrementViewCount(id)
 
-        val updatedRows = postRepository.incrementViewCount(id)
+        val updatePost = postRepository.incrementViewCount(id)
 
-        if (updatedRows == 0) {
+        if (updatePost == 0) {
 
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
