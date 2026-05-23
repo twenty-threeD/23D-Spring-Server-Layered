@@ -43,7 +43,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
     }
 
     @Transactional(rollbackFor = [Exception::class], readOnly = true)
-    override fun findPost(id: Long): PostResponse {
+    override fun getPost(id: Long): PostResponse {
 
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
@@ -54,6 +54,13 @@ class PostServiceImpl (private val postRepository: PostRepository,
         }
 
         postRepository.incrementViewCount(id)
+
+        val updatedRows = postRepository.incrementViewCount(id)
+
+        if (updatedRows == 0) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
 
         val updatedPost = postRepository.findPostById(id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
@@ -78,7 +85,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
 
         preUpdate(post)
 
-        post.isUpdated = true
+        post.isEdited = true
 
         return PostResponse.of(post)
     }
@@ -88,6 +95,10 @@ class PostServiceImpl (private val postRepository: PostRepository,
         val post = postRepository.findPostById(id)
             ?: throw ApplicationException(PostStatusCode.INVALID_POST)
 
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
         validatePostAuthor(post)
 
         post.isDeleted = true
@@ -95,7 +106,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         return DeletedPostResponse.of("삭제되었습니다")
     }
 
-    fun preUpdate(post: Post) {
+    private fun preUpdate(post: Post) {
 
         post.updatedAt = LocalDateTime.now()
     }

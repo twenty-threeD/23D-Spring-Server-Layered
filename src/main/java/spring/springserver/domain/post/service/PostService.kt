@@ -9,7 +9,7 @@ interface PostService {
 
     fun createPost(createPostRequest: CreatePostRequest): PostResponse
 
-    fun findPost(id: Long) : PostResponse
+    fun getPost(id: Long) : PostResponse
 
     fun updatePost(updatePostRequest: UpdatePostRequest) : PostResponse
 

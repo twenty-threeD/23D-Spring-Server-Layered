@@ -14,7 +14,6 @@ import spring.springserver.domain.post.data.request.UpdatePostRequest
 import spring.springserver.domain.post.data.response.DeletedPostResponse
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.service.PostService
-import spring.springserver.domain.post.service.PostServiceImpl
 import spring.springserver.global.data.BaseResponse
 
 @RestController
@@ -30,7 +29,7 @@ class PostController(private val postService: PostService) {
     @GetMapping("/find/{postId}")
     fun findPost(@PathVariable postId: Long): BaseResponse<PostResponse> {
 
-        return BaseResponse.ok(postService.findPost(postId))
+        return BaseResponse.ok(postService.getPost(postId))
     }
 
     @PatchMapping("/update")

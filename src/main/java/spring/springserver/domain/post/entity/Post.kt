@@ -24,13 +24,13 @@ class Post (
     @Column(nullable = false)
     var updatedAt: LocalDateTime,
 
-    var isUpdated: Boolean = false,
+    var isEdited: Boolean = false,
 
     var isDeleted: Boolean = false,
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_member_id", nullable = false)
-    var member: Member?
+    var member: Member
 ) {
 
     @Id
