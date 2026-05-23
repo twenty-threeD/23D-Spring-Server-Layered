@@ -13,18 +13,19 @@ data class PostResponse(
     val viewCount: Int,
 
     val updatedAt: LocalDateTime?,
-) {
+
+    ) {
 
     companion object {
 
         fun of(post: Post) : PostResponse {
 
             return PostResponse(
-                post.id,
+                post.getId(),
                 post.title,
                 post.content,
                 post.viewCount,
-                post.updatedAt
+                post.updatedAt,
             )
         }
     }

@@ -35,5 +35,7 @@ class Post (
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    var id: Long? = null
+    private var id: Long? = null
+
+    fun getId(): Long? = id
 }
