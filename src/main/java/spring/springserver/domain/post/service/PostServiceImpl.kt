@@ -117,7 +117,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         val memberId = memberRepository.findByUsername(username)?.getId()
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
-        if (post.member?.getId() != memberId) {
+        if (post.member.getId() != memberId) {
 
             throw ApplicationException(PostStatusCode.FORBIDDEN_POST_ACCESS)
         }
