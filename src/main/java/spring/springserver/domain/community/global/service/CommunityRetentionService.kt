@@ -9,7 +9,7 @@ import spring.springserver.domain.community.post.repository.CommunityPostReposit
 import java.time.LocalDateTime
 
 @Service
-@Transactional(rollbackFor = [Exception.class])
+@Transactional(rollbackFor = [Exception::class])
 class CommunityRetentionService(private val communityPostRepository: CommunityPostRepository,
                                       private val communityCommentRepository: CommunityCommentRepository,
                                       private val communityCommentLikeRepository: CommunityCommentLikeRepository) {

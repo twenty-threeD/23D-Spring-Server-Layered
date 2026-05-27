@@ -29,8 +29,7 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         val communityPost = communityAuthorizationService.getActivePost(createCommentRequest.postId)
 
-        val communityComment = communityCommentRepository.save(
-            CommunityComment(
+        val communityComment = communityCommentRepository.save(CommunityComment(
                 member = member,
                 communityPost = communityPost,
                 content = createCommentRequest.content.trim(),
