@@ -31,8 +31,8 @@ class MemberController(val memberService: MemberService) {
 
     @PostMapping("/password/reset/check")
     fun resetPassword(@Valid @RequestBody passwordResetRequest: PasswordResetRequest,
-                                                httpServletResponse: HttpServletResponse,
-                                                httpServletRequest: HttpServletRequest): BaseResponse<PasswordResetResponse> {
+                                                httpServletRequest: HttpServletRequest,
+                                                httpServletResponse: HttpServletResponse): BaseResponse<PasswordResetResponse> {
 
         return BaseResponse.ok(
             memberService.resetPasswordWithAuth(
