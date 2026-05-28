@@ -7,7 +7,8 @@ enum class Provider {
 
     AUTH,
     GOOGLE,
-    KAKAO;
+    KAKAO,
+    NAVER;
 
     companion object {
 
@@ -17,6 +18,7 @@ enum class Provider {
 
                 "google" -> GOOGLE
                 "kakao" -> KAKAO
+                "naver" -> NAVER
                 else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
             }
         }
