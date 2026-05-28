@@ -121,7 +121,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
     }
 
     @Scheduled(cron = "0 0 4 * * *")
-    fun purgeSoftDeletedContents() {
+    override fun purgeSoftDeletedContents() {
 
         val threshold = LocalDateTime.now().minusDays(RETENTION_DAYS)
 
