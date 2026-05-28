@@ -28,6 +28,8 @@ class Post (
 
     var isDeleted: Boolean = false,
 
+    var imgCount: Int = 0,
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_member_id", nullable = false)
     var member: Member
@@ -38,4 +40,9 @@ class Post (
     private var id: Long? = null
 
     fun getId(): Long? = id
+
+    fun preUpdate(post: Post) {
+
+        post.updatedAt = LocalDateTime.now()
+    }
 }

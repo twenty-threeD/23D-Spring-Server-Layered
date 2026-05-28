@@ -20,25 +20,25 @@ import spring.springserver.global.data.BaseResponse
 @RequestMapping("/api/post")
 class PostController(private val postService: PostService) {
 
-    @PostMapping("/create")
+    @PostMapping
     fun createPost(@Valid @RequestBody createPostRequest: CreatePostRequest): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.createPost(createPostRequest))
     }
 
-    @GetMapping("/find/{postId}")
+    @GetMapping
     fun viewPost(@PathVariable postId: Long): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.viewPost(postId))
     }
 
-    @PatchMapping("/update")
+    @PatchMapping
     fun updatePost(@Valid @RequestBody updatePostRequest: UpdatePostRequest): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.updatePost(updatePostRequest))
     }
 
-    @DeleteMapping("/delete/{postId}")
+    @DeleteMapping
     fun deletePost(@PathVariable postId: Long): BaseResponse<DeletedPostResponse> {
 
         return BaseResponse.ok(postService.deletePost(postId))

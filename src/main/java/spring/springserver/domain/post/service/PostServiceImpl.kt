@@ -51,8 +51,6 @@ class PostServiceImpl (private val postRepository: PostRepository,
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
 
-        postRepository.incrementViewCount(id)
-
         val updatePost = postRepository.incrementViewCount(id)
 
         if (updatePost == 0) {
@@ -81,7 +79,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         post.title = updatePostRequest.title
         post.content = updatePostRequest.content
 
-        preUpdate(post)
+        post.preUpdate(post)
 
         post.isEdited = true
 
@@ -97,6 +95,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
 
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
+
         validatePostAuthor(post)
 
         post.isDeleted = true
@@ -104,15 +103,10 @@ class PostServiceImpl (private val postRepository: PostRepository,
         return DeletedPostResponse.of("삭제되었습니다")
     }
 
-    private fun preUpdate(post: Post) {
-
-        post.updatedAt = LocalDateTime.now()
-    }
-
     private fun validatePostAuthor(post: Post) {
         
         val username = SecurityContextHolder.getContext().authentication?.name
-            ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
         val memberId = memberRepository.findByUsername(username)?.getId()
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
