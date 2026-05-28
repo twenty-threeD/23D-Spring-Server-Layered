@@ -19,7 +19,7 @@ import java.time.LocalDateTime
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class PostServiceImpl (private val postRepository: PostRepository,
-                       private val memberRepository: MemberRepository) : PostService {
+                       private val memberRepository: MemberRepository): PostService {
 
     override fun createPost(createPostRequest: CreatePostRequest): PostResponse {
 
