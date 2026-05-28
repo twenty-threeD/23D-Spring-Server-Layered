@@ -17,6 +17,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import spring.springserver.domain.oauth.service.CustomOAuthUserService;
 import spring.springserver.domain.oauth.handler.OAuth2SuccessHandler;
+import spring.springserver.global.handler.ApiAccessDeniedHandler;
+import spring.springserver.global.handler.ApiAuthenticationEntryPoint;
 import spring.springserver.global.jwt.JwtAuthFilter;
 
 @Configuration
@@ -25,6 +27,8 @@ import spring.springserver.global.jwt.JwtAuthFilter;
 public class SecurityConfig {
 
 	private final JwtAuthFilter jwtAuthFilter;
+	private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
+	private final ApiAccessDeniedHandler apiAccessDeniedHandler;
 
 	@Bean
 	public PasswordEncoder passwordEncoder() {
@@ -42,6 +46,10 @@ public class SecurityConfig {
 				.formLogin(AbstractHttpConfigurer::disable)
 				.csrf(AbstractHttpConfigurer::disable)
 				.cors(cors -> {})
+				.exceptionHandling(exception -> exception
+						.authenticationEntryPoint(apiAuthenticationEntryPoint)
+						.accessDeniedHandler(apiAccessDeniedHandler)
+				)
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
 				.authorizeHttpRequests(auth
 						-> auth
