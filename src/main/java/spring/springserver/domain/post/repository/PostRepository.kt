@@ -9,7 +9,7 @@ import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
 @Repository
-interface PostRepository : JpaRepository<Post, Long> {
+interface PostRepository: JpaRepository<Post, Long> {
 
     fun findPostById(id: Long): Post?
 
