@@ -74,18 +74,18 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
-                                "/api/post/create"
+                                "/api/post"
                         ).hasRole("USER")
 
                         .requestMatchers(
                                 HttpMethod.PATCH,
-                                "/api/post/update"
+                                "/api/post"
                         ).hasRole("USER")
 
 
                         .requestMatchers(
                                 HttpMethod.DELETE,
-                                "/api/post/delete/*"
+                                "/api/post/*"
                         ).hasRole("USER")
 
 						.requestMatchers(
