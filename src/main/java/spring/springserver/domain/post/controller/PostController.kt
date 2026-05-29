@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
@@ -27,7 +28,7 @@ class PostController(private val postService: PostService) {
     }
 
     @GetMapping
-    fun viewPost(@PathVariable postId: Long): BaseResponse<PostResponse> {
+    fun viewPost(@RequestParam postId: Long): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.viewPost(postId))
     }
@@ -39,7 +40,7 @@ class PostController(private val postService: PostService) {
     }
 
     @DeleteMapping
-    fun deletePost(@PathVariable postId: Long): BaseResponse<DeletedPostResponse> {
+    fun deletePost(@RequestParam postId: Long): BaseResponse<DeletedPostResponse> {
 
         return BaseResponse.ok(postService.deletePost(postId))
     }
