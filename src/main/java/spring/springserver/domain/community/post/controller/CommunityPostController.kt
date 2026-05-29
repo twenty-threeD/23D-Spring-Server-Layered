@@ -3,6 +3,7 @@ package spring.springserver.domain.community.post.controller
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -41,7 +42,13 @@ class CommunityPostController(private val communityPostService: CommunityPostSer
     }
 
     @GetMapping
-    fun getPost(@RequestParam postId: Long): BaseResponse<CommunityPostResponse> {
+    fun getPosts(): BaseResponse<List<CommunityPostResponse>> {
+
+        return BaseResponse.ok(communityPostService.getPosts())
+    }
+
+    @GetMapping("/{postId}")
+    fun getPost(@PathVariable postId: Long): BaseResponse<CommunityPostResponse> {
 
         return BaseResponse.ok(communityPostService.getPost(postId))
     }

@@ -39,19 +39,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
     }
 
     @Transactional(readOnly = true)
-    override fun getComments(postId: Long): List<CommunityCommentResponse> {
+    override fun getComments(postId : Long): List<CommunityComment> {
 
-        communityAuthorizationService.getActivePost(postId)
-
-        return communityCommentRepository
-            .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtAsc(postId)
-            .map {
-
-                communityComment -> CommunityCommentResponse.of(
-                    communityComment = communityComment,
-                    likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
-                )
-            }
+        return communityCommentRepository.findAllByCommunityPostId(postId)
     }
 
     override fun updateComment(updateCommentRequest: UpdateCommentRequest): CommunityCommentResponse {

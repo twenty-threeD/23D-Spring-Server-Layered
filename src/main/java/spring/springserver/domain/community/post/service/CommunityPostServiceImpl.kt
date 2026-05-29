@@ -64,6 +64,13 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
     }
 
     @Transactional(readOnly = true)
+    override fun getPosts(): List<CommunityPostResponse> {
+
+        return communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
+            .map { communityPost -> toPostResponse(communityPost, communityCommentRepository) }
+    }
+
+    @Transactional(readOnly = true)
     override fun getPost(postId: Long): CommunityPostResponse {
 
         val communityPost = communityAuthorizationService.getActivePost(postId)

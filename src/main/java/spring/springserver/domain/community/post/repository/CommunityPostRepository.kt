@@ -3,6 +3,7 @@ package spring.springserver.domain.community.post.repository
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
+import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
@@ -26,6 +27,8 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
     fun searchPosts(@Param("keyword") keyword: String): List<CommunityPost>
 
     fun findByIdAndDeletedAtIsNull(id: Long): CommunityPost?
+
+    fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(): List<CommunityPost>
 
     fun findAllByDeletedAtBefore(deletedAt: LocalDateTime): List<CommunityPost>
 }

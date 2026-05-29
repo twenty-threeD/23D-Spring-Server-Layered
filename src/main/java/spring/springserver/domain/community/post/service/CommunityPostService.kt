@@ -15,6 +15,8 @@ interface CommunityPostService {
 
     fun deletePost(postId: Long): DeleteResponse
 
+    fun getPosts(): List<CommunityPostResponse>
+
     fun getPost(postId: Long): CommunityPostResponse
 
     fun searchPosts(keyword: String): List<CommunityPostResponse>
