@@ -1,6 +1,7 @@
 package spring.springserver.domain.post.entity
 
 import jakarta.persistence.Column
+import jakarta.persistence.CascadeType
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
@@ -8,6 +9,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToMany
 import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
@@ -32,7 +34,10 @@ class Post (
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_member_id", nullable = false)
-    var member: Member
+    var member: Member,
+
+    @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
+    var attachments: MutableList<PostAttach> = mutableListOf()
 ) {
 
     @Id
@@ -44,5 +49,10 @@ class Post (
     fun preUpdate(post: Post) {
 
         post.updatedAt = LocalDateTime.now()
+    }
+
+    fun addAttachment(fileUrl: String) {
+
+        attachments.add(PostAttach(fileUrl = fileUrl, post = this))
     }
 }

@@ -4,7 +4,10 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.web.multipart.MultipartFile
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.file.data.request.FileUploadRequest
+import spring.springserver.domain.file.service.FileService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
@@ -19,9 +22,10 @@ import java.time.LocalDateTime
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class PostServiceImpl (private val postRepository: PostRepository,
-                       private val memberRepository: MemberRepository): PostService {
+                       private val memberRepository: MemberRepository,
+                       private val fileService: FileService): PostService {
 
-    override fun createPost(createPostRequest: CreatePostRequest): PostResponse {
+    override fun createPost(createPostRequest: CreatePostRequest, multipartFile: MultipartFile?): PostResponse {
 
         val username = SecurityContextHolder.getContext().authentication?.name
             ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
@@ -34,6 +38,12 @@ class PostServiceImpl (private val postRepository: PostRepository,
             content = createPostRequest.content,
             updatedAt = LocalDateTime.now(),
             member = member)
+
+        if (multipartFile != null && !multipartFile.isEmpty) {
+
+            val uploadResponse = fileService.uploadFile(FileUploadRequest(multipartFile))
+            post.addAttachment(uploadResponse.fileUrl())
+        }
 
         return PostResponse.of(postRepository.save(post))
     }

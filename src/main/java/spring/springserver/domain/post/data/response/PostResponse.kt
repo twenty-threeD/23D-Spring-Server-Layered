@@ -12,7 +12,9 @@ data class PostResponse(
 
     val viewCount: Int,
 
-    val updatedAt: LocalDateTime?
+    val updatedAt: LocalDateTime?,
+
+    val fileUrls: List<String>
 ) {
 
     companion object {
@@ -25,6 +27,7 @@ data class PostResponse(
                 post.content,
                 post.viewCount,
                 post.updatedAt,
+                post.attachments.mapNotNull { it.fileUrl },
             )
         }
     }
