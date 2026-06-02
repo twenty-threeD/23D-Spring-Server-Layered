@@ -24,10 +24,8 @@ import spring.springserver.global.data.BaseResponse
 class PostController(private val postService: PostService) {
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun createPost(
-        @Valid @RequestPart("request") createPostRequest: CreatePostRequest,
-        @RequestPart("multipartFile", required = false) multipartFile: MultipartFile?
-    ): BaseResponse<PostResponse> {
+    fun createPost(@Valid @RequestPart("request") createPostRequest: CreatePostRequest,
+                   @RequestPart("multipartFile", required = false) multipartFile: MultipartFile?): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.createPost(createPostRequest, multipartFile))
     }
