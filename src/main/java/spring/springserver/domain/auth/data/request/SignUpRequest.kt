@@ -48,5 +48,4 @@ data class SignUpRequest(
                 provider
             )
         }
-
 }

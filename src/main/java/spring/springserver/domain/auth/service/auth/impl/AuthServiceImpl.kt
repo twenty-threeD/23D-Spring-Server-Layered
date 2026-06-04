@@ -23,7 +23,7 @@ class AuthServiceImpl(
     private val passwordEncoder: PasswordEncoder,
     private val memberRepository: MemberRepository,
     private val tokenService: TokenService
-) : AuthService {
+): AuthService {
 
     override fun signUp(signUpRequest: SignUpRequest): SignUpResponse {
 

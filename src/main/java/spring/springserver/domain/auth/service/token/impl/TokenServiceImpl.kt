@@ -21,12 +21,12 @@ class TokenServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>,
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
     @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long
-) : TokenService {
+): TokenService {
 
     override fun generateAccessToken(
         generateTokenRequest: GenerateTokenRequest,
         httpServletResponse: HttpServletResponse?
-    ) : String {
+    ): String {
 
         val accessToken = jwtProvider.generateAccessToken(generateTokenRequest)
 
@@ -72,8 +72,7 @@ class TokenServiceImpl(
     }
 
     override fun deleteTokens(httpServletRequest: HttpServletRequest,
-                              httpServletResponse: HttpServletResponse
-    ) {
+                              httpServletResponse: HttpServletResponse) {
 
         val accessToken = extractTokenFromCookie(
             "accessToken",
@@ -118,12 +117,12 @@ class TokenServiceImpl(
 
     override fun extractTokenFromCookie(cookieName: String,
                                httpServletRequest: HttpServletRequest
-    ) : String? {
+    ): String? {
 
         val cookies = httpServletRequest.cookies
 
         try {
-//
+
             for(cookie in cookies) {
 
                 if (cookie.name == cookieName) {
