@@ -31,8 +31,8 @@ class KeyServiceImpl(
             .also { it.initialize(ECGenParameterSpec("secp256k1"), SecureRandom()) }
             .generateKeyPair()
 
-        val privateKey = (keyPair.private as ECPrivateKey).s.toString(16)
-        val publicKey = (keyPair.public as BCECPublicKey).q.getEncoded(false)
+        val privateKey = (keyPair.private as ECPrivateKey).s.toString(16).padStart(64, '0')
+        val publicKey = (keyPair.public as BCECPublicKey).q.getEncoded(true)
             .joinToString("") { "%02x".format(it) }
 
         keyRepository.save(
