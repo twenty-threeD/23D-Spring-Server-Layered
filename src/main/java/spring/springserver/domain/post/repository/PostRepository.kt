@@ -16,6 +16,8 @@ interface PostRepository: JpaRepository<Post, Long> {
     fun findAllByIsDeletedTrueAndDeletedAtBefore(deletedAt: LocalDateTime): List<Post>
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("update Post p set p.viewCount = p.viewCount + 1 where p.id = :id and p.isDeleted = false")
+    @Query("update Post p " +
+            "set p.viewCount = p.viewCount + 1 " +
+            "where p.id = :id and p.isDeleted = false")
     fun incrementViewCount(@Param("id") id: Long): Int
 }

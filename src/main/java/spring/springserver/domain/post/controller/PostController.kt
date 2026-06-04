@@ -21,7 +21,8 @@ import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/post")
-class PostController(private val postService: PostService) {
+class PostController(private val postService: PostService
+) {
 
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun createPost(@Valid @RequestPart("request") createPostRequest: CreatePostRequest,

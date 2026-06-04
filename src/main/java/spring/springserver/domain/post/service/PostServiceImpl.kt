@@ -1,6 +1,5 @@
 package spring.springserver.domain.post.service
 
-import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -25,7 +24,8 @@ class PostServiceImpl (private val postRepository: PostRepository,
                        private val memberRepository: MemberRepository,
                        private val fileService: FileService): PostService {
 
-    override fun createPost(createPostRequest: CreatePostRequest, multipartFile: MultipartFile?): PostResponse {
+    override fun createPost(createPostRequest: CreatePostRequest,
+                            multipartFile: MultipartFile?): PostResponse {
 
         val username = SecurityContextHolder.getContext().authentication?.name
             ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
@@ -33,11 +33,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         val member = memberRepository.findByUsername(username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
-        val post = Post(
-            title = createPostRequest.title,
-            content = createPostRequest.content,
-            updatedAt = LocalDateTime.now(),
-            member = member)
+        val post = createPostRequest.toEntity(member)
 
         if (multipartFile != null && !multipartFile.isEmpty) {
 
@@ -84,6 +80,7 @@ class PostServiceImpl (private val postRepository: PostRepository,
         validatePostAuthor(post)
 
         post.title = updatePostRequest.title
+
         post.content = updatePostRequest.content
 
         post.preUpdate(post)
@@ -125,21 +122,4 @@ class PostServiceImpl (private val postRepository: PostRepository,
         }
     }
 
-    companion object {
-
-        private const val RETENTION_DAYS = 30L
-    }
-
-    @Scheduled(cron = "0 0 4 * * *")
-    override fun purgeSoftDeletedContents() {
-
-        val threshold = LocalDateTime.now().minusDays(RETENTION_DAYS)
-
-        val expiredPosts = postRepository.findAllByIsDeletedTrueAndDeletedAtBefore(threshold)
-
-        if (expiredPosts.isNotEmpty()) {
-
-            postRepository.deleteAll(expiredPosts)
-        }
-    }
 }
