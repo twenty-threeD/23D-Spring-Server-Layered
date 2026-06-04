@@ -52,9 +52,12 @@ class PostRetentionService(
 
             override fun afterCommit() {
 
-                fileUrls.forEach { fileUrl ->
+                fileUrls.forEach {
+                    fileUrl ->
 
-                    runCatching { fileService.deleteFile(fileUrl) }
+                    runCatching {
+                        fileService.deleteFile(fileUrl)
+                    }
                         .onFailure { exception ->
                             log.warn("Failed to delete retained post attachment file. fileUrl={}", fileUrl, exception)
                         }
