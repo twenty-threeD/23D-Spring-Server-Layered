@@ -8,7 +8,6 @@ enum class AuthStatusCode(private val code: String,
                           private val httpStatus: HttpStatus): StatusCode {
 
     INVALID_JWT("INVALID_JWT", "유효하지 않은 JWT입니다.", HttpStatus.UNAUTHORIZED),
-    AVAILABLE_ACCESS_TOKEN("AVAILABLE_ACCESS_TOKEN", "사용 가능한 엑세스 토큰이 존재 합니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "아이디 또는 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED("ACCOUNT_LOCKED", "계정이 비활성화 되어있습니다.", HttpStatus.UNAUTHORIZED),
     ACCOUNT_DISABLED("ACCOUNT_DISABLED", "계정이 비활성화되었습니다.", HttpStatus.UNAUTHORIZED),
@@ -22,7 +21,6 @@ enum class AuthStatusCode(private val code: String,
     UNKNOWN_REGISTRATION_ID("UNKNOWN_REGISTRATION_ID", "잘못된 소셜로그인 시도입니다.", HttpStatus.BAD_REQUEST),
     PASSWORD_IS_WEAK("PASSWORD_IS_WEAK", "비밀번호는 8자 이상이며, 영어 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", HttpStatus.BAD_REQUEST),
 
-    CANNOT_SEND_EMAIL("CANNOT_SEND_EMAIL", "이메일을 전송할 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     CANNOT_VERIFY_EMAIL("CANNOT_VERIFY_EMAIL", "이메일을 인증할 수 없습니다", HttpStatus.BAD_REQUEST);
 
     override fun getCode(): String = code
