@@ -1,4 +1,4 @@
-package spring.springserver.domain.auth.service.token
+package spring.springserver.domain.auth.service.token.impl
 
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.JwtProvider
 import java.util.concurrent.TimeUnit
@@ -48,7 +49,7 @@ class TokenServiceImpl(
     }
 
     override fun generateRefreshToken(getTokenRequest: GenerateTokenRequest,
-                             httpServletResponse: HttpServletResponse?
+                                      httpServletResponse: HttpServletResponse?
     ): String {
 
         val refreshToken = jwtProvider.generateRefreshToken(getTokenRequest)
@@ -71,7 +72,7 @@ class TokenServiceImpl(
     }
 
     override fun deleteTokens(httpServletRequest: HttpServletRequest,
-                     httpServletResponse: HttpServletResponse
+                              httpServletResponse: HttpServletResponse
     ) {
 
         val accessToken = extractTokenFromCookie(

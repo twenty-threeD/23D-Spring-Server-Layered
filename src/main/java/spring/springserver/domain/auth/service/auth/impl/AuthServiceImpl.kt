@@ -1,4 +1,4 @@
-package spring.springserver.domain.auth.service.auth
+package spring.springserver.domain.auth.service.auth.impl
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -12,6 +12,7 @@ import spring.springserver.domain.auth.data.response.SignInResponse
 import spring.springserver.domain.auth.data.response.SignOutResponse
 import spring.springserver.domain.auth.data.response.SignUpResponse
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.auth.service.auth.AuthService
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
@@ -43,11 +44,12 @@ class AuthServiceImpl(
 
         memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password)))
 
-        return SignUpResponse.of("회원가입이 완료 되었습니다.")
+        return SignUpResponse.Companion.of("회원가입이 완료 되었습니다.")
     }
 
     override fun signIn(signInRequest: SignInRequest,
-                        httpServletResponse: HttpServletResponse): SignInResponse {
+                        httpServletResponse: HttpServletResponse
+    ): SignInResponse {
 
         val member = memberRepository.findByUsername(signInRequest.username)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
@@ -62,7 +64,7 @@ class AuthServiceImpl(
             member.role
         )
 
-        return SignInResponse.of(
+        return SignInResponse.Companion.of(
             tokenService.generateAccessToken(
                 generateTokenRequest,
                 httpServletResponse
@@ -75,13 +77,14 @@ class AuthServiceImpl(
     }
 
     override fun signOut(httpServletRequest: HttpServletRequest,
-                         httpServletResponse: HttpServletResponse): SignOutResponse {
+                         httpServletResponse: HttpServletResponse
+    ): SignOutResponse {
 
         tokenService.deleteTokens(
             httpServletRequest,
             httpServletResponse
         )
 
-        return SignOutResponse.of("로그아웃 되었습니다.")
+        return SignOutResponse.Companion.of("로그아웃 되었습니다.")
     }
 }

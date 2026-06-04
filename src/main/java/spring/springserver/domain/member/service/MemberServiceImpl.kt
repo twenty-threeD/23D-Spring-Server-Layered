@@ -6,7 +6,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
-import spring.springserver.domain.auth.service.token.TokenServiceImpl
+import spring.springserver.domain.auth.service.token.impl.TokenServiceImpl
 import spring.springserver.domain.member.data.request.ChangeUsernameRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
