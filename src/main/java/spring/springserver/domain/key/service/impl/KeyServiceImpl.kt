@@ -3,6 +3,7 @@ package spring.springserver.domain.key.service.impl
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.key.entity.MemberKey
 import spring.springserver.domain.key.repository.KeyRepository
 import spring.springserver.domain.key.service.KeyService
@@ -15,6 +16,7 @@ import java.security.interfaces.ECPrivateKey
 import java.security.spec.ECGenParameterSpec
 
 @Service
+@Transactional(rollbackFor = [Exception::class])
 class KeyServiceImpl(
     private val keyRepository: KeyRepository,
     private val memberRepository: MemberRepository
