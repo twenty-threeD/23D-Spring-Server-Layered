@@ -11,6 +11,11 @@ class PostRetentionService(
     private val postRepository: PostRepository,
 ) {
 
+    companion object {
+
+        private const val RETENTION_DAYS = 30L
+    }
+
     @Scheduled(cron = "0 0 4 * * *")
     @Transactional(rollbackFor = [Exception::class])
     fun purgeSoftDeletedContents() {
@@ -23,10 +28,5 @@ class PostRetentionService(
 
             postRepository.deleteAll(expiredPosts)
         }
-    }
-
-    companion object {
-
-        private const val RETENTION_DAYS = 30L
     }
 }
