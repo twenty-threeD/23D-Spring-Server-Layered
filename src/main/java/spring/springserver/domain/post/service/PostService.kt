@@ -12,7 +12,7 @@ interface PostService {
 
     fun viewPost(id: Long): PostResponse
 
-    fun updatePost(updatePostRequest: UpdatePostRequest): PostResponse
+    fun updatePost(updatePostRequest: UpdatePostRequest, multipartFile: MultipartFile?): PostResponse
 
     fun deletePost(id: Long): DeletedPostResponse
 }

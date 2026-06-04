@@ -18,6 +18,8 @@ data class MemberDetails(private val id: Long?,
 
     override fun getUsername(): String = username
 
+    fun getId(): Long? = id
+
     companion object {
 
         fun from(member: Member): MemberDetails {

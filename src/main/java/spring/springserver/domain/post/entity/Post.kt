@@ -48,7 +48,7 @@ class Post (
 
     fun preUpdate(post: Post) {
 
-        post.updatedAt = LocalDateTime.now()
+        this.updatedAt = LocalDateTime.now()
     }
 
     fun addAttachment(fileUrl: String) {
