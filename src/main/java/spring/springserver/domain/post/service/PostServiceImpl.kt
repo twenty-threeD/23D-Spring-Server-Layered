@@ -95,7 +95,7 @@ class PostServiceImpl (
             replaceAttachment(post, multipartFile)
         }
 
-        post.preUpdate(post)
+        post.preUpdate()
 
         post.isEdited = true
 

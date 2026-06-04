@@ -46,7 +46,7 @@ class Post (
 
     fun getId(): Long? = id
 
-    fun preUpdate(post: Post) {
+    fun preUpdate() {
 
         this.updatedAt = LocalDateTime.now()
     }
