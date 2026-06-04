@@ -20,7 +20,8 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
-class PostServiceImpl (private val postRepository: PostRepository,
+class PostServiceImpl (
+                       private val postRepository: PostRepository,
                        private val memberRepository: MemberRepository,
                        private val fileService: FileService): PostService {
 
