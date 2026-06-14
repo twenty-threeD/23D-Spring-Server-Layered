@@ -8,7 +8,7 @@ import spring.springserver.domain.post.data.response.PostResponse
 
 interface PostService {
 
-    fun createPost(createPostRequest: CreatePostRequest): PostResponse
+    fun createPost(createPostRequest: CreatePostRequest, multipartFile: MultipartFile?): PostResponse
 
     fun viewPost(id: Long): PostResponse
 

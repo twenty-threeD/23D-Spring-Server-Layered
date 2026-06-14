@@ -29,7 +29,8 @@ class PostServiceImpl (
     private val fileService: FileService
 ): PostService {
 
-    override fun createPost(createPostRequest: CreatePostRequest): PostResponse {
+    override fun createPost(createPostRequest: CreatePostRequest,
+                            multipartFile: MultipartFile?): PostResponse {
 
         val username = SecurityContextHolder.getContext().authentication?.name
             ?: throw ApplicationException(AuthStatusCode.AVAILABLE_ACCESS_TOKEN)
@@ -39,9 +40,9 @@ class PostServiceImpl (
 
         val post = createPostRequest.toEntity(member)
 
-        if (createPostRequest.multipartFile != null && !createPostRequest.multipartFile.isEmpty) {
+        if (multipartFile != null && !multipartFile.isEmpty) {
 
-            val uploadResponse = fileService.uploadFile(FileUploadRequest(createPostRequest.multipartFile))
+            val uploadResponse = fileService.uploadFile(FileUploadRequest(multipartFile))
             registerUploadedFileRollbackCleanup(uploadResponse.fileUrl())
             post.addAttachment(uploadResponse.fileUrl())
         }
@@ -131,8 +132,7 @@ class PostServiceImpl (
         }
     }
 
-    private fun replaceAttachment(post: Post,
-                                  multipartFile: MultipartFile) {
+    private fun replaceAttachment(post: Post, multipartFile: MultipartFile) {
 
         val oldFileUrls = post.attachments
             .mapNotNull { attachment -> attachment.fileUrl }
