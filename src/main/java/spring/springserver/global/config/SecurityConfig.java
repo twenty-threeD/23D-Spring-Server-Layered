@@ -87,6 +87,19 @@ public class SecurityConfig {
 						).permitAll()
 
 						.requestMatchers(
+								HttpMethod.POST,
+								"/api/payment/confirm",
+								"/api/payment/*/cancel",
+								"/api/payment/virtual-accounts"
+						).hasRole("USER")
+
+						.requestMatchers(
+								HttpMethod.GET,
+								"/api/payment/*",
+								"/api/payment/orders/*"
+						).hasRole("USER")
+
+						.requestMatchers(
 								HttpMethod.GET,
 								"/files/*",
 								"/images/*",

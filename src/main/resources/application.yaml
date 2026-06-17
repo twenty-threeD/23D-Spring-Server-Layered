@@ -97,3 +97,8 @@ springdoc:
 app:
   upload:
     file-dir: ./files
+
+toss-payments:
+  secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
+  base-url: https://api.tosspayments.com
+  api-version: 2024-06-01
