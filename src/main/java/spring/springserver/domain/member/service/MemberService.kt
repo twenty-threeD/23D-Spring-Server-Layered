@@ -12,18 +12,28 @@ import spring.springserver.domain.member.data.response.PasswordResetResponse
 
 interface MemberService {
 
-    fun deleteAccount(httpServletRequest: HttpServletRequest,
-                      httpServletResponse: HttpServletResponse): DeleteAccountResponse
+    fun deleteAccount(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): DeleteAccountResponse
 
-    fun resetPasswordWithoutAuth(passwordResetRequest: PasswordResetRequest): PasswordResetResponse
+    fun resetPasswordWithoutAuth(
+        passwordResetRequest: PasswordResetRequest
+    ): PasswordResetResponse
 
-    fun resetPasswordWithAuth(passwordResetRequest: PasswordResetRequest,
-                              httpServletRequest: HttpServletRequest,
-                              httpServletResponse: HttpServletResponse): PasswordResetResponse
+    fun resetPasswordWithAuth(
+        passwordResetRequest: PasswordResetRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): PasswordResetResponse
 
-    fun findUsername(findUsernameRequest: FindUsernameRequest): FindUsernameResponse
+    fun findUsername(
+        findUsernameRequest: FindUsernameRequest
+    ): FindUsernameResponse
 
-    fun resetUsernameWithAuth(changeUsernameRequest: ChangeUsernameRequest,
-                              httpServletRequest: HttpServletRequest,
-                              httpServletResponse: HttpServletResponse): ChangeUsernameResponse
+    fun resetUsernameWithAuth(
+        changeUsernameRequest: ChangeUsernameRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): ChangeUsernameResponse
 }

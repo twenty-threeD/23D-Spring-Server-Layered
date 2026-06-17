@@ -6,7 +6,9 @@ data class ChangeUsernameResponse(
 
     companion object {
 
-        fun of(message: String): ChangeUsernameResponse {
+        fun of(
+            message: String
+        ): ChangeUsernameResponse {
 
             return ChangeUsernameResponse(message)
         }
