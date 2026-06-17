@@ -6,7 +6,9 @@ data class PasswordResetResponse(
 
     companion object {
 
-        fun of(message: String): PasswordResetResponse {
+        fun of(
+            message: String
+        ): PasswordResetResponse {
 
             return PasswordResetResponse(message)
         }

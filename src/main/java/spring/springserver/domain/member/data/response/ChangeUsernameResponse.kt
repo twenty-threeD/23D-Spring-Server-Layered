@@ -1,6 +1,6 @@
 package spring.springserver.domain.member.data.response
 
-data class DeleteAccountResponse(
+data class ChangeUsernameResponse(
     val message: String
 ) {
 
@@ -8,9 +8,9 @@ data class DeleteAccountResponse(
 
         fun of(
             message: String
-        ): DeleteAccountResponse {
+        ): ChangeUsernameResponse {
 
-            return DeleteAccountResponse(message)
+            return ChangeUsernameResponse(message)
         }
     }
 }
