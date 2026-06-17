@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.like.service
+package spring.springserver.domain.community.like.service.impl
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -7,13 +7,15 @@ import spring.springserver.domain.community.like.data.request.CommunityCommentLi
 import spring.springserver.domain.community.like.data.response.CommunityLikeResponse
 import spring.springserver.domain.community.like.entity.CommunityCommentLike
 import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
+import spring.springserver.domain.community.like.service.CommunityLikeService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityLikeServiceImpl(private val communityAuthorizationService: CommunityAuthorizationService,
-                                private  val communityCommentLikeRepository: CommunityCommentLikeRepository): CommunityLikeService {
+                               private  val communityCommentLikeRepository: CommunityCommentLikeRepository
+): CommunityLikeService {
 
     override fun likeComment(communityCommentLikeRequest: CommunityCommentLikeRequest): CommunityLikeResponse {
 
@@ -38,7 +40,7 @@ class CommunityLikeServiceImpl(private val communityAuthorizationService: Commun
             )
         )
 
-        return CommunityLikeResponse.of(
+        return CommunityLikeResponse.Companion.of(
             targetId = commentId,
             likeCount = communityCommentLikeRepository.countByCommunityCommentId(commentId),
             message = "댓글 좋아요가 등록되었습니다.",

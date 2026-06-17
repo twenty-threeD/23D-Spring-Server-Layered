@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.community.comment.data.request.CreateCommentRequest
 import spring.springserver.domain.community.comment.data.request.UpdateCommentRequest
 import spring.springserver.domain.community.comment.data.response.CommunityCommentResponse
-import spring.springserver.domain.community.comment.entity.CommunityComment
 import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.global.data.BaseResponse
@@ -28,7 +27,7 @@ class CommunityCommentController(private val communityCommentService: CommunityC
     }
 
     @GetMapping
-    fun getComments(@RequestParam postId: Long): BaseResponse<List<CommunityComment>> {
+    fun getComments(@RequestParam postId: Long): BaseResponse<List<CommunityCommentResponse>> {
 
         return BaseResponse.ok(communityCommentService.getComments(postId))
     }
