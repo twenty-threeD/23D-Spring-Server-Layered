@@ -53,12 +53,18 @@ class CommunityComment(
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 
-    fun update(content: String) {
+    fun update(
+        content: String
+    ) {
+
         this.content = content
         this.isEdited = true
     }
 
-    fun softDelete(now: LocalDateTime) {
+    fun softDelete(
+        now: LocalDateTime
+    ) {
+
         deletedAt = now
     }
 }

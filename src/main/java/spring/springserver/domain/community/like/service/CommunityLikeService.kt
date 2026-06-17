@@ -5,7 +5,11 @@ import spring.springserver.domain.community.like.data.response.CommunityLikeResp
 
 interface CommunityLikeService {
 
-    fun likeComment(communityCommentLikeRequest: CommunityCommentLikeRequest): CommunityLikeResponse
+    fun likeComment(
+        communityCommentLikeRequest: CommunityCommentLikeRequest
+    ): CommunityLikeResponse
 
-    fun unlikeComment(commentId: Long): CommunityLikeResponse
+    fun unlikeComment(
+        commentId: Long
+    ): CommunityLikeResponse
 }

@@ -7,11 +7,19 @@ import spring.springserver.domain.community.common.data.response.DeleteResponse
 
 interface CommunityCommentService {
 
-    fun createComment(createCommentRequest: CreateCommentRequest): CommunityCommentResponse
+    fun createComment(
+        createCommentRequest: CreateCommentRequest
+    ): CommunityCommentResponse
 
-    fun getComments(postId: Long): List<CommunityCommentResponse>
+    fun getComments(
+        postId: Long
+    ): List<CommunityCommentResponse>
 
-    fun updateComment(updateCommentRequest: UpdateCommentRequest): CommunityCommentResponse
+    fun updateComment(
+        updateCommentRequest: UpdateCommentRequest
+    ): CommunityCommentResponse
 
-    fun deleteComment(commentId: Long): DeleteResponse
+    fun deleteComment(
+        commentId: Long
+    ): DeleteResponse
 }

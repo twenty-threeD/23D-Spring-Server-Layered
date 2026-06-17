@@ -14,7 +14,9 @@ import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/community/like")
-class CommunityLikeController(private val communityLikeService: CommunityLikeService) {
+class CommunityLikeController(
+    private val communityLikeService: CommunityLikeService
+) {
 
     @PostMapping
     fun likeComment(@Valid @RequestBody communityCommentLikeRequest: CommunityCommentLikeRequest): BaseResponse<CommunityLikeResponse> {
