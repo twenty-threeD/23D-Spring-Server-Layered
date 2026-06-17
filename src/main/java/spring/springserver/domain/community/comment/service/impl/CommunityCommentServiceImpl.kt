@@ -1,4 +1,4 @@
-package spring.springserver.domain.community.comment.service
+package spring.springserver.domain.community.comment.service.impl
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -7,16 +7,18 @@ import spring.springserver.domain.community.comment.data.request.UpdateCommentRe
 import spring.springserver.domain.community.comment.data.response.CommunityCommentResponse
 import spring.springserver.domain.community.comment.entity.CommunityComment
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
-import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
+import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
+import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
 import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
-                                        private val communityCommentLikeRepository: CommunityCommentLikeRepository,
-                                        private val communityAuthorizationService: CommunityAuthorizationService) : CommunityCommentService {
+                                  private val communityCommentLikeRepository: CommunityCommentLikeRepository,
+                                  private val communityAuthorizationService: CommunityAuthorizationService
+) : CommunityCommentService {
 
     override fun createComment(createCommentRequest: CreateCommentRequest): CommunityCommentResponse {
 
@@ -24,7 +26,8 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         val communityPost = communityAuthorizationService.getActivePost(createCommentRequest.postId)
 
-        val communityComment = communityCommentRepository.save(CommunityComment(
+        val communityComment = communityCommentRepository.save(
+            CommunityComment(
                 member = member,
                 communityPost = communityPost,
                 content = createCommentRequest.content.trim(),
@@ -39,9 +42,18 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
     }
 
     @Transactional(readOnly = true)
-    override fun getComments(postId : Long): List<CommunityComment> {
+    override fun getComments(postId : Long): List<CommunityCommentResponse> {
 
-        return communityCommentRepository.findAllByCommunityPostId(postId)
+        communityAuthorizationService.getActivePost(postId)
+
+        return communityCommentRepository
+            .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(postId)
+            .map { communityComment ->
+                CommunityCommentResponse.of(
+                    communityComment = communityComment,
+                    likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+                )
+            }
     }
 
     override fun updateComment(updateCommentRequest: UpdateCommentRequest): CommunityCommentResponse {

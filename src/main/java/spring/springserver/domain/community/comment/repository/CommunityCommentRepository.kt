@@ -11,6 +11,8 @@ interface CommunityCommentRepository : JpaRepository<CommunityComment, Long> {
 
     fun findAllByCommunityPostId(communityPostId: Long): List<CommunityComment>
 
+    fun findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(communityPostId: Long): List<CommunityComment>
+
     fun countByCommunityPostIdAndDeletedAtIsNull(communityPostId: Long): Long
 
     fun findAllByDeletedAtBefore(deletedAt: LocalDateTime): List<CommunityComment>

@@ -1,24 +1,25 @@
-package spring.springserver.domain.community.post.service
+package spring.springserver.domain.community.post.service.impl
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.common.data.response.DeleteResponse
+import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.post.data.request.CreatePostRequest
 import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
-import spring.springserver.domain.community.post.data.response.CommunityPostResponse.Companion.toPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
-import spring.springserver.domain.community.common.service.CommunityAuthorizationService
+import spring.springserver.domain.community.post.service.CommunityPostService
 import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityPostServiceImpl(private val communityPostRepository: CommunityPostRepository,
-                                    private val communityCommentRepository: CommunityCommentRepository,
-                                    private val communityAuthorizationService: CommunityAuthorizationService) : CommunityPostService {
+                               private val communityCommentRepository: CommunityCommentRepository,
+                               private val communityAuthorizationService: CommunityAuthorizationService
+) : CommunityPostService {
 
     override fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse {
 
@@ -67,7 +68,12 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
     override fun getPosts(): List<CommunityPostResponse> {
 
         return communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
-            .map { communityPost -> toPostResponse(communityPost, communityCommentRepository) }
+            .map { communityPost ->
+                CommunityPostResponse.toPostResponse(
+                    communityPost,
+                    communityCommentRepository
+                )
+            }
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +83,7 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
 
         communityPost.increaseViewCount()
 
-        return toPostResponse(communityPost, communityCommentRepository)
+        return CommunityPostResponse.toPostResponse(communityPost, communityCommentRepository)
     }
 
     @Transactional(readOnly = true)
@@ -86,6 +92,11 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
         val normalizedKeyword = keyword.trim()
 
         return communityPostRepository.searchPosts(normalizedKeyword)
-            .map { communityPost -> toPostResponse(communityPost, communityCommentRepository) }
+            .map { communityPost ->
+                CommunityPostResponse.toPostResponse(
+                    communityPost,
+                    communityCommentRepository
+                )
+            }
     }
 }
