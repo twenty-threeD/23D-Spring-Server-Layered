@@ -26,8 +26,10 @@ data class CommunityPostResponse(
 
     companion object {
 
-        fun toPostResponse(communityPost: CommunityPost,
-                           communityCommentRepository: CommunityCommentRepository): CommunityPostResponse {
+        fun toPostResponse(
+            communityPost: CommunityPost,
+            communityCommentRepository: CommunityCommentRepository
+        ): CommunityPostResponse {
 
             val postId = communityPost.getId()!!
 
@@ -38,7 +40,10 @@ data class CommunityPostResponse(
             )
         }
 
-        fun of(communityPost: CommunityPost, commentCount: Long): CommunityPostResponse {
+        fun of(
+            communityPost: CommunityPost,
+            commentCount: Long
+        ): CommunityPostResponse {
 
             return CommunityPostResponse(
                 communityPost.getId(),

@@ -9,15 +9,25 @@ import spring.springserver.domain.community.post.data.response.UpdatePostRespons
 
 interface CommunityPostService {
 
-    fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse
+    fun createPost(
+        createPostRequest: CreatePostRequest
+    ): CreatePostResponse
 
-    fun updatePost(updatePostRequest: UpdatePostRequest): UpdatePostResponse
+    fun updatePost(
+        updatePostRequest: UpdatePostRequest
+    ): UpdatePostResponse
 
-    fun deletePost(postId: Long): DeleteResponse
+    fun deletePost(
+        postId: Long
+    ): DeleteResponse
 
     fun getPosts(): List<CommunityPostResponse>
 
-    fun getPost(postId: Long): CommunityPostResponse
+    fun getPost(
+        postId: Long
+    ): CommunityPostResponse
 
-    fun searchPosts(keyword: String): List<CommunityPostResponse>
+    fun searchPosts(
+        keyword: String
+    ): List<CommunityPostResponse>
 }

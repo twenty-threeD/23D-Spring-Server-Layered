@@ -20,7 +20,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
                                   private val communityAuthorizationService: CommunityAuthorizationService
 ) : CommunityCommentService {
 
-    override fun createComment(createCommentRequest: CreateCommentRequest): CommunityCommentResponse {
+    override fun createComment(
+        createCommentRequest: CreateCommentRequest
+    ): CommunityCommentResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -42,7 +44,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
     }
 
     @Transactional(readOnly = true)
-    override fun getComments(postId : Long): List<CommunityCommentResponse> {
+    override fun getComments(
+        postId : Long
+    ): List<CommunityCommentResponse> {
 
         communityAuthorizationService.getActivePost(postId)
 
@@ -56,7 +60,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
             }
     }
 
-    override fun updateComment(updateCommentRequest: UpdateCommentRequest): CommunityCommentResponse {
+    override fun updateComment(
+        updateCommentRequest: UpdateCommentRequest
+    ): CommunityCommentResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -75,7 +81,9 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
         )
     }
 
-    override fun deleteComment(commentId: Long): DeleteResponse {
+    override fun deleteComment(
+        commentId: Long
+    ): DeleteResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 

@@ -24,11 +24,17 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         order by c.updatedAt desc
         """
     )
-    fun searchPosts(@Param("keyword") keyword: String): List<CommunityPost>
+    fun searchPosts(
+        @Param("keyword") keyword: String
+    ): List<CommunityPost>
 
-    fun findByIdAndDeletedAtIsNull(id: Long): CommunityPost?
+    fun findByIdAndDeletedAtIsNull(
+        id: Long
+    ): CommunityPost?
 
     fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(): List<CommunityPost>
 
-    fun findAllByDeletedAtBefore(deletedAt: LocalDateTime): List<CommunityPost>
+    fun findAllByDeletedAtBefore(
+        deletedAt: LocalDateTime
+    ): List<CommunityPost>
 }

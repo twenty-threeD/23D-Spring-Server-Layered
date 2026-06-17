@@ -16,12 +16,15 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
-class CommunityPostServiceImpl(private val communityPostRepository: CommunityPostRepository,
-                               private val communityCommentRepository: CommunityCommentRepository,
-                               private val communityAuthorizationService: CommunityAuthorizationService
+class CommunityPostServiceImpl(
+    private val communityPostRepository: CommunityPostRepository,
+    private val communityCommentRepository: CommunityCommentRepository,
+    private val communityAuthorizationService: CommunityAuthorizationService
 ) : CommunityPostService {
 
-    override fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse {
+    override fun createPost(
+        createPostRequest: CreatePostRequest
+    ): CreatePostResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -30,7 +33,9 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
         return CreatePostResponse.of(communityPost)
     }
 
-    override fun updatePost(updatePostRequest: UpdatePostRequest): UpdatePostResponse {
+    override fun updatePost(
+        updatePostRequest: UpdatePostRequest
+    ): UpdatePostResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -48,7 +53,9 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
         return UpdatePostResponse.of(communityPost)
     }
 
-    override fun deletePost(postId: Long): DeleteResponse {
+    override fun deletePost(
+        postId: Long
+    ): DeleteResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -77,7 +84,9 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
     }
 
     @Transactional(readOnly = true)
-    override fun getPost(postId: Long): CommunityPostResponse {
+    override fun getPost(
+        postId: Long
+    ): CommunityPostResponse {
 
         val communityPost = communityAuthorizationService.getActivePost(postId)
 
@@ -87,7 +96,9 @@ class CommunityPostServiceImpl(private val communityPostRepository: CommunityPos
     }
 
     @Transactional(readOnly = true)
-    override fun searchPosts(keyword: String): List<CommunityPostResponse> {
+    override fun searchPosts(
+        keyword: String
+    ): List<CommunityPostResponse> {
 
         val normalizedKeyword = keyword.trim()
 

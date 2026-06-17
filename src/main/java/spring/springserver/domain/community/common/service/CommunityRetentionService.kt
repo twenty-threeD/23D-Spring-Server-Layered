@@ -10,9 +10,11 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
-class CommunityRetentionService(private val communityPostRepository: CommunityPostRepository,
-                                      private val communityCommentRepository: CommunityCommentRepository,
-                                      private val communityCommentLikeRepository: CommunityCommentLikeRepository) {
+class CommunityRetentionService(
+    private val communityPostRepository: CommunityPostRepository,
+    private val communityCommentRepository: CommunityCommentRepository,
+    private val communityCommentLikeRepository: CommunityCommentLikeRepository
+) {
 
     companion object {
 

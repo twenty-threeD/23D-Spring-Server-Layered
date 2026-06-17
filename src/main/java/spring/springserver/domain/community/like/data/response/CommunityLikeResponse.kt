@@ -10,7 +10,11 @@ data class CommunityLikeResponse(
 
     companion object {
 
-        fun of(targetId: Long, likeCount: Long, message: String): CommunityLikeResponse {
+        fun of(
+            targetId: Long,
+            likeCount: Long,
+            message: String
+        ): CommunityLikeResponse {
 
             return CommunityLikeResponse(
                 targetId,

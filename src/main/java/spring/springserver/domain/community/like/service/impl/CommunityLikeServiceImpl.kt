@@ -13,11 +13,14 @@ import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
-class CommunityLikeServiceImpl(private val communityAuthorizationService: CommunityAuthorizationService,
-                               private  val communityCommentLikeRepository: CommunityCommentLikeRepository
+class CommunityLikeServiceImpl(
+    private val communityAuthorizationService: CommunityAuthorizationService,
+    private  val communityCommentLikeRepository: CommunityCommentLikeRepository
 ): CommunityLikeService {
 
-    override fun likeComment(communityCommentLikeRequest: CommunityCommentLikeRequest): CommunityLikeResponse {
+    override fun likeComment(
+        communityCommentLikeRequest: CommunityCommentLikeRequest
+    ): CommunityLikeResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -47,7 +50,9 @@ class CommunityLikeServiceImpl(private val communityAuthorizationService: Commun
         )
     }
 
-    override fun unlikeComment(commentId: Long): CommunityLikeResponse {
+    override fun unlikeComment(
+        commentId: Long
+    ): CommunityLikeResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
