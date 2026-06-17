@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
+import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestClientResponseException
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
@@ -123,11 +124,23 @@ class TossPaymentsClient(
         } catch (exception: RestClientResponseException) {
             val tossError = parseTossError(exception)
             val message = tossError?.let { "${it.code}: ${it.message}" }
-                ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                ?: if (exception.statusCode.is4xxClientError) {
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID.message
+                } else {
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                }
 
+            val statusCode = if (exception.statusCode.is4xxClientError) {
+                PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID
+            } else {
+                PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED
+            }
+
+            throw ApplicationException(statusCode, message)
+        } catch (exception: RestClientException) {
             throw ApplicationException(
                 PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED,
-                message
+                exception.message ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
             )
         }
     }

@@ -3,9 +3,12 @@ package spring.springserver.domain.payment.data.request
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Pattern
+import jakarta.validation.constraints.Size
 
 data class CancelPaymentRequest(
     @field:NotBlank(message = "cancelReason은 필수입니다.")
+    @field:Size(max = 200, message = "cancelReason은 200자 이하여야 합니다.")
     val cancelReason: String,
 
     @field:Min(value = 1, message = "cancelAmount는 1 이상이어야 합니다.")
@@ -29,6 +32,7 @@ data class RefundReceiveAccountRequest(
     val bank: String,
 
     @field:NotBlank(message = "accountNumber는 필수입니다.")
+    @field:Pattern(regexp = "^\\d+$", message = "accountNumber는 숫자만 입력해야 합니다.")
     val accountNumber: String,
 
     @field:NotBlank(message = "holderName은 필수입니다.")

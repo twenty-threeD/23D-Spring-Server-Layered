@@ -14,6 +14,11 @@ enum class PaymentStatusCode(
         "토스페이먼츠 시크릿 키가 설정되지 않았습니다.",
         HttpStatus.INTERNAL_SERVER_ERROR
     ),
+    TOSS_PAYMENTS_REQUEST_INVALID(
+        "TOSS_PAYMENTS_REQUEST_INVALID",
+        "토스페이먼츠 요청이 유효하지 않습니다.",
+        HttpStatus.BAD_REQUEST
+    ),
     TOSS_PAYMENTS_REQUEST_FAILED(
         "TOSS_PAYMENTS_REQUEST_FAILED",
         "토스페이먼츠 요청에 실패했습니다.",
