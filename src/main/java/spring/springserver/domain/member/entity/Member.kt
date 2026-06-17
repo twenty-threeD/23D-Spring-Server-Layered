@@ -31,7 +31,7 @@ class Member (
     var role: Role,
 
     @Enumerated(EnumType.STRING)
-    val provider: Provider
+    var provider: Provider
 ) {
 
     @Id

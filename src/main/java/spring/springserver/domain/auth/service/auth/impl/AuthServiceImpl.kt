@@ -14,6 +14,7 @@ import spring.springserver.domain.auth.data.response.SignUpResponse
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.auth.AuthService
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 
@@ -22,10 +23,13 @@ import spring.springserver.global.exception.exception.ApplicationException
 class AuthServiceImpl(
     private val passwordEncoder: PasswordEncoder,
     private val memberRepository: MemberRepository,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val keyService: KeyService
 ): AuthService {
 
-    override fun signUp(signUpRequest: SignUpRequest): SignUpResponse {
+    override fun signUp(
+        signUpRequest: SignUpRequest
+    ): SignUpResponse {
 
         if(memberRepository.existsByUsername(signUpRequest.username)){
 
@@ -42,13 +46,18 @@ class AuthServiceImpl(
             throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
         }
 
-        memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password)))
+        val member = memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password)))
 
-        return SignUpResponse.Companion.of("회원가입이 완료 되었습니다.")
+        keyService.generateKeyPair(
+            memberId = member.getId()!!
+        )
+
+        return SignUpResponse.of("회원가입이 완료 되었습니다.")
     }
 
-    override fun signIn(signInRequest: SignInRequest,
-                        httpServletResponse: HttpServletResponse
+    override fun signIn(
+        signInRequest: SignInRequest,
+        httpServletResponse: HttpServletResponse
     ): SignInResponse {
 
         val member = memberRepository.findByUsername(signInRequest.username)
@@ -64,7 +73,7 @@ class AuthServiceImpl(
             member.role
         )
 
-        return SignInResponse.Companion.of(
+        return SignInResponse.of(
             tokenService.generateAccessToken(
                 generateTokenRequest,
                 httpServletResponse
@@ -76,8 +85,9 @@ class AuthServiceImpl(
         )
     }
 
-    override fun signOut(httpServletRequest: HttpServletRequest,
-                         httpServletResponse: HttpServletResponse
+    override fun signOut(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): SignOutResponse {
 
         tokenService.deleteTokens(
@@ -85,6 +95,6 @@ class AuthServiceImpl(
             httpServletResponse
         )
 
-        return SignOutResponse.Companion.of("로그아웃 되었습니다.")
+        return SignOutResponse.of("로그아웃 되었습니다.")
     }
 }
