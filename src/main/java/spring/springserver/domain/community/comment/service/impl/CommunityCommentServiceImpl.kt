@@ -18,7 +18,7 @@ import java.time.LocalDateTime
 class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
                                   private val communityCommentLikeRepository: CommunityCommentLikeRepository,
                                   private val communityAuthorizationService: CommunityAuthorizationService
-) : CommunityCommentService {
+): CommunityCommentService {
 
     override fun createComment(
         createCommentRequest: CreateCommentRequest
