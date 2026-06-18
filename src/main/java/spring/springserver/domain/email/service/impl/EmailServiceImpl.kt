@@ -26,8 +26,11 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
     fun makeRandomCode(): String {
 
         val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ1234567890"
+        val secureRandom = SecureRandom()
 
-        return (1..8).map { chars[SecureRandom().nextInt(chars.length)] }.joinToString("")
+        return (1..8)
+            .map { chars[secureRandom.nextInt(chars.length)] }
+            .joinToString("")
     }
 
     override fun sendVerifyCode(email: String): SendVerifyCodeResponse {

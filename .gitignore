@@ -152,9 +152,4 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij,macos,dotenv
 
-.gradle
-build
-.idea/
-.gitignore
-CONVENTIONS.md
-gradle/
+documents/CLAUDE-FABLE-5.md
