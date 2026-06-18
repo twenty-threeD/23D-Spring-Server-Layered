@@ -9,49 +9,122 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Java 21 설정
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Gradle 빌드 (테스트 스킵)
-        run: ./gradlew bootJar -x test
-
-      - name: JAR 파일을 EC2로 전송
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "build/libs/*.jar"
-          target: "/home/${{ secrets.EC2_USER }}/app"
-          strip_components: 2
-
-      - name: EC2에서 앱 재시작
+      - name: EC2에서 소스 갱신 및 Docker 컨테이너 재시작
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            mv ~/app/*.jar ~/app/app.jar 2>/dev/null || true
-            sudo tee /etc/systemd/system/app.service > /dev/null <<EOF
-            [Unit]
-            Description=Spring Boot App
+            set -e
 
-            [Service]
-            ExecStart=/usr/bin/java -jar /home/ubuntu/app/app.jar
-            Restart=always
-            User=ubuntu
+            REPOSITORY_URL="https://github.com/${{ github.repository }}.git"
+            DEPLOY_DIR="/home/${{ secrets.EC2_USER }}/app/source"
+            APP_DIR="/home/${{ secrets.EC2_USER }}/app"
+            NETWORK_NAME="spring-server-network"
+            PROXY_NAME="spring-server-proxy"
+            IMAGE_NAME="spring-server:${{ github.sha }}"
+            HEALTH_PATH="/v3/api-docs"
 
-            [Install]
-            WantedBy=multi-user.target
+            mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
+
+            if [ -d "$DEPLOY_DIR/.git" ]; then
+              cd "$DEPLOY_DIR"
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone --branch main "$REPOSITORY_URL" "$DEPLOY_DIR"
+              cd "$DEPLOY_DIR"
+            fi
+
+            chmod +x ./gradlew
+            ./gradlew test bootJar
+
+            sudo docker build \
+              -t "$IMAGE_NAME" \
+              -t spring-server:latest .
+
+            sudo docker network create "$NETWORK_NAME" 2>/dev/null || true
+
+            if sudo docker ps --format '{{.Names}}' | grep -q '^spring-server-blue$'; then
+              NEW_COLOR="green"
+              OLD_COLOR="blue"
+              NEW_PORT="8082"
+            else
+              NEW_COLOR="blue"
+              OLD_COLOR="green"
+              NEW_PORT="8081"
+            fi
+
+            NEW_CONTAINER="spring-server-$NEW_COLOR"
+            OLD_CONTAINER="spring-server-$OLD_COLOR"
+
+            sudo docker rm -f "$NEW_CONTAINER" 2>/dev/null || true
+
+            if [ -f ~/app/.env ]; then
+              ENV_FILE_OPTION="--env-file $APP_DIR/.env"
+            else
+              ENV_FILE_OPTION=""
+            fi
+
+            sudo docker run -d \
+              --name "$NEW_CONTAINER" \
+              --network "$NETWORK_NAME" \
+              --restart unless-stopped \
+              -p "$NEW_PORT:8080" \
+              $ENV_FILE_OPTION \
+              -v "$APP_DIR/files:/app/files" \
+              "$IMAGE_NAME"
+
+            for i in $(seq 1 30); do
+              if curl -fsS "http://localhost:$NEW_PORT$HEALTH_PATH" >/dev/null; then
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                sudo docker logs "$NEW_CONTAINER" --tail 100
+                sudo docker rm -f "$NEW_CONTAINER"
+                echo "새 컨테이너 health check 실패"
+                exit 1
+              fi
+
+              sleep 3
+            done
+
+            sudo tee "$APP_DIR/nginx/conf.d/default.conf" > /dev/null <<EOF
+            upstream spring_server {
+                server $NEW_CONTAINER:8080;
+            }
+
+            server {
+                listen 80;
+
+                location / {
+                    proxy_pass http://spring_server;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                }
+            }
             EOF
-            sudo systemctl daemon-reload
-            sudo systemctl restart app
-            sudo systemctl enable app
-            echo "배포 완료!"
+
+            sudo docker rm -f spring-server 2>/dev/null || true
+
+            if sudo docker ps --format '{{.Names}}' | grep -q "^$PROXY_NAME$"; then
+              sudo docker exec "$PROXY_NAME" nginx -s reload
+            else
+              sudo docker rm -f "$PROXY_NAME" 2>/dev/null || true
+              sudo docker run -d \
+                --name "$PROXY_NAME" \
+                --network "$NETWORK_NAME" \
+                --restart unless-stopped \
+                -p 8080:80 \
+                -v "$APP_DIR/nginx/conf.d:/etc/nginx/conf.d:ro" \
+                nginx:alpine
+            fi
+
+            sudo docker rm -f "$OLD_CONTAINER" 2>/dev/null || true
+
+            sudo docker image prune -f
+            echo "Blue-green Docker 배포 완료! active=$NEW_COLOR"
