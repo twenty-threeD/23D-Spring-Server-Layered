@@ -21,18 +21,24 @@ import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/member")
-class MemberController(val memberService: MemberService) {
+class MemberController(
+    private val memberService: MemberService
+) {
 
     @PostMapping("/password/reset")
-    fun resetPasswordWithoutAuth(@Valid @RequestBody passwordResetRequest: PasswordResetRequest): BaseResponse<PasswordResetResponse> {
+    fun resetPasswordWithoutAuth(
+        @Valid @RequestBody passwordResetRequest: PasswordResetRequest
+    ): BaseResponse<PasswordResetResponse> {
 
         return BaseResponse.ok(memberService.resetPasswordWithoutAuth(passwordResetRequest))
     }
 
     @PostMapping("/password/reset/check")
-    fun resetPassword(@Valid @RequestBody passwordResetRequest: PasswordResetRequest,
-                                                httpServletRequest: HttpServletRequest,
-                                                httpServletResponse: HttpServletResponse): BaseResponse<PasswordResetResponse> {
+    fun resetPassword(
+        @Valid @RequestBody passwordResetRequest: PasswordResetRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<PasswordResetResponse> {
 
         return BaseResponse.ok(
             memberService.resetPasswordWithAuth(
@@ -44,9 +50,11 @@ class MemberController(val memberService: MemberService) {
     }
 
     @PostMapping("/username/reset")
-    fun resetUsernameWithAuth(@Valid @RequestBody changeUsernameRequest: ChangeUsernameRequest,
-                                                        httpServletRequest: HttpServletRequest,
-                                                        httpServletResponse: HttpServletResponse): BaseResponse<ChangeUsernameResponse> {
+    fun resetUsernameWithAuth(
+        @Valid @RequestBody changeUsernameRequest: ChangeUsernameRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ChangeUsernameResponse> {
 
         return BaseResponse.ok(memberService.resetUsernameWithAuth(
             changeUsernameRequest,
@@ -57,14 +65,18 @@ class MemberController(val memberService: MemberService) {
     }
 
     @GetMapping("/username")
-    fun findUsername(@Valid @RequestBody findUsernameRequest: FindUsernameRequest): BaseResponse<FindUsernameResponse> {
+    fun findUsername(
+        @Valid @RequestBody findUsernameRequest: FindUsernameRequest
+    ): BaseResponse<FindUsernameResponse> {
 
         return BaseResponse.ok(memberService.findUsername(findUsernameRequest))
     }
 
     @DeleteMapping("/account")
-    fun deleteAccount(httpServletRequest: HttpServletRequest,
-                      httpServletResponse: HttpServletResponse): BaseResponse<DeleteAccountResponse> {
+    fun deleteAccount(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<DeleteAccountResponse> {
 
         return BaseResponse.ok(
             memberService.deleteAccount(

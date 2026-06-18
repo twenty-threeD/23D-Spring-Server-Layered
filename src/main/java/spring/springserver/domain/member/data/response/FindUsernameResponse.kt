@@ -6,7 +6,9 @@ data class FindUsernameResponse(
 
     companion object {
 
-        fun of(username: String): FindUsernameResponse {
+        fun of(
+            username: String
+        ): FindUsernameResponse {
 
             return FindUsernameResponse(username)
         }
