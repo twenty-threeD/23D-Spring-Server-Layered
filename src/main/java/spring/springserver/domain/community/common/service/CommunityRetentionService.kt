@@ -4,7 +4,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
-import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
+import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import java.time.LocalDateTime
 
@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 class CommunityRetentionService(
     private val communityPostRepository: CommunityPostRepository,
     private val communityCommentRepository: CommunityCommentRepository,
-    private val communityCommentLikeRepository: CommunityCommentLikeRepository
+    private val communityPostLikeRepository: CommunityPostLikeRepository
 ) {
 
     companion object {
@@ -30,7 +30,6 @@ class CommunityRetentionService(
 
         if (expiredComments.isNotEmpty()) {
 
-            communityCommentLikeRepository.deleteAllByCommunityCommentIn(expiredComments)
             communityCommentRepository.deleteAll(expiredComments)
         }
 
@@ -44,10 +43,10 @@ class CommunityRetentionService(
 
             if (commentsOfPosts.isNotEmpty()) {
 
-                communityCommentLikeRepository.deleteAllByCommunityCommentIn(commentsOfPosts)
                 communityCommentRepository.deleteAll(commentsOfPosts)
             }
 
+            communityPostLikeRepository.deleteAllByCommunityPostIn(expiredPosts)
             communityPostRepository.deleteAll(expiredPosts)
         }
     }

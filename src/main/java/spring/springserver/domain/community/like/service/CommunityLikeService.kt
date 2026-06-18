@@ -1,15 +1,15 @@
 package spring.springserver.domain.community.like.service
 
-import spring.springserver.domain.community.like.data.request.CommunityCommentLikeRequest
+import spring.springserver.domain.community.like.data.request.CommunityPostLikeRequest
 import spring.springserver.domain.community.like.data.response.CommunityLikeResponse
 
 interface CommunityLikeService {
 
-    fun likeComment(
-        communityCommentLikeRequest: CommunityCommentLikeRequest
+    fun likePost(
+        communityPostLikeRequest: CommunityPostLikeRequest
     ): CommunityLikeResponse
 
-    fun unlikeComment(
-        commentId: Long
+    fun unlikePost(
+        postId: Long
     ): CommunityLikeResponse
 }
