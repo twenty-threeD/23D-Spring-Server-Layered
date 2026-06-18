@@ -2,7 +2,7 @@ package spring.springserver.domain.community.like.data.request
 
 import jakarta.validation.constraints.NotNull
 
-data class CommunityCommentLikeRequest(
+data class CommunityPostLikeRequest(
     @field:NotNull
-    val commentId: Long,
+    val postId: Long,
 )

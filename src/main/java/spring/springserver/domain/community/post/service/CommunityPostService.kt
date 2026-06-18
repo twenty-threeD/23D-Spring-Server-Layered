@@ -6,16 +6,41 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
+import org.springframework.web.multipart.MultipartFile
 
 interface CommunityPostService {
 
-    fun createPost(createPostRequest: CreatePostRequest): CreatePostResponse
+    fun createPost(
+        createPostRequest: CreatePostRequest,
+        file: MultipartFile? = null
+    ): CreatePostResponse
 
-    fun updatePost(updatePostRequest: UpdatePostRequest): UpdatePostResponse
+    fun createPost(
+        createPostRequestJson: String,
+        file: MultipartFile?
+    ): CreatePostResponse
 
-    fun deletePost(postId: Long): DeleteResponse
+    fun updatePost(
+        updatePostRequest: UpdatePostRequest,
+        file: MultipartFile? = null
+    ): UpdatePostResponse
 
-    fun getPost(postId: Long): CommunityPostResponse
+    fun updatePost(
+        updatePostRequestJson: String,
+        file: MultipartFile?
+    ): UpdatePostResponse
 
-    fun searchPosts(keyword: String): List<CommunityPostResponse>
+    fun deletePost(
+        postId: Long
+    ): DeleteResponse
+
+    fun getPosts(): List<CommunityPostResponse>
+
+    fun getPost(
+        postId: Long
+    ): CommunityPostResponse
+
+    fun searchPosts(
+        keyword: String
+    ): List<CommunityPostResponse>
 }

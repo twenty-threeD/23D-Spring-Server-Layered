@@ -23,7 +23,10 @@ data class CommunityCommentResponse(
 
     companion object {
 
-        fun of(communityComment: CommunityComment, likeCount: Long): CommunityCommentResponse {
+        fun of(
+            communityComment: CommunityComment,
+            likeCount: Long
+        ): CommunityCommentResponse {
 
             return CommunityCommentResponse(
                 communityComment.getId(),

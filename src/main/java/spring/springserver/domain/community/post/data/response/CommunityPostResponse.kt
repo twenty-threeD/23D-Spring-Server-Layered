@@ -1,6 +1,7 @@
 package spring.springserver.domain.community.post.data.response
 
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
+import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
@@ -21,24 +22,35 @@ data class CommunityPostResponse(
 
     val commentCount: Long,
 
+    val likeCount: Long,
+
     val updatedAt: LocalDateTime?,
 ) {
 
     companion object {
 
-        fun toPostResponse(communityPost: CommunityPost,
-                           communityCommentRepository: CommunityCommentRepository): CommunityPostResponse {
+        fun toPostResponse(
+            communityPost: CommunityPost,
+            communityCommentRepository: CommunityCommentRepository,
+            communityPostLikeRepository: CommunityPostLikeRepository
+        ): CommunityPostResponse {
 
             val postId = communityPost.getId()!!
 
             return of(
                 communityPost = communityPost,
                 commentCount = communityCommentRepository
-                    .countByCommunityPostIdAndDeletedAtIsNull(postId)
+                    .countByCommunityPostIdAndDeletedAtIsNull(postId),
+                likeCount = communityPostLikeRepository
+                    .countByCommunityPostId(postId)
             )
         }
 
-        fun of(communityPost: CommunityPost, commentCount: Long): CommunityPostResponse {
+        fun of(
+            communityPost: CommunityPost,
+            commentCount: Long,
+            likeCount: Long
+        ): CommunityPostResponse {
 
             return CommunityPostResponse(
                 communityPost.getId(),
@@ -49,6 +61,7 @@ data class CommunityPostResponse(
                 communityPost.viewCount,
                 communityPost.isEdited,
                 commentCount,
+                likeCount,
                 communityPost.getUpdatedAt(),
             )
         }

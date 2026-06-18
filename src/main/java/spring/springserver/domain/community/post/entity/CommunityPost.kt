@@ -55,7 +55,12 @@ class CommunityPost(
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 
-    fun update(title: String, content: String?, fileUrl: String?) {
+    fun update(
+        title: String,
+        content: String?,
+        fileUrl: String?
+    ) {
+
         this.title = title
         this.content = content
         this.fileUrl = fileUrl
@@ -63,10 +68,12 @@ class CommunityPost(
     }
 
     fun increaseViewCount() {
+
         viewCount += 1
     }
 
     fun softDelete(now: LocalDateTime) {
+
         deletedAt = now
     }
 }

@@ -19,7 +19,9 @@ data class UpdatePostResponse(
     
     companion object {
 
-        fun of(communityPost: CommunityPost): UpdatePostResponse {
+        fun of(
+            communityPost: CommunityPost
+        ): UpdatePostResponse {
 
             return UpdatePostResponse(
                 communityPost.getId(),

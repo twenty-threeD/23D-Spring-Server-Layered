@@ -9,25 +9,25 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
-import spring.springserver.domain.community.comment.entity.CommunityComment
+import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.member.entity.Member
 
 @Entity
 @Table(
-    name = "community_comment_like",
+    name = "community_post_like",
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_community_comment_like_member_comment", columnNames = ["member_id", "community_comment_id"])
+        UniqueConstraint(name = "uk_community_post_like_member_post", columnNames = ["member_id", "community_post_id"])
     ]
 )
-class CommunityCommentLike(
+class CommunityPostLike(
 
     @JoinColumn(name = "member_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     val member: Member,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "community_comment_id", nullable = false)
-    val communityComment: CommunityComment,
+    @JoinColumn(name = "community_post_id", nullable = false)
+    val communityPost: CommunityPost,
 ) {
 
     @Id

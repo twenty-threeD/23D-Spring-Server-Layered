@@ -18,28 +18,38 @@ import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/community/comment")
-class CommunityCommentController(private val communityCommentService: CommunityCommentService) {
+class CommunityCommentController(
+    private val communityCommentService: CommunityCommentService
+) {
 
     @PostMapping
-    fun createComment(@Valid @RequestBody createCommentRequest: CreateCommentRequest): BaseResponse<CommunityCommentResponse> {
+    fun createComment(
+        @Valid @RequestBody createCommentRequest: CreateCommentRequest
+    ): BaseResponse<CommunityCommentResponse> {
 
         return BaseResponse.ok(communityCommentService.createComment(createCommentRequest))
     }
 
     @GetMapping
-    fun getComments(@RequestParam postId: Long): BaseResponse<List<CommunityCommentResponse>> {
+    fun getComments(
+        @RequestParam postId: Long
+    ): BaseResponse<List<CommunityCommentResponse>> {
 
         return BaseResponse.ok(communityCommentService.getComments(postId))
     }
 
     @PatchMapping
-    fun updateComment(@Valid @RequestBody updateCommentRequest: UpdateCommentRequest): BaseResponse<CommunityCommentResponse> {
+    fun updateComment(
+        @Valid @RequestBody updateCommentRequest: UpdateCommentRequest
+    ): BaseResponse<CommunityCommentResponse> {
 
         return BaseResponse.ok(communityCommentService.updateComment(updateCommentRequest))
     }
 
     @DeleteMapping
-    fun deleteComment(@RequestParam commentId: Long): BaseResponse<DeleteResponse> {
+    fun deleteComment(
+        @RequestParam commentId: Long
+    ): BaseResponse<DeleteResponse> {
 
         return BaseResponse.ok(communityCommentService.deleteComment(commentId))
     }

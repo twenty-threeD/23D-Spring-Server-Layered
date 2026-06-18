@@ -6,7 +6,9 @@ data class DeleteResponse(
 
     companion object {
 
-        fun of(message: String): DeleteResponse {
+        fun of(
+            message: String
+        ): DeleteResponse {
 
             return DeleteResponse(message);
         }

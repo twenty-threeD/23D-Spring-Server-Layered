@@ -13,9 +13,11 @@ import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @Component
-class CommunityAuthorizationService(private val communityPostRepository: CommunityPostRepository,
-                                          private val communityCommentRepository: CommunityCommentRepository,
-                                          private val memberRepository: MemberRepository) {
+class CommunityAuthorizationService(
+    private val communityPostRepository: CommunityPostRepository,
+    private val communityCommentRepository: CommunityCommentRepository,
+    private val memberRepository: MemberRepository
+) {
 
     fun getCurrentMember(): Member {
 
@@ -32,7 +34,9 @@ class CommunityAuthorizationService(private val communityPostRepository: Communi
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
 
-    fun getActivePost(postId: Long): CommunityPost {
+    fun getActivePost(
+        postId: Long
+    ): CommunityPost {
 
         return communityPostRepository.findByIdAndDeletedAtIsNull(postId)
             ?: throw ApplicationException.of(
@@ -41,7 +45,9 @@ class CommunityAuthorizationService(private val communityPostRepository: Communi
             )
     }
 
-    fun getActiveComment(commentId: Long): CommunityComment {
+    fun getActiveComment(
+        commentId: Long
+    ): CommunityComment {
 
         return communityCommentRepository.findByIdAndDeletedAtIsNull(commentId)
             ?: throw ApplicationException.of(
@@ -50,7 +56,10 @@ class CommunityAuthorizationService(private val communityPostRepository: Communi
             )
     }
 
-    fun validateOwner(member: Member, ownerId: Long?) {
+    fun validateOwner(
+        member: Member,
+        ownerId: Long?
+    ) {
 
         if (ownerId == null || member.getId() != ownerId) {
 
