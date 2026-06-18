@@ -12,14 +12,18 @@ data class CreatePostRequest(
 
     val fileUrl: String?,
 ) {
-    fun toEntity(member: Member): CommunityPost {
+    fun toEntity(
+        member: Member,
+        uploadedFileUrl: String? = null
+    ): CommunityPost {
 
         return CommunityPost(
             member = member,
             username = member.username,
             title = title.trim(),
             content = content?.trim()?.takeIf { it.isNotBlank() },
-            fileUrl = fileUrl?.trim()?.takeIf { it.isNotBlank() },
+            fileUrl = uploadedFileUrl?.trim()?.takeIf { it.isNotBlank() }
+                ?: fileUrl?.trim()?.takeIf { it.isNotBlank() },
             viewCount = 0,
             isEdited = false,
         )
