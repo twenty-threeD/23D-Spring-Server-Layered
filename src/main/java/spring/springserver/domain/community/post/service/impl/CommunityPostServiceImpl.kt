@@ -20,7 +20,7 @@ class CommunityPostServiceImpl(
     private val communityPostRepository: CommunityPostRepository,
     private val communityCommentRepository: CommunityCommentRepository,
     private val communityAuthorizationService: CommunityAuthorizationService
-) : CommunityPostService {
+): CommunityPostService {
 
     override fun createPost(
         createPostRequest: CreatePostRequest
