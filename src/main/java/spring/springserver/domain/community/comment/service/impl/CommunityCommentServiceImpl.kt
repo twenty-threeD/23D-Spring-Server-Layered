@@ -14,8 +14,9 @@ import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
-class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
-                                  private val communityAuthorizationService: CommunityAuthorizationService
+class CommunityCommentServiceImpl(
+    private val communityCommentRepository: CommunityCommentRepository,
+    private val communityAuthorizationService: CommunityAuthorizationService
 ): CommunityCommentService {
 
     override fun createComment(
