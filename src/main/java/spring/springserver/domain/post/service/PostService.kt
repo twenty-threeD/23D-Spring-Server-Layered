@@ -15,6 +15,12 @@ interface PostService {
         id: Long
     ): PostResponse
 
+    fun viewAllPosts(): List<PostResponse>
+
+    fun searchPostsByTitle(
+        title: String
+    ): List<PostResponse>
+
     fun updatePost(
         updatePostRequest: UpdatePostRequest
     ): PostResponse

@@ -13,7 +13,23 @@ interface PostRepository: JpaRepository<Post, Long> {
 
     fun findPostById(id: Long): Post?
 
+    fun findAllByIsDeletedFalseOrderByUpdatedAtDesc(): List<Post>
+
     fun findAllByIsDeletedTrueAndDeletedAtBefore(deletedAt: LocalDateTime): List<Post>
+
+    @Query(
+        """
+        select p
+        from Post p
+        where p.isDeleted = false
+          and (
+              :title = ''
+              or lower(p.title) like lower(concat('%', :title, '%'))
+          )
+        order by p.updatedAt desc
+        """
+    )
+    fun searchPostsByTitle(@Param("title") title: String): List<Post>
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update Post p " +

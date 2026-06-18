@@ -38,6 +38,20 @@ class PostController(
         return BaseResponse.ok(postService.viewPost(postId))
     }
 
+    @GetMapping("/all")
+    fun viewAllPosts(): BaseResponse<List<PostResponse>> {
+
+        return BaseResponse.ok(postService.viewAllPosts())
+    }
+
+    @GetMapping("/search")
+    fun searchPostsByTitle(
+        @RequestParam title: String
+    ): BaseResponse<List<PostResponse>> {
+
+        return BaseResponse.ok(postService.searchPostsByTitle(title))
+    }
+
     @PatchMapping
     fun updatePost(
         @Valid @RequestBody updatePostRequest: UpdatePostRequest

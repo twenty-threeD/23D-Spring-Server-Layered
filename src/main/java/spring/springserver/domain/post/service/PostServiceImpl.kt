@@ -66,6 +66,23 @@ class PostServiceImpl (
         return PostResponse.of(updatedPost)
     }
 
+    override fun viewAllPosts(
+    ): List<PostResponse> {
+
+        return postRepository.findAllByIsDeletedFalseOrderByUpdatedAtDesc()
+            .map { post -> PostResponse.of(post) }
+    }
+
+    override fun searchPostsByTitle(
+        title: String
+    ): List<PostResponse> {
+
+        val normalizedTitle = title.trim()
+
+        return postRepository.searchPostsByTitle(normalizedTitle)
+            .map { post -> PostResponse.of(post) }
+    }
+
     override fun updatePost(
         updatePostRequest: UpdatePostRequest
     ): PostResponse {
