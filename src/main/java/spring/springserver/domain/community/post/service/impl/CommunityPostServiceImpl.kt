@@ -1,11 +1,16 @@
 package spring.springserver.domain.community.post.service.impl
 
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.validation.ConstraintViolationException
+import jakarta.validation.Validator
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
+import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
 import spring.springserver.domain.community.post.data.request.CreatePostRequest
 import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
@@ -15,6 +20,8 @@ import spring.springserver.domain.community.post.repository.CommunityPostReposit
 import spring.springserver.domain.community.post.service.CommunityPostService
 import spring.springserver.domain.file.data.request.FileUploadRequest
 import spring.springserver.domain.file.service.FileService
+import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.LocalDateTime
 
 @Service
@@ -22,8 +29,11 @@ import java.time.LocalDateTime
 class CommunityPostServiceImpl(
     private val communityPostRepository: CommunityPostRepository,
     private val communityCommentRepository: CommunityCommentRepository,
+    private val communityPostLikeRepository: CommunityPostLikeRepository,
     private val communityAuthorizationService: CommunityAuthorizationService,
-    private val fileService: FileService
+    private val fileService: FileService,
+    private val objectMapper: ObjectMapper,
+    private val validator: Validator
 ): CommunityPostService {
 
     override fun createPost(
@@ -39,6 +49,17 @@ class CommunityPostServiceImpl(
         )
 
         return CreatePostResponse.of(communityPost)
+    }
+
+    override fun createPost(
+        createPostRequestJson: String,
+        file: MultipartFile?
+    ): CreatePostResponse {
+
+        return createPost(
+            parseCreatePostRequest(createPostRequestJson),
+            file
+        )
     }
 
     override fun updatePost(
@@ -61,6 +82,17 @@ class CommunityPostServiceImpl(
         )
 
         return UpdatePostResponse.of(communityPost)
+    }
+
+    override fun updatePost(
+        updatePostRequestJson: String,
+        file: MultipartFile?
+    ): UpdatePostResponse {
+
+        return updatePost(
+            parseUpdatePostRequest(updatePostRequestJson),
+            file
+        )
     }
 
     override fun deletePost(
@@ -88,7 +120,8 @@ class CommunityPostServiceImpl(
             .map { communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
-                    communityCommentRepository
+                    communityCommentRepository,
+                    communityPostLikeRepository
                 )
             }
     }
@@ -102,7 +135,11 @@ class CommunityPostServiceImpl(
 
         communityPost.increaseViewCount()
 
-        return CommunityPostResponse.toPostResponse(communityPost, communityCommentRepository)
+        return CommunityPostResponse.toPostResponse(
+            communityPost,
+            communityCommentRepository,
+            communityPostLikeRepository
+        )
     }
 
     @Transactional(readOnly = true)
@@ -116,7 +153,8 @@ class CommunityPostServiceImpl(
             .map { communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
-                    communityCommentRepository
+                    communityCommentRepository,
+                    communityPostLikeRepository
                 )
             }
     }
@@ -128,5 +166,106 @@ class CommunityPostServiceImpl(
         return file
             ?.takeIf { !it.isEmpty }
             ?.let { fileService.uploadFile(FileUploadRequest(it)).fileUrl() }
+    }
+
+    private fun parseCreatePostRequest(
+        rawJson: String
+    ): CreatePostRequest {
+
+        val jsonNode = readJsonPart(rawJson, "createPostRequest")
+
+        return validate(
+            CreatePostRequest(
+                title = requiredText(jsonNode, "title"),
+                content = optionalText(jsonNode, "content"),
+                fileUrl = optionalText(jsonNode, "fileUrl"),
+            )
+        )
+    }
+
+    private fun parseUpdatePostRequest(
+        rawJson: String
+    ): UpdatePostRequest {
+
+        val jsonNode = readJsonPart(rawJson, "updatePostRequest")
+
+        return validate(
+            UpdatePostRequest(
+                postId = requiredLong(jsonNode, "postId"),
+                title = requiredText(jsonNode, "title"),
+                content = optionalText(jsonNode, "content"),
+                fileUrl = optionalText(jsonNode, "fileUrl"),
+            )
+        )
+    }
+
+    private fun readJsonPart(
+        rawJson: String,
+        partName: String
+    ): JsonNode {
+
+        return try {
+
+            objectMapper.readTree(rawJson)
+        } catch (exception: Exception) {
+
+            throw ApplicationException(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "$partName JSON 형식이 올바르지 않습니다."
+            )
+        }
+    }
+
+    private fun requiredText(
+        jsonNode: JsonNode,
+        fieldName: String
+    ): String {
+
+        return optionalText(jsonNode, fieldName) ?: ""
+    }
+
+    private fun optionalText(
+        jsonNode: JsonNode,
+        fieldName: String
+    ): String? {
+
+        val field = jsonNode.get(fieldName)
+
+        return if (field == null || field.isNull) {
+            null
+        } else {
+            field.asText()
+        }
+    }
+
+    private fun requiredLong(
+        jsonNode: JsonNode,
+        fieldName: String
+    ): Long {
+
+        val field = jsonNode.get(fieldName)
+        val value = if (field == null || field.isNull) {
+            null
+        } else {
+            field.asText().toLongOrNull()
+        }
+
+        return value ?: throw ApplicationException(
+            CommonStatusCode.INVALID_ARGUMENT,
+            "$fieldName 값이 올바르지 않습니다."
+        )
+    }
+
+    private fun <T : Any> validate(
+        request: T
+    ): T {
+
+        val violations = validator.validate(request)
+
+        if (violations.isNotEmpty()) {
+            throw ConstraintViolationException(violations)
+        }
+
+        return request
     }
 }

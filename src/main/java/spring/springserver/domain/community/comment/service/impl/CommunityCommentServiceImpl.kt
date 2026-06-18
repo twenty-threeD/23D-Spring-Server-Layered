@@ -10,13 +10,11 @@ import spring.springserver.domain.community.comment.repository.CommunityCommentR
 import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
-import spring.springserver.domain.community.like.repository.CommunityCommentLikeRepository
 import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityCommentServiceImpl(private val communityCommentRepository: CommunityCommentRepository,
-                                  private val communityCommentLikeRepository: CommunityCommentLikeRepository,
                                   private val communityAuthorizationService: CommunityAuthorizationService
 ): CommunityCommentService {
 
@@ -39,7 +37,7 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         return CommunityCommentResponse.of(
             communityComment = communityComment,
-            likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+            likeCount = 0L,
         )
     }
 
@@ -52,10 +50,11 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         return communityCommentRepository
             .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(postId)
-            .map { communityComment ->
+            .map {
+                communityComment ->
                 CommunityCommentResponse.of(
                     communityComment = communityComment,
-                    likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+                    likeCount = 0L,
                 )
             }
     }
@@ -77,7 +76,7 @@ class CommunityCommentServiceImpl(private val communityCommentRepository: Commun
 
         return CommunityCommentResponse.of(
             communityComment = communityComment,
-            likeCount = communityCommentLikeRepository.countByCommunityCommentId(communityComment.getId()!!),
+            likeCount = 0L,
         )
     }
 

@@ -15,9 +15,19 @@ interface CommunityPostService {
         file: MultipartFile? = null
     ): CreatePostResponse
 
+    fun createPost(
+        createPostRequestJson: String,
+        file: MultipartFile?
+    ): CreatePostResponse
+
     fun updatePost(
         updatePostRequest: UpdatePostRequest,
         file: MultipartFile? = null
+    ): UpdatePostResponse
+
+    fun updatePost(
+        updatePostRequestJson: String,
+        file: MultipartFile?
     ): UpdatePostResponse
 
     fun deletePost(
