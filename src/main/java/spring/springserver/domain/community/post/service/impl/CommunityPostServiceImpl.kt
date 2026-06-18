@@ -118,6 +118,7 @@ class CommunityPostServiceImpl(
 
         return communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
             .map {
+                
                 communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
@@ -152,6 +153,7 @@ class CommunityPostServiceImpl(
 
         return communityPostRepository.searchPosts(normalizedKeyword)
             .map {
+
                 communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
@@ -269,7 +271,7 @@ class CommunityPostServiceImpl(
         val violations = validator.validate(request)
 
         if (violations.isNotEmpty()) {
-            
+
             throw ConstraintViolationException(violations)
         }
 
