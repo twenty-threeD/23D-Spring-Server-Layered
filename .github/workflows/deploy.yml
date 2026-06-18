@@ -9,7 +9,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: EC2에서 소스 갱신 및 Docker 컨테이너 재시작
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Java 21 설정
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: 배포 Secret 검증
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_KEY }}
+        run: |
+          set -e
+
+          for key in EC2_HOST EC2_USER EC2_KEY; do
+            if [ -z "${!key}" ]; then
+              echo "필수 Secret이 설정되지 않았습니다: $key"
+              exit 1
+            fi
+          done
+
+      - name: 테스트 및 JAR 빌드
+        run: ./gradlew test bootJar
+
+      - name: Docker 이미지 빌드
+        run: |
+          docker build \
+            -t spring-server:${{ github.sha }} \
+            -t spring-server:latest .
+
+      - name: Docker 이미지를 tar 파일로 저장
+        run: docker save spring-server:${{ github.sha }} -o spring-server-image.tar
+
+      - name: Docker 이미지 파일을 EC2로 전송
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "spring-server-image.tar"
+          target: "/home/${{ secrets.EC2_USER }}/app"
+
+      - name: EC2에서 Blue-Green 컨테이너 전환
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -18,8 +63,6 @@ jobs:
           script: |
             set -e
 
-            REPOSITORY_URL="https://github.com/${{ github.repository }}.git"
-            DEPLOY_DIR="/home/${{ secrets.EC2_USER }}/app/source"
             APP_DIR="/home/${{ secrets.EC2_USER }}/app"
             NETWORK_NAME="spring-server-network"
             PROXY_NAME="spring-server-proxy"
@@ -27,32 +70,40 @@ jobs:
             HEALTH_PATH="/v3/api-docs"
 
             mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
+            sudo docker load -i "$APP_DIR/spring-server-image.tar"
 
-            if [ -d "$DEPLOY_DIR/.git" ]; then
-              cd "$DEPLOY_DIR"
-              git fetch origin main
-              git reset --hard origin/main
-            else
-              git clone --branch main "$REPOSITORY_URL" "$DEPLOY_DIR"
-              cd "$DEPLOY_DIR"
+            if [ ! -f "$APP_DIR/.env" ]; then
+              echo "필수 환경 변수 파일이 없습니다: $APP_DIR/.env"
+              exit 1
             fi
 
-            chmod +x ./gradlew
-            ./gradlew test bootJar
-
-            sudo docker build \
-              -t "$IMAGE_NAME" \
-              -t spring-server:latest .
+            for key in DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET ACCESS_EXPIRATION REFRESH_EXPIRATION EMAIL EMAIL_PASSWORD REDIS_HOST REDIS_PORT CLIENT_ID CLIENT_SECRET KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET NAVER_CLIENT_ID NAVER_CLIENT_SECRET; do
+              if ! grep -Eq "^[[:space:]]*$key=" "$APP_DIR/.env"; then
+                echo "필수 환경 변수가 .env에 없습니다: $key"
+                exit 1
+              fi
+            done
 
             sudo docker network create "$NETWORK_NAME" 2>/dev/null || true
 
-            if sudo docker ps --format '{{.Names}}' | grep -q '^spring-server-blue$'; then
+            NGINX_CONF="$APP_DIR/nginx/conf.d/default.conf"
+            ACTIVE_COLOR="none"
+
+            if [ -f "$NGINX_CONF" ]; then
+              if grep -q "server spring-server-blue:8080;" "$NGINX_CONF"; then
+                ACTIVE_COLOR="blue"
+              elif grep -q "server spring-server-green:8080;" "$NGINX_CONF"; then
+                ACTIVE_COLOR="green"
+              fi
+            fi
+
+            if [ "$ACTIVE_COLOR" = "blue" ]; then
               NEW_COLOR="green"
               OLD_COLOR="blue"
               NEW_PORT="8082"
             else
               NEW_COLOR="blue"
-              OLD_COLOR="green"
+              OLD_COLOR="$ACTIVE_COLOR"
               NEW_PORT="8081"
             fi
 
@@ -61,18 +112,12 @@ jobs:
 
             sudo docker rm -f "$NEW_CONTAINER" 2>/dev/null || true
 
-            if [ -f ~/app/.env ]; then
-              ENV_FILE_OPTION="--env-file $APP_DIR/.env"
-            else
-              ENV_FILE_OPTION=""
-            fi
-
             sudo docker run -d \
               --name "$NEW_CONTAINER" \
               --network "$NETWORK_NAME" \
               --restart unless-stopped \
               -p "$NEW_PORT:8080" \
-              $ENV_FILE_OPTION \
+              --env-file "$APP_DIR/.env" \
               -v "$APP_DIR/files:/app/files" \
               "$IMAGE_NAME"
 
@@ -124,7 +169,10 @@ jobs:
                 nginx:alpine
             fi
 
-            sudo docker rm -f "$OLD_CONTAINER" 2>/dev/null || true
+            if [ "$OLD_COLOR" != "none" ]; then
+              sudo docker rm -f "$OLD_CONTAINER" 2>/dev/null || true
+            fi
 
+            rm -f "$APP_DIR/spring-server-image.tar"
             sudo docker image prune -f
             echo "Blue-green Docker 배포 완료! active=$NEW_COLOR"
