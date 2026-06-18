@@ -117,7 +117,8 @@ class CommunityPostServiceImpl(
     override fun getPosts(): List<CommunityPostResponse> {
 
         return communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
-            .map { communityPost ->
+            .map {
+                communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
                     communityCommentRepository,
@@ -150,7 +151,8 @@ class CommunityPostServiceImpl(
         val normalizedKeyword = keyword.trim()
 
         return communityPostRepository.searchPosts(normalizedKeyword)
-            .map { communityPost ->
+            .map {
+                communityPost ->
                 CommunityPostResponse.toPostResponse(
                     communityPost,
                     communityCommentRepository,
@@ -232,8 +234,10 @@ class CommunityPostServiceImpl(
         val field = jsonNode.get(fieldName)
 
         return if (field == null || field.isNull) {
+
             null
         } else {
+
             field.asText()
         }
     }
@@ -245,8 +249,10 @@ class CommunityPostServiceImpl(
 
         val field = jsonNode.get(fieldName)
         val value = if (field == null || field.isNull) {
+
             null
         } else {
+
             field.asText().toLongOrNull()
         }
 
@@ -263,6 +269,7 @@ class CommunityPostServiceImpl(
         val violations = validator.validate(request)
 
         if (violations.isNotEmpty()) {
+            
             throw ConstraintViolationException(violations)
         }
 
