@@ -4,6 +4,10 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -36,23 +40,28 @@ jobs:
       - name: 테스트 및 JAR 빌드
         run: ./gradlew test bootJar
 
+      - name: Docker 이미지 메타데이터 설정
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "IMAGE_NAME=ghcr.io/$OWNER/spring-server" >> "$GITHUB_ENV"
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       - name: Docker 이미지 빌드
         run: |
           docker build \
-            -t spring-server:${{ github.sha }} \
-            -t spring-server:latest .
+            -t "$IMAGE_NAME:${{ github.sha }}" \
+            -t "$IMAGE_NAME:latest" .
 
-      - name: Docker 이미지를 tar 파일로 저장
-        run: docker save spring-server:${{ github.sha }} -o spring-server-image.tar
-
-      - name: Docker 이미지 파일을 EC2로 전송
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          source: "spring-server-image.tar"
-          target: "/home/${{ secrets.EC2_USER }}/app"
+      - name: Docker 이미지 GHCR Push
+        run: |
+          docker push "$IMAGE_NAME:${{ github.sha }}"
+          docker push "$IMAGE_NAME:latest"
 
       - name: EC2에서 Blue-Green 컨테이너 전환
         uses: appleboy/ssh-action@v1.0.3
@@ -66,11 +75,14 @@ jobs:
             APP_DIR="/home/${{ secrets.EC2_USER }}/app"
             NETWORK_NAME="spring-server-network"
             PROXY_NAME="spring-server-proxy"
-            IMAGE_NAME="spring-server:${{ github.sha }}"
+            OWNER="${{ github.repository_owner }}"
+            OWNER="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+            IMAGE_NAME="ghcr.io/$OWNER/spring-server:${{ github.sha }}"
             HEALTH_PATH="/v3/api-docs"
 
             mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
-            sudo docker load -i "$APP_DIR/spring-server-image.tar"
+            echo "${{ github.token }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            sudo docker pull "$IMAGE_NAME"
 
             if [ ! -f "$APP_DIR/.env" ]; then
               echo "필수 환경 변수 파일이 없습니다: $APP_DIR/.env"
@@ -157,6 +169,7 @@ jobs:
             sudo docker rm -f spring-server 2>/dev/null || true
 
             if sudo docker ps --format '{{.Names}}' | grep -q "^$PROXY_NAME$"; then
+              sudo docker exec "$PROXY_NAME" nginx -t
               sudo docker exec "$PROXY_NAME" nginx -s reload
             else
               sudo docker rm -f "$PROXY_NAME" 2>/dev/null || true
@@ -173,6 +186,5 @@ jobs:
               sudo docker rm -f "$OLD_CONTAINER" 2>/dev/null || true
             fi
 
-            rm -f "$APP_DIR/spring-server-image.tar"
             sudo docker image prune -f
             echo "Blue-green Docker 배포 완료! active=$NEW_COLOR"
