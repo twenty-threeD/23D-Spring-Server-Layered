@@ -27,8 +27,8 @@ class PostController(
     @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
     fun createPost(
         @Valid @RequestPart("request") createPostRequest: CreatePostRequest,
-        @RequestPart("multipartFile", required = false) multipartFile: MultipartFile?)
-    : BaseResponse<PostResponse> {
+        @RequestPart("multipartFile", required = false) multipartFile: MultipartFile?
+    ): BaseResponse<PostResponse> {
 
         return BaseResponse.ok(postService.createPost(createPostRequest, multipartFile))
     }
