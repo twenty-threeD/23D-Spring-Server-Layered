@@ -8,7 +8,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
-import spring.springserver.domain.auth.service.TokenService
+import spring.springserver.domain.auth.service.token.impl.TokenServiceImpl
 import spring.springserver.domain.member.entity.Role
 import spring.springserver.domain.oauth.data.response.OAuthResponse
 import spring.springserver.global.data.BaseResponse
@@ -19,7 +19,7 @@ import spring.springserver.global.data.BaseResponse
  */
 @Component
 class OAuth2SuccessHandler(private val objectMapper: ObjectMapper,
-                           private val tokenService: TokenService): AuthenticationSuccessHandler {
+                           private val tokenService: TokenServiceImpl): AuthenticationSuccessHandler {
 
     override fun onAuthenticationSuccess(
         httpServletRequest: HttpServletRequest?,

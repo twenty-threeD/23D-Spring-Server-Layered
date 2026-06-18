@@ -58,6 +58,18 @@ class CustomOAuthUserService(private val memberRepository: MemberRepository): De
                 nameAttributeKey = "email"
             }
 
+            Provider.NAVER -> {
+
+                val naverResponse = attributes["response"] as? Map<*, *>
+                    ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
+
+                email = naverResponse["email"].toString()
+
+                name = naverResponse["name"].toString()
+
+                nameAttributeKey = "id"
+            }
+
             else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
         }
 

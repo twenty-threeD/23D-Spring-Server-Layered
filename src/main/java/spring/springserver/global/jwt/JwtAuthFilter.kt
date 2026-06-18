@@ -8,11 +8,12 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
-import spring.springserver.domain.auth.interfaces.TokenProvider
 import java.util.Collections
 
 @Component
-class JwtAuthFilter(private val tokenProvider: TokenProvider): OncePerRequestFilter() {
+class JwtAuthFilter(
+    private val tokenProvider: TokenProvider
+): OncePerRequestFilter() {
 
     override fun doFilterInternal(
         httpServletRequest: HttpServletRequest,
@@ -33,7 +34,17 @@ class JwtAuthFilter(private val tokenProvider: TokenProvider): OncePerRequestFil
         }
 
         val username = tokenProvider.getUsernameFromToken(token)
-        val role = tokenProvider.getRole(token).name
+        val role = tokenProvider.getRole(token)?.name
+
+        if (username.isNullOrBlank() || role.isNullOrBlank()) {
+
+            filterChain.doFilter(
+                httpServletRequest,
+                httpServletResponse
+            )
+
+            return
+        }
 
         val authority = SimpleGrantedAuthority(role.takeIf { it.startsWith("ROLE_") } ?: "ROLE_$role")
 

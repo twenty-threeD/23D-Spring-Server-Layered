@@ -2,11 +2,13 @@ package spring.springserver.domain.auth.exception
 
 import org.springframework.http.HttpStatus
 import spring.springserver.global.exception.status_code.StatusCode
+
 enum class AuthStatusCode (
     private val code: String,
     private val message: String,
     private val httpStatus: HttpStatus
 ): StatusCode{
+  
     INVALID_JWT("INVALID_JWT", "유효하지 않은 JWT입니다.", HttpStatus.UNAUTHORIZED),
     AVAILABLE_ACCESS_TOKEN("AVAILABLE_ACCESS_TOKEN", "사용 가능한 엑세스 토큰이 존재 합니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "아이디 또는 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
