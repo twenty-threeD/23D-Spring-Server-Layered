@@ -33,6 +33,10 @@ interface MemberRepository: JpaRepository<Member, Long> {
     fun findUsernameByEmail(
         email: String
     ): String?
+    fun findMemberById(
+        id: Long
+    ): Member?
+
 
     fun email(
         email: String
