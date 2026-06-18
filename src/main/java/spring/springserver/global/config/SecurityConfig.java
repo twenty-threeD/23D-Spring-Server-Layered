@@ -90,6 +90,10 @@ public class SecurityConfig {
                                 "/api/post"
                         ).hasRole("USER")
 
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/post"
+                        ).hasRole("USER")
 
                         .requestMatchers(
                                 HttpMethod.DELETE,
