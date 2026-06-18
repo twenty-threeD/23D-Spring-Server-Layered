@@ -37,8 +37,13 @@ jobs:
             fi
           done
 
+      - name: Gradle 설치
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
       - name: 테스트 및 JAR 빌드
-        run: ./gradlew test bootJar
+        run: gradle test bootJar
 
       - name: Docker 이미지 메타데이터 설정
         run: |
