@@ -43,7 +43,7 @@ class CommunityLikeServiceImpl(
             )
         )
 
-        return CommunityLikeResponse.Companion.of(
+        return CommunityLikeResponse.of(
             targetId = commentId,
             likeCount = communityCommentLikeRepository.countByCommunityCommentId(commentId),
             message = "댓글 좋아요가 등록되었습니다.",
