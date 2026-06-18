@@ -19,13 +19,17 @@ class CommunityLikeController(
 ) {
 
     @PostMapping
-    fun likePost(@Valid @RequestBody communityPostLikeRequest: CommunityPostLikeRequest): BaseResponse<CommunityLikeResponse> {
+    fun likePost(
+        @Valid @RequestBody communityPostLikeRequest: CommunityPostLikeRequest
+    ): BaseResponse<CommunityLikeResponse> {
 
         return BaseResponse.ok(communityLikeService.likePost(communityPostLikeRequest))
     }
 
     @DeleteMapping
-    fun unlikePost(@RequestParam postId: Long): BaseResponse<CommunityLikeResponse> {
+    fun unlikePost(
+        @RequestParam postId: Long
+    ): BaseResponse<CommunityLikeResponse> {
 
         return BaseResponse.ok(communityLikeService.unlikePost(postId))
     }
