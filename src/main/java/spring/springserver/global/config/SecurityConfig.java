@@ -101,6 +101,13 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.GET,
+								"/api/community/post/",
+								"/api/community/post/{postId}",
+								"/api/community/post/search"
+						).permitAll()
+
+						.requestMatchers(
+								HttpMethod.GET,
 								"/files/*",
 								"/images/*",
 								"/swagger-ui/**",
