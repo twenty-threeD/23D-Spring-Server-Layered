@@ -1,6 +1,7 @@
 package spring.springserver.domain.payment.controller
 
 import jakarta.validation.Valid
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
@@ -14,6 +15,7 @@ import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.jwt.MemberDetails
 
 @RestController
 @RequestMapping("/api/payment")
@@ -23,10 +25,16 @@ class PaymentController(
 
     @PostMapping("/confirm")
     fun confirm(
-        @Valid @RequestBody confirmPaymentRequest: ConfirmPaymentRequest
+        @Valid @RequestBody confirmPaymentRequest: ConfirmPaymentRequest,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
-        return BaseResponse.ok(paymentService.confirm(confirmPaymentRequest))
+        return BaseResponse.ok(
+            paymentService.confirm(
+                confirmPaymentRequest,
+                memberDetails.getId()!!
+            )
+        )
     }
 
     @GetMapping("/{paymentKey}")
