@@ -62,7 +62,7 @@ class ProfileServiceImpl(
 
         val profile = getCurrentProfile(member)
 
-        val usernameChanged = applyNickname(member, updateProfileRequest.nickname?.trim())
+        val usernameChanged = applyUsername(member, updateProfileRequest.username?.trim())
 
         profile.update(
             imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() }
@@ -79,26 +79,26 @@ class ProfileServiceImpl(
 
             tokenService.deleteTokens(httpServletRequest, httpServletResponse)
 
-            return UpdateProfileResponse.of("프로필이 수정되었습니다. 닉네임이 변경되어 다시 로그인 해주세요.")
+            return UpdateProfileResponse.of("프로필이 수정되었습니다. 사용자명이 변경되어 다시 로그인 해주세요.")
         }
 
         return UpdateProfileResponse.of("프로필이 수정되었습니다.")
     }
 
-    private fun applyNickname(member: Member,
-                              nickname: String?): Boolean {
+    private fun applyUsername(member: Member,
+                              username: String?): Boolean {
 
-        if (nickname == null || nickname == member.username) {
+        if (username == null || username == member.username) {
 
             return false
         }
 
-        if (memberRepository.existsByUsername(nickname)) {
+        if (memberRepository.existsByUsername(username)) {
 
             throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
         }
 
-        member.username = nickname
+        member.username = username
 
         return true
     }
@@ -130,7 +130,7 @@ class ProfileServiceImpl(
 
         return ProfileResponse.of(
             profile = profile,
-            nickname = member.username,
+            username = member.username,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName()
         )

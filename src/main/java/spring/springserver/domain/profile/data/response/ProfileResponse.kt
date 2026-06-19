@@ -4,7 +4,7 @@ import spring.springserver.domain.profile.entity.Profile
 import java.time.LocalDateTime
 
 data class ProfileResponse(
-    val nickname: String,
+    val username: String,
 
     val imageUrl: String?,
 
@@ -28,12 +28,12 @@ data class ProfileResponse(
     companion object {
 
         fun of(profile: Profile,
-               nickname: String,
+               username: String,
                locationName: String?,
                jobCategoryName: String?): ProfileResponse {
 
             return ProfileResponse(
-                nickname,
+                username,
                 profile.imageUrl,
                 profile.sig?.sigCd,
                 locationName,

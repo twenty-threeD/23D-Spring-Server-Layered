@@ -12,7 +12,7 @@ data class UsernameCheckResponse(
 
             return UsernameCheckResponse(
                 available,
-                if (available) "사용 가능한 닉네임입니다." else "이미 사용 중인 닉네임입니다."
+                if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
             )
         }
     }
