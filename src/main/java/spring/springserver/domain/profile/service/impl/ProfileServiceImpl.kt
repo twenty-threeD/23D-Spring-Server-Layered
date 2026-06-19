@@ -1,9 +1,12 @@
 package spring.springserver.domain.profile.service.impl
 
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.jobcategory.entity.JobCategory
 import spring.springserver.domain.jobcategory.service.JobCategoryService
 import spring.springserver.domain.location.entity.Sig
@@ -18,7 +21,6 @@ import spring.springserver.domain.profile.exception.ProfileStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
-import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -26,13 +28,9 @@ class ProfileServiceImpl(
     private val profileRepository: ProfileRepository,
     private val memberRepository: MemberRepository,
     private val locationService: LocationService,
-    private val jobCategoryService: JobCategoryService
+    private val jobCategoryService: JobCategoryService,
+    private val tokenService: TokenService
 ): ProfileService {
-
-    companion object {
-
-        private const val NICKNAME_CHANGE_COOLDOWN_DAYS = 30L
-    }
 
     override fun createDefaultProfile(
         member: Member
@@ -43,92 +41,106 @@ class ProfileServiceImpl(
             throw ApplicationException(ProfileStatusCode.PROFILE_ALREADY_EXIST)
         }
 
-        profileRepository.save(
-            Profile(
-                member = member,
-                nickname = member.username
-            )
-        )
+        profileRepository.save(Profile(member = member))
     }
 
     @Transactional(readOnly = true)
     override fun getMyProfile(): ProfileResponse {
 
-        val profile = getCurrentProfile()
+        val member = getCurrentMember()
 
-        return toResponse(profile)
+        return toResponse(getCurrentProfile(member), member)
     }
 
     override fun updateMyProfile(
-        updateProfileRequest: UpdateProfileRequest
+        updateProfileRequest: UpdateProfileRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): UpdateProfileResponse {
 
-        val profile = getCurrentProfile()
+        val member = getCurrentMember()
 
-        applyNickname(
-            profile,
-            updateProfileRequest.nickname.trim()
-        )
+        val profile = getCurrentProfile(member)
+
+        val usernameChanged = applyNickname(member, updateProfileRequest.nickname?.trim())
 
         profile.update(
-            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() },
-            sig = resolveSig(updateProfileRequest.sigCd),
-            movableDistance = updateProfileRequest.movableDistance,
-            shortDescription = updateProfileRequest.shortDescription?.trim()?.takeIf { it.isNotBlank() },
-            jobCategory = resolveJobCategory(updateProfileRequest.jobCategoryId)
+            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() }
+                ?: profile.imageUrl,
+            sig = resolveSig(updateProfileRequest.sigCd, profile.sig),
+            movableDistance = updateProfileRequest.movableDistance
+                ?: profile.movableDistance,
+            shortDescription = updateProfileRequest.shortDescription?.trim()?.takeIf { it.isNotBlank() }
+                ?: profile.shortDescription,
+            jobCategory = resolveJobCategory(updateProfileRequest.jobCategoryId, profile.jobCategory)
         )
+
+        if (usernameChanged) {
+
+            tokenService.deleteTokens(httpServletRequest, httpServletResponse)
+
+            return UpdateProfileResponse.of("프로필이 수정되었습니다. 닉네임이 변경되어 다시 로그인 해주세요.")
+        }
 
         return UpdateProfileResponse.of("프로필이 수정되었습니다.")
     }
 
-    private fun applyNickname(
-        profile: Profile,
-        nickname: String
-    ) {
+    private fun applyNickname(member: Member,
+                              nickname: String?): Boolean {
 
-        if (profile.nickname == nickname) {
+        if (nickname == null || nickname == member.username) {
 
-            return
+            return false
         }
 
-        if (LocalDateTime.now()
-                .isBefore(profile.getNicknameUpdatedAt().plusDays(NICKNAME_CHANGE_COOLDOWN_DAYS))) {
+        if (memberRepository.existsByUsername(nickname)) {
 
-            throw ApplicationException(ProfileStatusCode.NICKNAME_CHANGE_NOT_ALLOWED)
+            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
         }
 
-        profile.updateNickname(nickname)
+        member.username = nickname
+
+        return true
     }
 
-    private fun resolveSig(
-        sigCd: String?
-    ): Sig? {
+    private fun resolveSig(sigCd: String?,
+                           current: Sig?): Sig? {
 
-        return sigCd?.takeIf { it.isNotBlank() }
-            ?.let { locationService.getSig(it) }
+        if (sigCd.isNullOrBlank()) {
+
+            return current
+        }
+
+        return locationService.getSig(sigCd.trim())
     }
 
-    private fun resolveJobCategory(
-        jobCategoryId: Long?
-    ): JobCategory? {
+    private fun resolveJobCategory(jobCategoryId: Long?,
+                                   current: JobCategory?): JobCategory? {
 
-        return jobCategoryId?.let { jobCategoryService.getJobCategory(it) }
+        if (jobCategoryId == null) {
+
+            return current
+        }
+
+        return jobCategoryService.getJobCategory(jobCategoryId)
     }
 
-    private fun toResponse(
-        profile: Profile
-    ): ProfileResponse {
+    private fun toResponse(profile: Profile,
+                           member: Member): ProfileResponse {
 
         return ProfileResponse.of(
             profile = profile,
+            nickname = member.username,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName()
         )
     }
 
-    private fun getCurrentProfile(): Profile {
+    private fun getCurrentProfile(
+        member: Member
+    ): Profile {
 
-        return profileRepository.findByMember(getCurrentMember())
+        return profileRepository.findByMember(member)
             ?: throw ApplicationException(ProfileStatusCode.PROFILE_NOT_FOUND)
     }
 

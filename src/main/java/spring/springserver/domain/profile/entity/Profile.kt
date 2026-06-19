@@ -26,9 +26,6 @@ class Profile(
     @JoinColumn(name = "member_id", nullable = false, unique = true)
     var member: Member,
 
-    @Column(nullable = false, length = 30)
-    var nickname: String,
-
     @Column(length = 500)
     var imageUrl: String? = null,
 
@@ -51,31 +48,18 @@ class Profile(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private val id: Long? = null
 
-    private var nicknameUpdatedAt: LocalDateTime = LocalDateTime.now()
-
     @UpdateTimestamp
     private var updatedAt: LocalDateTime? = null
 
     fun getId(): Long? = id
 
-    fun getNicknameUpdatedAt(): LocalDateTime = nicknameUpdatedAt
-
     fun getUpdatedAt(): LocalDateTime? = updatedAt
-
-    fun updateNickname(
-        nickname: String
-    ) {
-
-        this.nickname = nickname
-        this.nicknameUpdatedAt = LocalDateTime.now()
-    }
 
     fun update(imageUrl: String?,
                sig: Sig?,
                movableDistance: MovableDistance?,
                shortDescription: String?,
-               jobCategory: JobCategory?
-    ) {
+               jobCategory: JobCategory?) {
 
         this.imageUrl = imageUrl
         this.sig = sig

@@ -1,5 +1,7 @@
 package spring.springserver.domain.profile.controller
 
+import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PatchMapping
@@ -25,10 +27,16 @@ class ProfileController(
     }
 
     @PatchMapping
-    fun updateMyProfile(
-        @Valid @RequestBody updateProfileRequest: UpdateProfileRequest
-    ): BaseResponse<UpdateProfileResponse> {
+    fun updateMyProfile(@Valid @RequestBody updateProfileRequest: UpdateProfileRequest,
+                        httpServletRequest: HttpServletRequest,
+                        httpServletResponse: HttpServletResponse): BaseResponse<UpdateProfileResponse> {
 
-        return BaseResponse.ok(profileService.updateMyProfile(updateProfileRequest))
+        return BaseResponse.ok(
+            profileService.updateMyProfile(
+                updateProfileRequest,
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
     }
 }
