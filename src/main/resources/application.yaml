@@ -102,3 +102,8 @@ toss-payments:
   secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
   base-url: https://api.tosspayments.com
   api-version: 2024-06-01
+
+cosmos:
+  submitter-private-key: ${COSMOS_SUBMITTER_PRIVATE_KEY}
+  node-url: ${COSMOS_NODE_URL}
+  chain-id: ${COSMOS_CHAIN_ID}

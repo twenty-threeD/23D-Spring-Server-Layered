@@ -25,4 +25,8 @@ class MemberKey(
 
     @Column(length = 512)
     private val publicKey: String
-)
+) {
+
+    fun getPrivateKey(): String = privateKey
+    fun getPublicKey(): String = publicKey
+}
