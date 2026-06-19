@@ -27,9 +27,11 @@ data class ProfileResponse(
 
     companion object {
 
-        fun of(profile: Profile,
-               locationName: String?,
-               jobCategoryName: String?): ProfileResponse {
+        fun of(
+            profile: Profile,
+            locationName: String?,
+            jobCategoryName: String?
+        ): ProfileResponse {
 
             return ProfileResponse(
                 profile.nickname,

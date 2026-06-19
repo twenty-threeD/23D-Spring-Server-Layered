@@ -25,7 +25,9 @@ class ProfileController(
     }
 
     @PatchMapping
-    fun updateMyProfile(@Valid @RequestBody updateProfileRequest: UpdateProfileRequest): BaseResponse<UpdateProfileResponse> {
+    fun updateMyProfile(
+        @Valid @RequestBody updateProfileRequest: UpdateProfileRequest
+    ): BaseResponse<UpdateProfileResponse> {
 
         return BaseResponse.ok(profileService.updateMyProfile(updateProfileRequest))
     }

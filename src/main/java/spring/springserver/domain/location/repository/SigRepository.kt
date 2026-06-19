@@ -15,5 +15,7 @@ interface SigRepository: JpaRepository<Sig, String> {
         order by s.sigCd asc
         """
     )
-    fun findAllByCtprvnCd(@Param("ctprvnCd") ctprvnCd: String): List<Sig>
+    fun findAllByCtprvnCd(
+        @Param("ctprvnCd") ctprvnCd: String
+    ): List<Sig>
 }

@@ -62,7 +62,9 @@ class Profile(
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 
-    fun updateNickname(nickname: String) {
+    fun updateNickname(
+        nickname: String
+    ) {
 
         this.nickname = nickname
         this.nicknameUpdatedAt = LocalDateTime.now()
@@ -72,7 +74,8 @@ class Profile(
                sig: Sig?,
                movableDistance: MovableDistance?,
                shortDescription: String?,
-               jobCategory: JobCategory?) {
+               jobCategory: JobCategory?
+    ) {
 
         this.imageUrl = imageUrl
         this.sig = sig
