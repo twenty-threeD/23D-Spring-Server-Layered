@@ -7,9 +7,9 @@ import spring.springserver.domain.profile.entity.MovableDistance
 data class UpdateProfileRequest(
     @field:Pattern(
         regexp = "^[가-힣a-zA-Z0-9]{2,30}$",
-        message = "사용자명은 2자 이상 30자 이하의 한글, 영문, 숫자만 사용할 수 있습니다."
+        message = "닉네임은 2자 이상 30자 이하의 한글, 영문, 숫자만 사용할 수 있습니다."
     )
-    val username: String?,
+    val nickname: String?,
 
     val imageUrl: String?,
 
