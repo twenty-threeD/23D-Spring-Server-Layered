@@ -49,7 +49,10 @@ class ProfileServiceImpl(
 
         val member = getCurrentMember()
 
-        return toResponse(getCurrentProfile(member), member)
+        return toResponse(
+            getCurrentProfile(member),
+            member
+        )
     }
 
     override fun updateMyProfile(
@@ -62,7 +65,10 @@ class ProfileServiceImpl(
 
         val profile = getCurrentProfile(member)
 
-        val usernameChanged = applyUsername(member, updateProfileRequest.username?.trim())
+        val usernameChanged = applyUsername(
+            member,
+            updateProfileRequest.username?.trim()
+        )
 
         profile.update(
             imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() }
@@ -77,16 +83,21 @@ class ProfileServiceImpl(
 
         if (usernameChanged) {
 
-            tokenService.deleteTokens(httpServletRequest, httpServletResponse)
+            tokenService.deleteTokens(
+                httpServletRequest,
+                httpServletResponse
+            )
 
-            return UpdateProfileResponse.of("프로필이 수정되었습니다. 사용자명이 변경되어 다시 로그인 해주세요.")
+            return UpdateProfileResponse.of("프로필이 수정되었습니다. 다시 로그인 해주세요.")
         }
 
         return UpdateProfileResponse.of("프로필이 수정되었습니다.")
     }
 
-    private fun applyUsername(member: Member,
-                              username: String?): Boolean {
+    private fun applyUsername(
+        member: Member,
+        username: String?
+    ): Boolean {
 
         if (username == null || username == member.username) {
 
@@ -103,8 +114,10 @@ class ProfileServiceImpl(
         return true
     }
 
-    private fun resolveSig(sigCd: String?,
-                           current: Sig?): Sig? {
+    private fun resolveSig(
+        sigCd: String?,
+        current: Sig?
+    ): Sig? {
 
         if (sigCd.isNullOrBlank()) {
 
@@ -114,8 +127,10 @@ class ProfileServiceImpl(
         return locationService.getSig(sigCd.trim())
     }
 
-    private fun resolveJobCategory(jobCategoryId: Long?,
-                                   current: JobCategory?): JobCategory? {
+    private fun resolveJobCategory(
+        jobCategoryId: Long?,
+        current: JobCategory?
+    ): JobCategory? {
 
         if (jobCategoryId == null) {
 
@@ -125,8 +140,10 @@ class ProfileServiceImpl(
         return jobCategoryService.getJobCategory(jobCategoryId)
     }
 
-    private fun toResponse(profile: Profile,
-                           member: Member): ProfileResponse {
+    private fun toResponse(
+        profile: Profile,
+        member: Member
+    ): ProfileResponse {
 
         return ProfileResponse.of(
             profile = profile,
