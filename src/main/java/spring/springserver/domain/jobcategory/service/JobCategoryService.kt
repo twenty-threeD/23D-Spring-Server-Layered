@@ -7,5 +7,7 @@ interface JobCategoryService {
 
     fun getJobCategories(): List<JobCategoryResponse>
 
-    fun getJobCategory(jobCategoryId: Long): JobCategory
+    fun getJobCategory(
+        jobCategoryId: Long
+    ): JobCategory
 }

@@ -22,7 +22,9 @@ class LocationController(
     }
 
     @GetMapping("/sigungu")
-    fun getSigunguList(@RequestParam ctprvnCd: String): BaseResponse<List<SigunguResponse>> {
+    fun getSigunguList(
+        @RequestParam ctprvnCd: String
+    ): BaseResponse<List<SigunguResponse>> {
 
         return BaseResponse.ok(locationService.getSigunguList(ctprvnCd))
     }

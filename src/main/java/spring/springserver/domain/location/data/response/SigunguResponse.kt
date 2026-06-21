@@ -12,7 +12,9 @@ data class SigunguResponse(
 
     companion object {
 
-        fun of(sig: Sig): SigunguResponse {
+        fun of(
+            sig: Sig
+        ): SigunguResponse {
 
             return SigunguResponse(
                 sig.sigCd,

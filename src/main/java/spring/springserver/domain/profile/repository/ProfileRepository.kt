@@ -6,7 +6,11 @@ import spring.springserver.domain.profile.entity.Profile
 
 interface ProfileRepository: JpaRepository<Profile, Long> {
 
-    fun findByMember(member: Member): Profile?
+    fun findByMember(
+        member: Member
+    ): Profile?
 
-    fun existsByMember(member: Member): Boolean
+    fun existsByMember(
+        member: Member
+    ): Boolean
 }

@@ -12,7 +12,9 @@ data class SidoResponse(
 
     companion object {
 
-        fun of(ctprvn: Ctprvn): SidoResponse {
+        fun of(
+            ctprvn: Ctprvn
+        ): SidoResponse {
 
             return SidoResponse(
                 ctprvn.ctprvnCd,

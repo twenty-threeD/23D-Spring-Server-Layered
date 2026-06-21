@@ -6,7 +6,9 @@ data class UpdateProfileResponse(
 
     companion object {
 
-        fun of(message: String): UpdateProfileResponse {
+        fun of(
+            message: String
+        ): UpdateProfileResponse {
 
             return UpdateProfileResponse(message)
         }

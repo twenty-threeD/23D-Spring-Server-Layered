@@ -55,11 +55,13 @@ class Profile(
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 
-    fun update(imageUrl: String?,
-               sig: Sig?,
-               movableDistance: MovableDistance?,
-               shortDescription: String?,
-               jobCategory: JobCategory?) {
+    fun update(
+        imageUrl: String?,
+        sig: Sig?,
+        movableDistance: MovableDistance?,
+        shortDescription: String?,
+        jobCategory: JobCategory?
+    ) {
 
         this.imageUrl = imageUrl
         this.sig = sig
