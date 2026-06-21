@@ -158,3 +158,4 @@ documents/CLAUDE-FABLE-5.md
 build/
 .gradle/
 gradle/
+.claude/
