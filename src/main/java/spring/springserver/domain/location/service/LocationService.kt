@@ -8,9 +8,15 @@ interface LocationService {
 
     fun getSidoList(): List<SidoResponse>
 
-    fun getSigunguList(ctprvnCd: String): List<SigunguResponse>
+    fun getSigunguList(
+        ctprvnCd: String
+    ): List<SigunguResponse>
 
-    fun getSig(sigCd: String): Sig
+    fun getSig(
+        sigCd: String
+    ): Sig
 
-    fun getFullName(sig: Sig): String
+    fun getFullName(
+        sig: Sig
+    ): String
 }

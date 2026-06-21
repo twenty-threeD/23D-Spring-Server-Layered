@@ -16,7 +16,9 @@ data class JobCategoryResponse(
 
     companion object {
 
-        fun of(jobCategory: JobCategory): JobCategoryResponse {
+        fun of(
+            jobCategory: JobCategory
+        ): JobCategoryResponse {
 
             return JobCategoryResponse(
                 jobCategory.getId(),

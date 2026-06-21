@@ -9,11 +9,15 @@ import spring.springserver.domain.profile.data.response.UpdateProfileResponse
 
 interface ProfileService {
 
-    fun createDefaultProfile(member: Member)
+    fun createDefaultProfile(
+        member: Member
+    )
 
     fun getMyProfile(): ProfileResponse
 
-    fun updateMyProfile(updateProfileRequest: UpdateProfileRequest,
-                        httpServletRequest: HttpServletRequest,
-                        httpServletResponse: HttpServletResponse): UpdateProfileResponse
+    fun updateMyProfile(
+        updateProfileRequest: UpdateProfileRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): UpdateProfileResponse
 }
