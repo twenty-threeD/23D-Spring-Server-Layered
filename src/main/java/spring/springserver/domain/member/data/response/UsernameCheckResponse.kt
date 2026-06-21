@@ -8,12 +8,12 @@ data class UsernameCheckResponse(
 
     companion object {
 
-        fun of(available: Boolean): UsernameCheckResponse {
+        fun of(
+            available: Boolean,
+            message: String
+        ): UsernameCheckResponse {
 
-            return UsernameCheckResponse(
-                available,
-                if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
-            )
+            return UsernameCheckResponse(available, message)
         }
     }
 }

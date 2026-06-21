@@ -103,6 +103,11 @@ class MemberServiceImpl(
         username: String
     ): UsernameCheckResponse {
 
-        return UsernameCheckResponse.of(!memberRepository.existsByUsername(username))
+        val available = !memberRepository.existsByUsername(username)
+
+        return UsernameCheckResponse.of(
+            available,
+            if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
+        )
     }
 }
