@@ -24,6 +24,8 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
           prompt: |
+            You are running non-interactively inside a GitHub Actions workflow. The pull request to review is #${{ github.event.pull_request.number }} in this repository. Do NOT use the /review slash command or any interactive skill, and do NOT ask the user which PR to review — the PR number is already given above. Do NOT run `gh pr list`. Instead, directly fetch the diff for this PR (e.g. with `gh pr diff ${{ github.event.pull_request.number }}`) and review it yourself.
+
             Please review the changes (diff) in this PR according to our team's coding conventions.
             Write the review in English, and post it as a comment on the PR.
 
@@ -200,3 +202,5 @@ jobs:
             - Do not nitpick parts that have no actual issues.
             - For each point raised, indicate the file name and, where possible, the line number, and briefly specify which convention rule was violated.
             - If there are no major issues overall, state that clearly.
+          claude_args: |
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr view:*)"
