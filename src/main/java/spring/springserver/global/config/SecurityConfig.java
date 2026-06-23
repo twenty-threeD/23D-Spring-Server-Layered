@@ -80,6 +80,26 @@ public class SecurityConfig {
 								"/api/files/upload"
 						).permitAll()
 
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/post/*"
+                        ).hasRole("USER")
+
 						.requestMatchers(
 								HttpMethod.POST,
 								"/api/email/code/send",
