@@ -23,10 +23,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            다음 PR의 변경 사항(diff)을 우리 팀의 코딩 컨벤션에 따라 리뷰해줘.
-            리뷰는 한국어로 작성하고, PR에 코멘트로 등록해줘.
+            Please review the changes (diff) in this PR according to our team's coding conventions.
+            Write the review in English, and post it as a comment on the PR.
 
-            ## 코딩 컨벤션
+            ## Coding Conventions
 
             ### Common
 
@@ -193,9 +193,9 @@ jobs:
             ): SignInResponse { ... }
             ```
 
-            ## 리뷰 방식
-            - 위 컨벤션에 어긋나는 부분을 변경된 파일/라인 기준으로 짚어준다.
-            - 컨벤션 위반 외에도 명백한 버그, 널 안정성 문제, 예외 처리 누락 등이 보이면 함께 언급한다.
-            - 문제가 없는 부분까지 억지로 트집 잡지 않는다.
-            - 각 지적 사항에는 파일명과 가능하면 라인 번호를 표시하고, 어떤 컨벤션 규칙을 어겼는지 간단히 명시한다.
-            - 전체적으로 큰 문제가 없으면 그렇게 명확히 말해준다.
+            ## Review Guidelines
+            - Point out any parts that violate the above conventions, based on the changed files/lines.
+            - In addition to convention violations, also mention any obvious bugs, null-safety issues, or missing exception handling that you notice.
+            - Do not nitpick parts that have no actual issues.
+            - For each point raised, indicate the file name and, where possible, the line number, and briefly specify which convention rule was violated.
+            - If there are no major issues overall, state that clearly.
