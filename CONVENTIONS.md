@@ -1,205 +1,178 @@
-# 백엔드 코딩 컨벤션
+아래는 현재 프로젝트의 코딩 컨벤션입니다. 이를 검토한 후, 현재 열려 있는 파일에서 이 컨벤션을 위반하는 코드를 확인하고 결과를 보고하세요.
 
 ## 공통
 
-### 변수 선언
-- 변수 선언 시 항상 `val`을 사용한다. (본인 판단 하에 `var` 사용 가능하나 이에 따른 불이익은 사용자 본인에게 있다.)
-
-### 의존성 주입 (DI)
-클래스명 뒤에 작성하며 매개변수 취급한다.
+여는 중괄호 뒤에는 항상 줄바꿈을 한 후 코드를 작성한다.
 
 ```kotlin
-// 의존성을 하나만 받는 경우
-class CommunityLikeImpl(private val communityLikeRepository: CommunityLikeRepository):
+@Service
+@Transactional(rollbackFor = [Exception::class])
+class MemberServiceImpl: MemberService {
 
-// 의존성을 두 개 이상 받는 경우
-class CommunityLikeImpl(private val communityLikeRepository: CommunityLikeRepository,
-                        private val memberRepository: MemberRepository):
+    override fun deleteAccount
 ```
 
-### orElseThrow 대체
-Java의 `orElseThrow` 대신 `?:` 를 이용해 작성하며, `?:` 사용 전에 항상 줄바꿈한다.
+파일 최하단 코드의 닫는 중괄호 뒤에는 빈 줄을 두지 않는다.
+```kotlin
+		return ApiResponse.ok("");
+}
+}
+```
 
+공통 응답은 반드시 `BaseResponse`를 사용하며, `response`를 활용한다.
+```kotlin
+return BaseResponse.ok(SignUpResponse.of("가입되었습니다."));
+```
+
+괄호 안에 값이 2개 이상인 경우, 각각 줄바꿈하여 작성한다.
+```kotlin
+return SignInResponse.of(
+    tokenService.generateAccessToken(
+        generateTokenRequest,
+        httpServletResponse
+    ),
+    tokenService.generateRefreshToken(
+        generateTokenRequest,
+        httpServletResponse
+    )
+)
+```
+
+파라미터 이름은 클래스 이름을 camelCase로 작성한다.
+
+어노테이션은 짧은 것을 위에, 긴 것을 아래에 배치한다.
+
+`return` 문 앞에는 항상 빈 줄을 넣는다.
+
+파라미터 목록에서 DTO는 Spring Boot 기본 타입(예: `HttpServletRequest`)보다 앞에 위치시킨다.
+
+변수 선언 시 항상 `val`을 사용한다. (단, `var` 사용은 본인의 재량에 맡기며, 이로 인해 발생하는 문제는 해당 선택을 한 사람의 책임이다. 단, 엔티티 클래스의 ID 값은 예외적으로 `var`을 사용한다.)
+
+의존성 주입(DI) 시, 클래스 이름 뒤에 생성자 파라미터 형태로 작성한다.
+```kotlin
+// 단일 의존성을 받을 때
+class CommunityLikeServiceImpl(
+    private val communityLikeRepository: CommunityLikeRepository
+): CommunityLikeService { ... }
+
+// 두 개 이상의 의존성을 받을 때
+class CommunityLikeServiceImpl(
+    private val communityLikeRepository: CommunityLikeRepository,
+    private val memberRepository: MemberRepository
+): CommunityLikeService { ... }
+```
+Java의 `orElseThrow`를 리팩토링할 때는 `?:`을 사용하며, `?:` 앞에는 항상 줄바꿈을 넣는다.
 ```kotlin
 // 예시 1
 val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+
 
 // 예시 2
 communityLikeRepository.delete(communityLikeRepository.findByMember(memberRepository.findMemberById(communityPostUnlikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-        )
-            ?: throw ApplicationException(LikeStatusCode.NOT_LIKED)
-        )
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+)
+    ?: throw ApplicationException(LikeStatusCode.NOT_LIKED)
+)
 ```
-
-### 타입 선언
-컴파일러에서 타입 추론이 가능한 경우 타입 선언을 생략한다.
-
+컴파일러가 타입을 추론할 수 있는 경우 타입 선언을 생략한다.
 ```kotlin
-// X - 타입 추론이 가능하지만 타입을 명시한 경우
+// X — 추론 가능함에도 Member 타입을 명시한 경우
 val member: Member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
-// O - 타입 추론이 가능하므로 생략
+// O — 추론 가능하므로 Member를 생략한 경우
 val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 ```
+항상 서비스(인터페이스)를 먼저 생성하고, Impl 클래스를 통해 구현한다.
 
-### 유스케이스 & 구현체
-항상 유스케이스(인터페이스)를 만들고 한데 묶어 구현체(서비스)를 만든다.
-
-### 상속 및 구현
-
+상속을 통해 구현할 때는 다음과 같이 작성한다:
 ```kotlin
-// 두 개 이상 상속 받을 때
-class CommunityLikeImpl(private val communityLikeRepository: CommunityLikeRepository,
-                        private val memberRepository: MemberRepository):
-    CommunityPostLikeUseCase,
-    CommunityPostUnlikeUseCase {
+// 둘 이상 상속받는 경우
+class CommunityLikeServiceImpl(
+    private val communityLikeRepository: CommunityLikeRepository,
+    private val memberRepository: MemberRepository
+): CommunityPostLikeService, CommunityPostUnlikeService {
 
-// 하나만 상속 받을 때
-class CommunityLikeImpl(private val communityLikeRepository: CommunityLikeRepository,
-                        private val memberRepository: MemberRepository): CommunityPostLikeUseCase {
+    // 하나만 상속받는 경우
+    class CommunityLikeServiceImpl(
+        private val communityLikeRepository: CommunityLikeRepository,
+        private val memberRepository: MemberRepository
+    ): CommunityLikeService {
 ```
-
-오버라이딩 시 `@Override` 어노테이션 대신 Kotlin 기본 문법을 사용한다.
-
+b. 상속을 통해 오버라이딩할 때는 `@Override` 어노테이션을 사용하지 않고, 아래와 같이 Kotlin 고유 문법을 사용한다.
 ```kotlin
 override fun like(): CommunityPostLikeResponse {
 ```
-
-### 파일 구조
+c. 파일 구조는 다음과 같이 한다:
 ```
 service/
-└── usecase/
-│   ├── CommunityPostLikeUseCase
-│   └── CommunityPostUnlikeUseCase
-└── CommunityLikeImpl
+├── CommunityLikeService
+└── CommunityLikeServiceImpl
 ```
+Builder 패턴을 사용하지 않고, 생성자를 통해 인스턴스를 생성한다.
 
-### 객체 생성
-Builder 패턴을 사용하지 않고 생성자를 이용해 생성한다.
+여기서 다루지 않은 나머지 컨벤션은 Backend Java Convention을 따른다.
 
----
+### 엔티티 클래스
 
-## 엔티티 클래스
+모든 엔티티 클래스의 ID는 기본적으로 `Long` 타입을 사용한다. (단, 추후 `UUID` 등의 타입으로 리팩토링될 수 있다.)
 
-- 모든 엔티티 클래스의 ID는 우선적으로 `Long` 타입을 사용한다. (추후 UUID 등으로 변경될 수 있다.)
-- ID는 `private`을 사용한다.
-- ID의 setter는 만들지 않으며 getter는 아래와 같이 작성한다.
+ID는 `private`으로 선언한다.
 
+ID에 대한 setter는 생성하지 않으며, getter는 다음과 같이 작성한다:
 ```kotlin
 @Id
 @GeneratedValue(strategy = GenerationType.IDENTITY)
-private val id: Long? = null
+private var id: Long? = null
 
 fun getId() = id
 ```
 
----
+### 파라미터
 
-## Java 공통 컨벤션
+생성자 파라미터와 메서드 파라미터는 동일한 형식을 따른다.
 
-### 중괄호 및 줄바꿈
+생성자 파라미터는 여는 괄호 바로 뒤에 항상 줄바꿈을 넣는다.
 
-클래스 또는 메서드 시작 시 중괄호 이후 항상 한 줄 줄바꿈 후 코드 작성.  
-모든 중괄호 이후에는 줄바꿈한다.
+닫는 괄호 뒤에 상위 클래스/인터페이스가 오는 경우, 콜론(`:`)은 닫는 괄호 바로 뒤에 위치시킨다.
 
-```java
-@Service
-@RequiredArgsConstructor
-public class MemberUseCase {
+2개 이상 상속받는 경우, 줄바꿈 없이 쉼표(`,`)로 구분한다.
+```kotlin
+class PostServiceImpl(
+    private val postRepository: PostRepository
+): PostService {
 
-    private final MemberRepository memberRepository;
+    class PostServiceImpl(
+        private val postRepository: PostRepository,
+        private val memberRepository: MemberRepository
+    ): PostService {
 ```
 
-파일 내 마지막 중괄호 닫은 이후 줄바꿈 금지.
+```kotlin
+// 메서드의 파라미터가 하나인 경우
+fun signUp(
+    signUpRequest: SignUpRequest
+): SignUpResponse { ... }
 
-```java
-        return ApiResponse.ok("");
-    }
-}
+// 메서드의 파라미터가 두 개 이상인 경우
+fun signIn(
+    signInRequest: SignInRequest,
+    httpServletResponse: HttpServletResponse
+): SignInResponse { ... }
 ```
 
-### 람다식
-
-```java
-Member member = memberRepository.findByEmail(request.email())
-                .orElseThrow(
-                        () -> new IllegalArgumentException("")
-                );
+DTO를 매개변수로 받을 때 클래스 풀네임으로 선언한다.
+```kotlin
+fun signIn(
+    @Valid @RequestBody signInRequest: SignInRequest,
+    httpServletResponse: HttpServletResponse
+): ApiResponse<SignInResponse>
 ```
 
-### 공통 응답 반환
-모든 리턴은 `BaseResponse`를 이용한 공통 응답 반환 및 `response` 활용.
-
-```java
-return BaseResponse.ok(SignUpResponse.of("가입되었습니다."));
-
-public static SignUpResponse of(String message) {
-    return new SignUpResponse(message);
-}
-```
-
-### 소괄호 줄바꿈
-소괄호 안에 후행 공백이 있는 경우 줄바꿈.
-
-```java
-GenerateTokenRequest generateTokenRequest = new GenerateTokenRequest(
-        member.getNickname(),
-        member.getRole()
-);
-```
-
-### DTO 매개변수 풀네임 선언
-DTO를 매개변수로 받을 때 DTO 풀네임으로 선언한다.
-
-```java
-public ApiResponse<SignInResponse> signIn(@Valid @RequestBody final SignInRequest signInRequest,
-```
-
-### 매개변수 순서
-- **DTO가 스프링 기본 지원 타입(`HttpServletRequest`, `HttpServletResponse` 등)보다 앞에 위치해야 한다.**
-- 매개변수가 2개 이상인 경우 두 번째 매개변수부터 줄바꿈한다.
-
-```java
-// O
-public ApiResponse<SignInResponse> signIn(@Valid @RequestBody final SignInRequest signInRequest,
-                                          HttpServletResponse httpServletResponse) {
-
-// X
-public BaseResponse<SignOutResponse> signOut(HttpServletRequest httpServletRequest,
-                                             SignOutRequest signOutRequest) {
-```
-
-### final 사용
-매개변수 바로 앞에 `final`을 사용한다.
-
-### @Valid 어노테이션
 컨트롤러에서 DTO 매개변수에 어노테이션이 있는 경우 `@Valid` 어노테이션 사용 필수.
-
-```java
-public ApiResponse<SignInResponse> signIn(@Valid @RequestBody final SignInRequest signInRequest,
+```kotlin
+fun signIn(
+    @Valid @RequestBody signInRequest: SignInRequest,
 ```
-
-### 기본 자료형 매개변수명
-기본 자료형(`int`, `String` 등)을 사용하지 않는 모든 매개변수명은 해당 타입을 카멜케이스로 표기한다.
-
-```java
-public BaseResponse<SignOutResponse> signOut(HttpServletRequest httpServletRequest,
-                                             HttpServletResponse httpServletResponse) {
-```
-
-### 어노테이션 순서
-길이가 긴 어노테이션을 아래에 위치시킨다.
-
-### 패키지명
-`dto` 패키지 대신 `data` 패키지를 사용한다.
-
-### Setter/Getter
-- `@Setter` 어노테이션 사용 금지.
-- `@Getter`는 사용 가능.
-
-### return 문
-`return` 문은 항상 줄바꿈 이후 사용한다.
