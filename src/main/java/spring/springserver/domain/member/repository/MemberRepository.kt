@@ -6,14 +6,39 @@ import spring.springserver.domain.member.entity.Member
 
 interface MemberRepository: JpaRepository<Member, Long> {
 
-    fun findByUsername(username: String): Member?
+    fun findByUsername(
+        username: String?
+    ): Member?
+    fun findByEmail(
+        email: String
+    ): Member?
 
-    fun existsByUsername(username: String): Boolean
-    fun existsByEmail(email: String): Boolean
-    fun existsByPhone(phone: String): Boolean
+    fun existsByUsername(
+        username: String
+    ): Boolean
+    fun existsByEmail(
+        email: String
+    ): Boolean
+    fun existsByPhone(
+        phone: String
+    ): Boolean
 
-    @Query("SELECT m.username FROM Member m WHERE m.email = :email")
-    fun findUsernameByEmail(email: String): String?
+    @Query(
+        """
+            SELECT m.username 
+            FROM Member m 
+            WHERE m.email = :email
+            """
+    )
+    fun findUsernameByEmail(
+        email: String
+    ): String?
+    fun findMemberById(
+        id: Long
+    ): Member?
 
-    fun email(email: String): String?
+
+    fun email(
+        email: String
+    ): String?
 }

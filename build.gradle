@@ -81,6 +81,7 @@ dependencies {
 
     // spring boot test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.2.1'
 
     // WebSocket
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
@@ -91,6 +92,9 @@ dependencies {
     // tika
     implementation 'org.apache.tika:tika-core:3.2.1'
     implementation 'org.apache.tika:tika-parsers-standard-package:3.2.1'
+
+    // secp256k1
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.80'
     
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-reflect'

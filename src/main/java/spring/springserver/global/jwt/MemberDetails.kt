@@ -6,11 +6,13 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
 import spring.springserver.domain.member.entity.Member
 
-data class MemberDetails(private val id: Long?,
-                         private val username: String,
-                         @field:Email private val email: String,
-                         private val password: String,
-                         private val authorities: Collection<GrantedAuthority>): UserDetails {
+data class MemberDetails(
+    private val id: Long?,
+    private val username: String,
+    @field:Email private val email: String,
+    private val password: String,
+    private val authorities: Collection<GrantedAuthority>
+): UserDetails {
 
     override fun getAuthorities(): Collection<GrantedAuthority?> = authorities
 
@@ -18,9 +20,13 @@ data class MemberDetails(private val id: Long?,
 
     override fun getUsername(): String = username
 
+    fun getId(): Long? = id
+
     companion object {
 
-        fun from(member: Member): MemberDetails {
+        fun from(
+            member: Member
+        ): MemberDetails {
 
             var role = member.role.name
 
@@ -33,7 +39,7 @@ data class MemberDetails(private val id: Long?,
                 member.getId(),
                 member.username,
                 member.email,
-                member.password,
+                member.password!!,
                 listOf(SimpleGrantedAuthority(role))
             )
         }
