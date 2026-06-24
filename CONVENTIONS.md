@@ -176,7 +176,3 @@ fun signIn(
 fun signIn(
     @Valid @RequestBody signInRequest: SignInRequest,
 ```
-
-추론 과정은 영어로 생각한다.
-사용자에게는 한국어로 답변한다 — 사용자에게 질문할 때도 마찬가지다.
-단, 현재 진행 중인 작업에 대한 상황 설명이나 진행 상태 업데이트 시에는 영어를 사용한다.
