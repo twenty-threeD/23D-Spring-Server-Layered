@@ -32,7 +32,7 @@ class ChatMessage(
     @JoinColumn(name = "sender_member_id", nullable = false)
     var sender: Member,
 
-    @Column(name = "message", nullable = false, length = 500)
+    @Column(name = "message", nullable = false, length = 1000)
     var message: String,
 
     @Enumerated(EnumType.STRING)

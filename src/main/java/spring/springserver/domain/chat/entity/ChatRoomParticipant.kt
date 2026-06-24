@@ -62,5 +62,6 @@ class ChatRoomParticipant(
     fun reactivate() {
 
         visible = true
+        deletedAt = null
     }
 }

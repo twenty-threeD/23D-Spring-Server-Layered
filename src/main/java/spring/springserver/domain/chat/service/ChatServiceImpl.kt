@@ -1,7 +1,11 @@
 package spring.springserver.domain.chat.service
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
@@ -27,7 +31,13 @@ class ChatServiceImpl(
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val chatMessageRepository: ChatMessageRepository,
     private val memberRepository: MemberRepository,
+    transactionManager: PlatformTransactionManager,
 ) : ChatService {
+
+    private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
+
+        propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
 
     override fun createOrGetDirectRoom(
         requesterUsername: String,
@@ -42,29 +52,55 @@ class ChatServiceImpl(
             )
         }
 
+        return try {
+
+            createRoomTransactionTemplate.execute {
+
+                createOrGetDirectRoomInTransaction(
+                    requesterUsername = requesterUsername,
+                    targetUsername = createChatRoomRequest.username
+                )
+            }!!
+        } catch (_: DataIntegrityViolationException) {
+
+            createRoomTransactionTemplate.execute {
+
+                getExistingDirectRoomResponse(
+                    requesterUsername = requesterUsername,
+                    targetUsername = createChatRoomRequest.username
+                )
+            }!!
+        }
+    }
+
+    private fun createOrGetDirectRoomInTransaction(
+        requesterUsername: String,
+        targetUsername: String
+    ): CreateChatRoomResponse {
+
         val requester = getMemberByUsername(requesterUsername)
-        val target = getMemberByUsername(createChatRoomRequest.username)
+        val target = getMemberByUsername(targetUsername)
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
 
         val existingRoom = chatRoomRepository.findByDirectChatKey(directChatKey)
 
-        return if (existingRoom != null) {
+        if (existingRoom != null) {
 
             ensureParticipantRows(existingRoom)
             reactivateParticipant(existingRoom, requester)
 
-            CreateChatRoomResponse.of(
+            return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
                 participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
                 existingRoom = true
             )
-        } else {
-
-            createRoom(
-                professional = requester,
-                client = target
-            )
         }
+
+        return createRoom(
+            requester = requester,
+            target = target,
+            requesterUsername = requesterUsername
+        )
     }
 
     override fun getMyChatRooms(
@@ -175,27 +211,52 @@ class ChatServiceImpl(
     }
 
     private fun createRoom(
-        professional: Member,
-        client: Member
+        requester: Member,
+        target: Member,
+        requesterUsername: String
     ): CreateChatRoomResponse {
 
-        val room = if (isProfessional(professional)) {
+        val room = if (isProfessional(requester)) {
 
-            ChatRoom(client = client, professional = professional)
+            ChatRoom(client = target, professional = requester)
         } else {
 
-            ChatRoom(client = professional, professional = client)
+            ChatRoom(client = requester, professional = target)
         }
 
-        val savedRoom = chatRoomRepository.save(room)
+        val savedRoom = chatRoomRepository.saveAndFlush(room)
 
         chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.client))
         chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.professional))
 
         return CreateChatRoomResponse.of(
             roomId = savedRoom.getId(),
-            participantUsername = client.username,
+            participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
             existingRoom = false
+        )
+    }
+
+    private fun getExistingDirectRoomResponse(
+        requesterUsername: String,
+        targetUsername: String
+    ): CreateChatRoomResponse {
+
+        val requester = getMemberByUsername(requesterUsername)
+        val target = getMemberByUsername(targetUsername)
+        val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
+        val room = chatRoomRepository.findByDirectChatKey(directChatKey)
+            ?: throw ApplicationException.of(
+                CommonStatusCode.ENDPOINT_NOT_FOUND,
+                "채팅방 생성 중 충돌이 발생했습니다."
+            )
+
+        ensureParticipantRows(room)
+        reactivateParticipant(room, requester)
+
+        return CreateChatRoomResponse.of(
+            roomId = room.getId(),
+            participantUsername = getOtherParticipant(room, requesterUsername).username,
+            existingRoom = true
         )
     }
 
