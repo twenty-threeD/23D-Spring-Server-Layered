@@ -27,15 +27,15 @@ return BaseResponse.ok(SignUpResponse.of("가입되었습니다."));
 괄호 안에 값이 2개 이상인 경우, 각각 줄바꿈하여 작성한다.
 ```kotlin
 return SignInResponse.of(
-            tokenService.generateAccessToken(
-                generateTokenRequest,
-                httpServletResponse
-            ),
-            tokenService.generateRefreshToken(
-                generateTokenRequest,
-                httpServletResponse
-            )
-        )
+    tokenService.generateAccessToken(
+        generateTokenRequest,
+        httpServletResponse
+    ),
+    tokenService.generateRefreshToken(
+        generateTokenRequest,
+        httpServletResponse
+    )
+)
 ```
 
 파라미터 이름은 클래스 이름을 camelCase로 작성한다.
@@ -52,38 +52,38 @@ return SignInResponse.of(
 ```kotlin
 // 단일 의존성을 받을 때
 class CommunityLikeServiceImpl(
-  private val communityLikeRepository: CommunityLikeRepository
+    private val communityLikeRepository: CommunityLikeRepository
 ): CommunityLikeService { ... }
 
 // 두 개 이상의 의존성을 받을 때
 class CommunityLikeServiceImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
+    private val communityLikeRepository: CommunityLikeRepository,
+    private val memberRepository: MemberRepository
 ): CommunityLikeService { ... }
 ```
 Java의 `orElseThrow`를 리팩토링할 때는 `?:`을 사용하며, `?:` 앞에는 항상 줄바꿈을 넣는다.
 ```kotlin
 // 예시 1
 val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
 
 // 예시 2
 communityLikeRepository.delete(communityLikeRepository.findByMember(memberRepository.findMemberById(communityPostUnlikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-        )
-            ?: throw ApplicationException(LikeStatusCode.NOT_LIKED)
-        )
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+)
+    ?: throw ApplicationException(LikeStatusCode.NOT_LIKED)
+)
 ```
 컴파일러가 타입을 추론할 수 있는 경우 타입 선언을 생략한다.
 ```kotlin
 // X — 추론 가능함에도 Member 타입을 명시한 경우
 val member: Member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
 // O — 추론 가능하므로 Member를 생략한 경우
 val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 ```
 항상 서비스(인터페이스)를 먼저 생성하고, Impl 클래스를 통해 구현한다.
 
@@ -91,15 +91,15 @@ val member = memberRepository.findMemberById(communityLikeRequest.memberId)
 ```kotlin
 // 둘 이상 상속받는 경우
 class CommunityLikeServiceImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
+    private val communityLikeRepository: CommunityLikeRepository,
+    private val memberRepository: MemberRepository
 ): CommunityPostLikeService, CommunityPostUnlikeService {
 
-// 하나만 상속받는 경우
-class CommunityLikeServiceImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
-): CommunityLikeService {
+    // 하나만 상속받는 경우
+    class CommunityLikeServiceImpl(
+        private val communityLikeRepository: CommunityLikeRepository,
+        private val memberRepository: MemberRepository
+    ): CommunityLikeService {
 ```
 b. 상속을 통해 오버라이딩할 때는 `@Override` 어노테이션을 사용하지 않고, 아래와 같이 Kotlin 고유 문법을 사용한다.
 ```kotlin
@@ -144,10 +144,10 @@ class PostServiceImpl(
     private val postRepository: PostRepository
 ): PostService {
 
-class PostServiceImpl(
-    private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
-): PostService {
+    class PostServiceImpl(
+        private val postRepository: PostRepository,
+        private val memberRepository: MemberRepository
+    ): PostService {
 ```
 
 ```kotlin
@@ -162,3 +162,21 @@ fun signIn(
     httpServletResponse: HttpServletResponse
 ): SignInResponse { ... }
 ```
+
+DTO를 매개변수로 받을 때 클래스 풀네임으로 선언한다.
+```kotlin
+fun signIn(
+    @Valid @RequestBody signInRequest: SignInRequest,
+    httpServletResponse: HttpServletResponse
+): ApiResponse<SignInResponse>
+```
+
+컨트롤러에서 DTO 매개변수에 어노테이션이 있는 경우 `@Valid` 어노테이션 사용 필수.
+```kotlin
+fun signIn(
+    @Valid @RequestBody signInRequest: SignInRequest,
+```
+
+추론 과정은 영어로 생각한다.
+사용자에게는 한국어로 답변한다 — 사용자에게 질문할 때도 마찬가지다.
+단, 현재 진행 중인 작업에 대한 상황 설명이나 진행 상태 업데이트 시에는 영어를 사용한다.
