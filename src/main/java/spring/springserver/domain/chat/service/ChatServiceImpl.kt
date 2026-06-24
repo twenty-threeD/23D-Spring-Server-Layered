@@ -107,14 +107,14 @@ class ChatServiceImpl(
         username: String
     ): List<ChatRoomResponse> {
 
-        chatRoomRepository.findAllByParticipantUsername(username)
-            .forEach(::ensureParticipantRows)
+        val rooms = chatRoomRepository.findAllByParticipantUsername(username)
+        rooms.forEach(::ensureParticipantRows)
 
-        return chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
-            .map {
+        val visibleRoomIds = chatRoomParticipantRepository.findVisibleRoomIdsByUsername(username)
 
-                participant ->
-                val room = participant.room
+        return rooms.filter { it.getId() in visibleRoomIds }
+            .map { room ->
+
                 val other = getOtherParticipant(room, username)
 
                 ChatRoomResponse.of(
@@ -145,7 +145,7 @@ class ChatServiceImpl(
             )
         }
 
-        return messages.map(ChatMessageResponse::from)
+        return messages.map(ChatMessageResponse::of)
     }
 
     override fun sendMessage(
@@ -330,6 +330,14 @@ class ChatServiceImpl(
     ): String {
 
         val normalizedMessage = message.trim()
+
+        if (normalizedMessage.isEmpty()) {
+
+            throw ApplicationException.of(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "메시지가 비어있습니다."
+            )
+        }
 
         if (normalizedMessage.length > 1000) {
 

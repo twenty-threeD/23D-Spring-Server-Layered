@@ -14,10 +14,6 @@ data class ChatMessageResponse(
 
     companion object {
 
-        fun from(
-            chatMessage: ChatMessage
-        ): ChatMessageResponse = of(chatMessage)
-
         fun of(
             chatMessage: ChatMessage
         ): ChatMessageResponse =

@@ -24,7 +24,7 @@ import kotlin.math.min
     ],
     indexes = [
         Index(name = "idx_chat_room_client", columnList = "client_id"),
-        Index(name = "idx_chat_room_professional", columnList = "professionl_id"),
+        Index(name = "idx_chat_room_professional", columnList = "professional_id"),
         Index(name = "idx_chat_room_direct_key", columnList = "direct_chat_key")
     ]
 )
@@ -34,7 +34,7 @@ class ChatRoom(
     var client: Member,
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "professionl_id", nullable = false)
+    @JoinColumn(name = "professional_id", nullable = false)
     var professional: Member,
 ) {
 
@@ -64,7 +64,6 @@ class ChatRoom(
 
     companion object {
 
-        @JvmStatic
         fun generateDirectChatKey(
             memberId1: Long,
             memberId2: Long

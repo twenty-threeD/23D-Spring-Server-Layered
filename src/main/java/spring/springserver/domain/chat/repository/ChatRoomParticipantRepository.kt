@@ -80,4 +80,16 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
         @Param("roomId") roomId: Long,
         @Param("username") username: String
     ): Boolean
+
+    @Query(
+        """
+            select p.room.id
+            from ChatRoomParticipant p
+            where p.member.username = :username
+              and p.visible = true
+            """
+    )
+    fun findVisibleRoomIdsByUsername(
+        @Param("username") username: String
+    ): List<Long>
 }
