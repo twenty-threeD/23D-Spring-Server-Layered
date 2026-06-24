@@ -76,6 +76,7 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								"/chat-test.html",
 								"/ws-stomp/**"
 						).permitAll()
                                
