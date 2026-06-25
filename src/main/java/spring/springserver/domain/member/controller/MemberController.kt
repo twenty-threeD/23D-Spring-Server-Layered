@@ -89,7 +89,7 @@ class MemberController(
 
     @PostMapping("/check-email")
     fun checkEmail(
-        email: String
+        @RequestBody email: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkEmail(email))
@@ -97,7 +97,7 @@ class MemberController(
 
     @PostMapping("/check-phone")
     fun checkPhone(
-        phone: String
+        @RequestBody phone: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkPhone(phone))
@@ -105,7 +105,7 @@ class MemberController(
 
     @PostMapping("/check-username")
     fun checkUsername(
-        username: String
+        @RequestBody username: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkUsername(username))
