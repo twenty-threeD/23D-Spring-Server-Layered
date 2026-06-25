@@ -13,7 +13,7 @@ import jakarta.persistence.PrePersist
 import java.time.LocalDateTime
 
 @Entity
-class Member (
+class Member(
     @Column(unique = true)
     var username: String,
 
@@ -48,5 +48,5 @@ class Member (
 
    fun getId(): Long? = id
 
-    fun update(name: String) = also { this.name = name }
+    fun update(name: String) { this.name = name }
 }

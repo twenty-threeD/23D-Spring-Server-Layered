@@ -9,6 +9,8 @@ import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.response.ChangeUsernameResponse
+import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
@@ -109,5 +111,36 @@ class MemberServiceImpl(
             available,
             if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
         )
+    }
+
+    override fun checkEmail(email: String): CheckResponse {
+
+
+        if (memberRepository.existsByEmail(email)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 이메일입니다.")
+    }
+
+    override fun checkPhone(phone: String): CheckResponse {
+
+        if (memberRepository.existsByPhone(phone)) {
+
+            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 전화번호입니다.")
+    }
+
+    override fun checkUsername(username: String): CheckResponse {
+
+        if(memberRepository.existsByUsername(username)){
+
+            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 유저네임입니다.")
     }
 }

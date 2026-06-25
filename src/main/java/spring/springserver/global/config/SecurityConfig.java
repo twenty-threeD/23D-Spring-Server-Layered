@@ -60,6 +60,9 @@ public class SecurityConfig {
 								"/api/auth/signin",
 								"/api/auth/signout",
 								"/api/auth/password/reset",
+								"/api/member/check-username",
+								"/api/member/check-email",
+								"/api/member/check-phone",
 								"/oauth2",
 								"/login",
 								"/loginSuccess"
@@ -76,9 +79,34 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								"/chat-test.html",
+								"/ws-stomp/**"
+						).permitAll()
+                               
+						.requestMatchers(
 								HttpMethod.POST,
 								"/api/files/upload"
 						).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/post"
+                        ).hasRole("USER")
+
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/post/*"
+                        ).hasRole("USER")
 
 						.requestMatchers(
 								HttpMethod.POST,

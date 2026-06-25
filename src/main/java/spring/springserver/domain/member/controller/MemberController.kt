@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.response.ChangeUsernameResponse
+import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
@@ -77,5 +79,29 @@ class MemberController(
                 httpServletResponse
             )
         )
+    }
+
+    @PostMapping("/check-email")
+    fun checkEmail(
+        @RequestBody email: String
+    ): BaseResponse<CheckResponse> {
+
+        return BaseResponse.ok(memberService.checkEmail(email))
+    }
+
+    @PostMapping("/check-phone")
+    fun checkPhone(
+        @RequestBody phone: String
+    ): BaseResponse<CheckResponse> {
+
+        return BaseResponse.ok(memberService.checkPhone(phone))
+    }
+
+    @PostMapping("/check-username")
+    fun checkUsername(
+        @RequestBody username: String
+    ): BaseResponse<CheckResponse> {
+
+        return BaseResponse.ok(memberService.checkUsername(username))
     }
 }
