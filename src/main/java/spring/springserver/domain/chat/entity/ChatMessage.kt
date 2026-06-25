@@ -2,8 +2,6 @@ package spring.springserver.domain.chat.entity
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
 import jakarta.persistence.FetchType
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -35,11 +33,11 @@ class ChatMessage(
     @Column(name = "message", nullable = false, length = 1000)
     var message: String,
 
-    @Enumerated(EnumType.STRING)
-    var messageType: MessageType,
-
     @Column(name = "created_at", nullable = false, updatable = false)
     var createdAt: Instant,
+
+    @Column(name = "attachment_urls", length = 2000)
+    var attachmentUrlsText: String? = null,
 ) {
 
     @Id
@@ -47,4 +45,23 @@ class ChatMessage(
     private var id: Long? = null
 
     fun getId(): Long? = id
+
+    fun attachmentUrls(): List<String> =
+        attachmentUrlsText
+            ?.split(ATTACHMENT_DELIMITER)
+            ?.map { it.trim() }
+            ?.filter { it.isNotBlank() }
+            ?: emptyList()
+
+    companion object {
+
+        private const val ATTACHMENT_DELIMITER = "|"
+
+        fun joinAttachmentUrls(attachmentUrls: List<String>): String? =
+            attachmentUrls
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .takeIf { it.isNotEmpty() }
+                ?.joinToString(ATTACHMENT_DELIMITER)
+    }
 }
