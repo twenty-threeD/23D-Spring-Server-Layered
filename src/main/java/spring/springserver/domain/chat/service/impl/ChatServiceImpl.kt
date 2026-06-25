@@ -1,38 +1,43 @@
-package spring.springserver.domain.chat.service
+package spring.springserver.domain.chat.service.impl
 
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
+import com.fasterxml.jackson.databind.ObjectMapper
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
-import spring.springserver.domain.chat.entity.ChatMessage
 import spring.springserver.domain.chat.entity.ChatRoom
 import spring.springserver.domain.chat.entity.ChatRoomParticipant
-import spring.springserver.domain.chat.entity.MessageType
-import spring.springserver.domain.chat.repository.ChatMessageRepository
 import spring.springserver.domain.chat.repository.ChatRoomParticipantRepository
 import spring.springserver.domain.chat.repository.ChatRoomRepository
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.Instant
+import java.util.concurrent.TimeUnit
+import kotlin.collections.forEach
 
 @Service
 @Transactional
 class ChatServiceImpl(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
-    private val chatMessageRepository: ChatMessageRepository,
     private val memberRepository: MemberRepository,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
 ) : ChatService {
+
+    private val chatMessageCacheTtlMillis = TimeUnit.DAYS.toMillis(3)
 
     private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
 
@@ -134,18 +139,19 @@ class ChatServiceImpl(
             username = username
         )
 
-        val messages = if (participant.deletedAt == null) {
+        val messages = getCachedRoomMessages(roomId)
 
-            chatMessageRepository.findAllByRoomIdOrderByCreatedAtAsc(roomId)
+        val responses = if (participant.deletedAt == null) {
+
+            messages
         } else {
 
-            chatMessageRepository.findAllByRoomIdAndCreatedAtAfterOrderByCreatedAtAsc(
-                roomId = roomId,
-                createdAt = participant.deletedAt!!
-            )
+            messages.filter {
+                it.createdAt.isAfter(participant.deletedAt!!)
+            }
         }
 
-        return messages.map(ChatMessageResponse::of)
+        return responses
     }
 
     override fun sendMessage(
@@ -160,16 +166,27 @@ class ChatServiceImpl(
         val room = senderParticipant.room
         val sender = senderParticipant.member
         val normalizedMessage = normalizeMessage(sendChatMessageRequest.message)
-        val createdAt = Instant.now()
+        val attachmentUrls = normalizeAttachmentUrls(sendChatMessageRequest.fileUrls)
 
-        val chatMessage = chatMessageRepository.save(
-            ChatMessage(
-                room = room,
-                sender = sender,
-                message = normalizedMessage,
-                messageType = MessageType.TEXT,
-                createdAt = createdAt
+        if (normalizedMessage.isBlank() && attachmentUrls.isEmpty()) {
+
+            throw ApplicationException.of(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "메시지나 첨부 파일 중 하나는 필요합니다."
             )
+        }
+
+        val createdAt = Instant.now()
+        val messageId = nextMessageId(room.getId()!!)
+
+        val response = ChatMessageResponse(
+            messageId = messageId,
+            roomId = room.getId(),
+            senderUsername = sender.username,
+            senderName = sender.name,
+            message = normalizedMessage,
+            createdAt = createdAt,
+            attachedFileUrls = attachmentUrls
         )
 
         room.updateLastMessageMeta(
@@ -182,7 +199,9 @@ class ChatServiceImpl(
             senderId = sender.getId()
         )
 
-        return ChatMessageResponse.of(chatMessage)
+        appendRoomMessage(room.getId()!!, response)
+
+        return response
     }
 
     override fun canAccessRoom(
@@ -326,17 +345,14 @@ class ChatServiceImpl(
         member.role.name == "PROFESSIONAL"
 
     private fun normalizeMessage(
-        message: String
+        message: String?
     ): String {
 
-        val normalizedMessage = message.trim()
+        val normalizedMessage = message?.trim().orEmpty()
 
         if (normalizedMessage.isEmpty()) {
 
-            throw ApplicationException.of(
-                CommonStatusCode.INVALID_ARGUMENT,
-                "메시지가 비어있습니다."
-            )
+            return ""
         }
 
         if (normalizedMessage.length > 1000) {
@@ -349,6 +365,85 @@ class ChatServiceImpl(
 
         return normalizedMessage
     }
+
+    private fun normalizeAttachmentUrls(
+        attachmentUrls: List<String>
+    ): List<String> {
+
+        if (attachmentUrls.size > 4) {
+
+            throw ApplicationException.of(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "파일은 최대 4개까지 첨부할 수 있습니다."
+            )
+        }
+
+        return attachmentUrls.map { it.trim() }
+            .filter { it.isNotBlank() }
+            .onEach {
+
+                if (!it.startsWith("/files/")) {
+
+                    throw ApplicationException.of(
+                        CommonStatusCode.INVALID_ARGUMENT,
+                        "첨부 파일 형식이 올바르지 않습니다."
+                    )
+                }
+            }
+    }
+
+    private fun getCachedRoomMessages(
+        roomId: Long
+    ): List<ChatMessageResponse> {
+
+        val cachedMessages = redisTemplate.opsForList().range(cacheKey(roomId), 0, -1)
+            ?: emptyList()
+
+        return cachedMessages.mapNotNull {
+
+            runCatching {
+                objectMapper.readValue(it, ChatMessageResponse::class.java)
+            }.getOrNull()
+        }
+    }
+
+    private fun appendRoomMessage(
+        roomId: Long,
+        message: ChatMessageResponse
+    ) {
+
+        val key = cacheKey(roomId)
+
+        redisTemplate.opsForList().rightPush(
+            key,
+            objectMapper.writeValueAsString(message)
+        )
+
+        redisTemplate.expire(
+            key,
+            chatMessageCacheTtlMillis,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun cacheKey(
+        roomId: Long
+    ): String =
+        "chat:room:$roomId:messages"
+
+    private fun messageSequenceKey(
+        roomId: Long
+    ): String =
+        "chat:room:$roomId:message-seq"
+
+    private fun nextMessageId(
+        roomId: Long
+    ): Long =
+        redisTemplate.opsForValue().increment(messageSequenceKey(roomId))
+            ?: throw ApplicationException.of(
+                CommonStatusCode.ENDPOINT_NOT_FOUND,
+                "메시지 식별자를 생성할 수 없습니다."
+            )
 
     private fun ensureParticipantRows(
         room: ChatRoom

@@ -1,4 +1,4 @@
-package spring.springserver.domain.chat.controller
+package spring.springserver.domain.chat.exception
 
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler
 import org.springframework.messaging.simp.SimpMessagingTemplate
