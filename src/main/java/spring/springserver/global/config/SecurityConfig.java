@@ -60,6 +60,9 @@ public class SecurityConfig {
 								"/api/auth/signin",
 								"/api/auth/signout",
 								"/api/auth/password/reset",
+								"/api/member/check-username",
+								"/api/member/check-email",
+								"/api/member/check-phone",
 								"/oauth2",
 								"/login",
 								"/loginSuccess"
