@@ -11,6 +11,7 @@ import spring.springserver.domain.member.data.request.ChangeUsernameRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
 import spring.springserver.domain.member.data.response.ChangeUsernameResponse
+import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
@@ -136,5 +137,36 @@ class MemberServiceImpl(
         )
 
         return ChangeUsernameResponse.of("아이디가 변경되었습니다. 다시 로그인 해주세요.")
+    }
+
+    override fun checkEmail(email: String): CheckResponse {
+
+
+        if (memberRepository.existsByEmail(email)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 이메일입니다.")
+    }
+
+    override fun checkPhone(phone: String): CheckResponse {
+
+        if (memberRepository.existsByPhone(phone)) {
+
+            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 전화번호입니다.")
+    }
+
+    override fun checkUsername(username: String): CheckResponse {
+
+        if(memberRepository.existsByUsername(username)){
+
+            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        }
+
+        return CheckResponse.of("사용할 수 있는 유저네임입니다.")
     }
 }
