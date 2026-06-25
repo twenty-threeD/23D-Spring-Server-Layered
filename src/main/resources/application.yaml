@@ -94,6 +94,7 @@ springdoc:
     display-request-duration: true
     enabled: true # 배포할 때 false로 변경
 
+
 app:
   upload:
     file-dir: ./files

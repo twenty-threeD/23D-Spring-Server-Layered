@@ -79,6 +79,11 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								"/chat-test.html",
+								"/ws-stomp/**"
+						).permitAll()
+                               
+						.requestMatchers(
 								HttpMethod.POST,
 								"/api/files/upload"
 						).permitAll()
