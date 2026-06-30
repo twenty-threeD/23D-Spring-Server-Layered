@@ -30,7 +30,7 @@ class JobCategory(
 
     fun getFullName(): String {
 
-        return parent?.let { "${it.name} > $name" }
+        return parent?.let { "${it.getFullName()} > $name" }
             ?: name
     }
 }

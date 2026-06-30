@@ -10,8 +10,12 @@ interface JobCategoryRepository: JpaRepository<JobCategory, Long> {
         """
         select j
         from JobCategory j
-        where j.parent is not null
-        order by j.parent.id asc, j.name asc
+        where not exists (
+            select 1
+            from JobCategory child
+            where child.parent = j
+        )
+        order by j.name asc
         """
     )
     fun findAllLeafCategories(): List<JobCategory>

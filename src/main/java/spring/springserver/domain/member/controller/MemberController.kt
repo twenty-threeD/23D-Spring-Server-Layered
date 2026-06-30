@@ -9,10 +9,8 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import spring.springserver.domain.member.data.request.ChangeUsernameRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
-import spring.springserver.domain.member.data.response.ChangeUsernameResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
@@ -48,21 +46,6 @@ class MemberController(
                 httpServletResponse
             )
         )
-    }
-
-    @PostMapping("/username/reset")
-    fun resetUsernameWithAuth(
-        @Valid @RequestBody changeUsernameRequest: ChangeUsernameRequest,
-        httpServletRequest: HttpServletRequest,
-        httpServletResponse: HttpServletResponse
-    ): BaseResponse<ChangeUsernameResponse> {
-
-        return BaseResponse.ok(memberService.resetUsernameWithAuth(
-            changeUsernameRequest,
-            httpServletRequest,
-            httpServletResponse
-            )
-       )
     }
 
     @GetMapping("/username")
