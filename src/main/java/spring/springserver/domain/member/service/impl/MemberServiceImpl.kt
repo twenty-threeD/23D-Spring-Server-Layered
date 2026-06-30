@@ -7,14 +7,13 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
-import spring.springserver.domain.member.data.request.ChangeUsernameRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
-import spring.springserver.domain.member.data.response.ChangeUsernameResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
+import spring.springserver.domain.member.data.response.UsernameCheckResponse
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -100,45 +99,7 @@ class MemberServiceImpl(
         return FindUsernameResponse.of(username)
     }
 
-    override fun resetUsernameWithAuth(
-        changeUsernameRequest: ChangeUsernameRequest,
-        httpServletRequest: HttpServletRequest,
-        httpServletResponse: HttpServletResponse
-    ): ChangeUsernameResponse {
-
-        val accessToken = tokenService.extractTokenFromCookie(
-                "accessToken",
-                httpServletRequest
-        )
-
-        if (accessToken.isNullOrBlank()) {
-
-           throw ApplicationException(AuthStatusCode.INVALID_JWT)
-        }
-
-        val member = memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-
-        if (member.email != changeUsernameRequest.email) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
-        }
-
-        if (memberRepository.existsByUsername(changeUsernameRequest.newUsername)) {
-
-            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        }
-
-        member.username = changeUsernameRequest.newUsername
-
-        tokenService.deleteTokens(
-            httpServletRequest,
-            httpServletResponse,
-        )
-
-        return ChangeUsernameResponse.of("아이디가 변경되었습니다. 다시 로그인 해주세요.")
-    }
-
+    @Transactional(readOnly = true)
     override fun checkEmail(email: String): CheckResponse {
 
 
@@ -160,13 +121,13 @@ class MemberServiceImpl(
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
 
-    override fun checkUsername(username: String): CheckResponse {
+    override fun checkUsername(username: String): UsernameCheckResponse {
 
-        if(memberRepository.existsByUsername(username)){
+        val available = !memberRepository.existsByUsername(username)
 
-            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        }
-
-        return CheckResponse.of("사용할 수 있는 유저네임입니다.")
+        return UsernameCheckResponse.of(
+            available,
+            if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
+        )
     }
 }

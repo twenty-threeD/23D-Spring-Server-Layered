@@ -64,7 +64,7 @@ class AuthServiceImpl(
         httpServletResponse: HttpServletResponse
     ): SignInResponse {
 
-        val member = memberRepository.findByEmail(signInRequest.email)
+        val member = memberRepository.findByUsername(signInRequest.username)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
         if(!passwordEncoder.matches(signInRequest.password, member.password)){
