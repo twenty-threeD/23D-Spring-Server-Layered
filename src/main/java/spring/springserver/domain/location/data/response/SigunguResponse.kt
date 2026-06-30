@@ -17,7 +17,7 @@ data class SigunguResponse(
         ): SigunguResponse {
 
             return SigunguResponse(
-                sig.sigCd,
+                sig.getSigCd(),
                 sig.sigKorNm,
                 sig.sigEngNm
             )
