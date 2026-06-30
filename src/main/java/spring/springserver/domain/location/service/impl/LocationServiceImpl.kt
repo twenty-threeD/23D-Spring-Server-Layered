@@ -52,6 +52,6 @@ class LocationServiceImpl(
         val ctprvn = ctprvnRepository.findById(sig.getCtprvnCd()).orElse(null)
             ?: throw ApplicationException(LocationStatusCode.SIDO_NOT_FOUND)
 
-        return "${ctprvn.ctpKorNm} ${sig.sigKorNm}"
+        return "${ctprvn.ctpKorNm ?: ""} ${sig.sigKorNm ?: ""}".trim()
     }
 }

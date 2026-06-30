@@ -37,7 +37,7 @@ data class ProfileResponse(
             return ProfileResponse(
                 username,
                 profile.imageUrl,
-                profile.sig?.sigCd,
+                profile.sig?.getSigCd(),
                 locationName,
                 profile.movableDistance?.name,
                 profile.movableDistance?.getLabel(),
