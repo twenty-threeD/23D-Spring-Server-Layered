@@ -17,7 +17,7 @@ data class SidoResponse(
         ): SidoResponse {
 
             return SidoResponse(
-                ctprvn.ctprvnCd,
+                ctprvn.getCtprvnCd(),
                 ctprvn.ctpKorNm,
                 ctprvn.ctpEngNm
             )

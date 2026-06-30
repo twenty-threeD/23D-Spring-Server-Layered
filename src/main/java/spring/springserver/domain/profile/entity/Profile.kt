@@ -29,8 +29,8 @@ class Profile(
     @Column(length = 500)
     var imageUrl: String? = null,
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sig_cd")
+    @ManyToOne(fetch = FetchType.LAZY)
     var sig: Sig? = null,
 
     @Enumerated(EnumType.STRING)
