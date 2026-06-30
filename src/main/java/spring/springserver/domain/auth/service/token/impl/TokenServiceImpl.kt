@@ -77,7 +77,7 @@ class TokenServiceImpl(
         val accessToken = extractTokenFromCookie(
             "accessToken",
             httpServletRequest
-        )
+        ) ?: jwtProvider.resolveToken(httpServletRequest)
 
         if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
