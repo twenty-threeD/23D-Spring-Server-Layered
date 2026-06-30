@@ -4,11 +4,6 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
-import jakarta.validation.constraints.Email
-import spring.springserver.domain.member.data.request.ChangeUsernameRequest
-import spring.springserver.domain.member.data.request.FindUsernameRequest
-import spring.springserver.domain.member.data.request.PasswordResetRequest
-import spring.springserver.domain.member.data.response.ChangeUsernameResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
@@ -36,19 +31,13 @@ interface MemberService {
         findUsernameRequest: FindUsernameRequest
     ): FindUsernameResponse
 
-    fun resetUsernameWithAuth(
-        changeUsernameRequest: ChangeUsernameRequest,
-        httpServletRequest: HttpServletRequest,
-        httpServletResponse: HttpServletResponse
-    ): ChangeUsernameResponse
-
     fun checkEmail(
         email: String
     ): CheckResponse
 
     fun checkUsername(
         username: String
-    ): CheckResponse
+    ): UsernameCheckResponse
 
     fun checkPhone(
         phone: String

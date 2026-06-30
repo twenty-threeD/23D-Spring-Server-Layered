@@ -9,7 +9,6 @@ import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
-import spring.springserver.domain.member.data.response.ChangeUsernameResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
@@ -101,18 +100,6 @@ class MemberServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun checkUsername(
-        username: String
-    ): UsernameCheckResponse {
-
-        val available = !memberRepository.existsByUsername(username)
-
-        return UsernameCheckResponse.of(
-            available,
-            if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
-        )
-    }
-
     override fun checkEmail(email: String): CheckResponse {
 
 
@@ -134,13 +121,13 @@ class MemberServiceImpl(
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
 
-    override fun checkUsername(username: String): CheckResponse {
+    override fun checkUsername(username: String): UsernameCheckResponse {
 
-        if(memberRepository.existsByUsername(username)){
+        val available = !memberRepository.existsByUsername(username)
 
-            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        }
-
-        return CheckResponse.of("사용할 수 있는 유저네임입니다.")
+        return UsernameCheckResponse.of(
+            available,
+            if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
+        )
     }
 }

@@ -15,6 +15,7 @@ import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
+import spring.springserver.domain.member.data.response.UsernameCheckResponse
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
 
@@ -89,7 +90,7 @@ class MemberController(
     @PostMapping("/check-username")
     fun checkUsername(
         @RequestBody username: String
-    ): BaseResponse<CheckResponse> {
+    ): BaseResponse<UsernameCheckResponse> {
 
         return BaseResponse.ok(memberService.checkUsername(username))
     }
