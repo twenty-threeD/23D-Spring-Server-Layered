@@ -25,7 +25,9 @@ class ProfileBackfillRunner(
 
         var createdCount = 0
 
-        memberRepository.findAll().forEach { member ->
+        memberRepository.findAll().forEach {
+
+            member ->
             if (!profileRepository.existsByMember(member)) {
                 profileRepository.save(Profile(member = member))
                 createdCount++
@@ -33,6 +35,7 @@ class ProfileBackfillRunner(
         }
 
         if (createdCount > 0) {
+
             log.info("Backfilled {} missing profile(s).", createdCount)
         }
     }

@@ -18,14 +18,16 @@ class JobCategoryServiceImpl(
     override fun getJobCategories(): List<JobCategoryResponse> {
 
         return jobCategoryRepository.findAllLeafCategories()
-            .map { jobCategory -> JobCategoryResponse.of(jobCategory) }
+            .map {
+                jobCategory -> JobCategoryResponse.of(jobCategory)
+            }
     }
 
     override fun getJobCategory(
         jobCategoryId: Long
     ): JobCategory {
 
-        return jobCategoryRepository.findById(jobCategoryId).orElse(null)
-            ?: throw ApplicationException(JobCategoryStatusCode.JOB_CATEGORY_NOT_FOUND)
+            return jobCategoryRepository.findById(jobCategoryId).orElse(null)
+                ?: throw ApplicationException(JobCategoryStatusCode.JOB_CATEGORY_NOT_FOUND)
     }
 }

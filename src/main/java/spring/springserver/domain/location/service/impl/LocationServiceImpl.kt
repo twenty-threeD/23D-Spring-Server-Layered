@@ -21,7 +21,9 @@ class LocationServiceImpl(
     override fun getSidoList(): List<SidoResponse> {
 
         return ctprvnRepository.findAllOrderByCtprvnCd()
-            .map { ctprvn -> SidoResponse.of(ctprvn) }
+            .map {
+                ctprvn -> SidoResponse.of(ctprvn)
+            }
     }
 
     override fun getSigunguList(
@@ -34,7 +36,9 @@ class LocationServiceImpl(
         }
 
         return sigRepository.findAllByCtprvnCd(ctprvnCd)
-            .map { sig -> SigunguResponse.of(sig) }
+            .map {
+                sig -> SigunguResponse.of(sig)
+            }
     }
 
     override fun getSig(
