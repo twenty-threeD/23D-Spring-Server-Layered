@@ -36,9 +36,4 @@ interface MemberRepository: JpaRepository<Member, Long> {
     fun findMemberById(
         id: Long
     ): Member?
-
-
-    fun email(
-        email: String
-    ): String?
 }
