@@ -17,8 +17,8 @@ class JobCategory(
     @Column(nullable = false, length = 50)
     var name: String,
 
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
+    @ManyToOne(fetch = FetchType.LAZY)
     var parent: JobCategory? = null
 ) {
 
