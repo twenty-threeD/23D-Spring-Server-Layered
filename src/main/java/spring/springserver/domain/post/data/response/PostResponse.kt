@@ -1,6 +1,5 @@
 package spring.springserver.domain.post.data.response
 
-import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -17,7 +16,7 @@ data class PostResponse(
 
     val fileUrls: List<String>,
 
-    val member: Member
+    val member: PostMemberResponse
 ) {
 
     companion object {
@@ -33,7 +32,30 @@ data class PostResponse(
                 post.viewCount,
                 post.updatedAt,
                 post.attachments.mapNotNull { it.fileUrl },
-                post.member
+                PostMemberResponse.of(post.member)
+            )
+        }
+    }
+}
+
+data class PostMemberResponse(
+    val id: Long?,
+
+    val username: String,
+
+    val name: String,
+) {
+
+    companion object {
+
+        fun of(
+            member: spring.springserver.domain.member.entity.Member
+        ): PostMemberResponse {
+
+            return PostMemberResponse(
+                member.getId(),
+                member.username,
+                member.name
             )
         }
     }
