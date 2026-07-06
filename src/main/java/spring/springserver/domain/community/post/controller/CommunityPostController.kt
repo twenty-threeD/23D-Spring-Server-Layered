@@ -1,7 +1,6 @@
 package spring.springserver.domain.community.post.controller
 
 import jakarta.validation.Valid
-import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -10,9 +9,7 @@ import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RequestPart
 import org.springframework.web.bind.annotation.RestController
-import org.springframework.web.multipart.MultipartFile
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.post.data.request.CreatePostRequest
 import spring.springserver.domain.community.post.data.request.UpdatePostRequest
@@ -28,7 +25,7 @@ class CommunityPostController(
     private val communityPostService: CommunityPostService
 ) {
 
-    @PostMapping(consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping
     fun createPost(
         @Valid @RequestBody createPostRequest: CreatePostRequest
     ): BaseResponse<CreatePostResponse> {
@@ -36,30 +33,12 @@ class CommunityPostController(
         return BaseResponse.ok(communityPostService.createPost(createPostRequest))
     }
 
-    @PostMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun createPostWithFile(
-        @RequestPart("createPostRequest") createPostRequestJson: String,
-        @RequestPart(value = "file", required = false) file: MultipartFile?
-    ): BaseResponse<CreatePostResponse> {
-
-        return BaseResponse.ok(communityPostService.createPost(createPostRequestJson, file))
-    }
-
-    @PatchMapping(consumes = [MediaType.APPLICATION_JSON_VALUE])
+    @PatchMapping
     fun updatePost(
         @Valid @RequestBody updatePostRequest: UpdatePostRequest
     ): BaseResponse<UpdatePostResponse> {
 
         return BaseResponse.ok(communityPostService.updatePost(updatePostRequest))
-    }
-
-    @PatchMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun updatePostWithFile(
-        @RequestPart("updatePostRequest") updatePostRequestJson: String,
-        @RequestPart(value = "file", required = false) file: MultipartFile?
-    ): BaseResponse<UpdatePostResponse> {
-
-        return BaseResponse.ok(communityPostService.updatePost(updatePostRequestJson, file))
     }
 
     @DeleteMapping
