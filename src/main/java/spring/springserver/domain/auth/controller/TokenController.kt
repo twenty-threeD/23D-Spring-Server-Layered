@@ -17,7 +17,9 @@ class TokenController(
 ) {
 
     @GetMapping("/username")
-    fun getCurrentUsername(httpServletRequest: HttpServletRequest): BaseResponse<CurrentUsernameResponse> {
+    fun getCurrentUsername(
+        httpServletRequest: HttpServletRequest
+    ): BaseResponse<CurrentUsernameResponse> {
 
         return BaseResponse.ok(
             CurrentUsernameResponse.of(

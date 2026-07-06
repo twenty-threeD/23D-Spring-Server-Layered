@@ -7,7 +7,9 @@ data class CurrentUsernameResponse(
 
     companion object {
 
-        fun of(username: String): CurrentUsernameResponse {
+        fun of(
+            username: String
+        ): CurrentUsernameResponse {
 
             return CurrentUsernameResponse(username)
         }
