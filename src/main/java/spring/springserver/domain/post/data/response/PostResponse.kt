@@ -1,5 +1,6 @@
 package spring.springserver.domain.post.data.response
 
+import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -14,7 +15,9 @@ data class PostResponse(
 
     val updatedAt: LocalDateTime?,
 
-    val fileUrls: List<String>
+    val fileUrls: List<String>,
+
+    val member: Member
 ) {
 
     companion object {
@@ -30,6 +33,7 @@ data class PostResponse(
                 post.viewCount,
                 post.updatedAt,
                 post.attachments.mapNotNull { it.fileUrl },
+                post.member
             )
         }
     }

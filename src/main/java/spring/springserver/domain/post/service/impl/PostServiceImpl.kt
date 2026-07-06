@@ -74,7 +74,7 @@ class PostServiceImpl(
         pageable: Pageable
     ): Page<PostResponse> {
 
-        return postRepository.findAllByIsDeletedFalseOrderByUpdatedAtDesc(pageable.withoutSort())
+        return postRepository.findAllByIsDeletedFalseOrderByUpdatedAtDesc(pageable)
             .map { post -> PostResponse.of(post) }
     }
 
