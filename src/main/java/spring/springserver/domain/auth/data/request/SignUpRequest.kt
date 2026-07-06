@@ -26,7 +26,7 @@ data class SignUpRequest(
         region = Region.KR,
         format = Format.LOCAL
     )
-    @field:NotBlank
+
     val phone: String,
 
     @field:NotBlank
