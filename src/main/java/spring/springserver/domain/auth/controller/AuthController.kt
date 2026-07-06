@@ -2,6 +2,8 @@ package spring.springserver.domain.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -21,14 +23,18 @@ class AuthController(
 ) {
 
     @PostMapping("/signup")
-    fun signUp(@RequestBody signUpRequest: SignUpRequest): BaseResponse<SignUpResponse> {
+    fun signUp(
+        @Valid @RequestBody signUpRequest: SignUpRequest
+    ): BaseResponse<SignUpResponse> {
 
         return BaseResponse.ok(authService.signUp(signUpRequest))
     }
 
     @PostMapping("/signin")
-    fun signIn(@RequestBody signInRequest: SignInRequest,
-                     httpServletResponse: HttpServletResponse): BaseResponse<SignInResponse> {
+    fun signIn(
+        @Valid @RequestBody signInRequest: SignInRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<SignInResponse> {
 
         return BaseResponse.ok(authService.signIn(
             signInRequest,
@@ -38,8 +44,10 @@ class AuthController(
     }
 
     @PostMapping("/signout")
-    fun signOut(httpServletRequest: HttpServletRequest,
-                      httpServletResponse: HttpServletResponse) : BaseResponse<SignOutResponse> {
+    fun signOut(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ) : BaseResponse<SignOutResponse> {
 
         return BaseResponse.ok(authService.signOut(
             httpServletRequest,

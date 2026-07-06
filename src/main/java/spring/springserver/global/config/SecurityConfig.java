@@ -79,6 +79,11 @@ public class SecurityConfig {
 						).hasRole("USER")
 
 						.requestMatchers(
+								HttpMethod.GET,
+								"/api/token/username"
+						).permitAll()
+
+						.requestMatchers(
 								"/chat-test.html",
 								"/ws-stomp/**"
 						).permitAll()

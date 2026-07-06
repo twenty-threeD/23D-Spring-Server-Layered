@@ -130,7 +130,7 @@ class TokenServiceImpl(
                     return cookie.value
                 }
             }
-        } catch (e : Exception) {
+        } catch (_: Exception) {
 
             throw ApplicationException(AuthStatusCode.INVALID_JWT)
         }
@@ -140,8 +140,10 @@ class TokenServiceImpl(
 
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {
 
-        val accessToken = extractTokenFromCookie("accessToken",
-                                                 httpServletRequest)
+        val accessToken = extractTokenFromCookie(
+            "accessToken",
+            httpServletRequest
+        )
 
         if(accessToken.isNullOrBlank()) {
 
