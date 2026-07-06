@@ -6,17 +6,27 @@ import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 
 interface TokenService {
 
-    fun generateAccessToken(generateTokenRequest: GenerateTokenRequest,
-                            httpServletResponse: HttpServletResponse?) : String
+    fun generateAccessToken(
+        generateTokenRequest: GenerateTokenRequest,
+        httpServletResponse: HttpServletResponse?
+    ) : String
 
-    fun generateRefreshToken(getTokenRequest: GenerateTokenRequest,
-                             httpServletResponse: HttpServletResponse?) : String
+    fun generateRefreshToken(
+        getTokenRequest: GenerateTokenRequest,
+        httpServletResponse: HttpServletResponse?
+    ) : String
 
-    fun deleteTokens(httpServletRequest: HttpServletRequest,
-                     httpServletResponse: HttpServletResponse)
+    fun deleteTokens(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    )
 
-    fun extractTokenFromCookie(cookieName: String,
-                               httpServletRequest: HttpServletRequest) : String?
+    fun extractTokenFromCookie(
+        cookieName: String,
+        httpServletRequest: HttpServletRequest
+    ) : String?
 
-    fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String?
+    fun getCurrentUsername(
+        httpServletRequest: HttpServletRequest
+    ) : String?
 }

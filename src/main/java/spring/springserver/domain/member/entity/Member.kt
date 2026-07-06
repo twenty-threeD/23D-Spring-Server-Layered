@@ -1,5 +1,6 @@
 package spring.springserver.domain.member.entity
 
+import com.l98293.phone.Format
 import com.l98293.phone.Phone
 import com.l98293.phone.Region
 import jakarta.persistence.Column
@@ -22,7 +23,10 @@ class Member(
     @Column(unique = true)
     var email: String,
 
-    @field:Phone(region = Region.KR)
+    @field:Phone(
+        region = Region.KR,
+        format = Format.LOCAL
+        )
     var phone: String?,
 
     var password: String?,

@@ -1,5 +1,8 @@
 package spring.springserver.domain.auth.data.request
 
+import com.l98293.phone.Format
+import com.l98293.phone.Phone
+import com.l98293.phone.Region
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
@@ -19,6 +22,10 @@ data class SignUpRequest(
     @field:NotBlank
     val email: String,
 
+    @field:Phone(
+        region = Region.KR,
+        format = Format.LOCAL
+    )
     @field:NotBlank
     val phone: String,
 
@@ -29,8 +36,8 @@ data class SignUpRequest(
     )
     val password: String,
 
-    @field:NotBlank
-    val role: Role,
+    @field:NotNull
+    var role: Role,
 
     @field:NotNull
     var provider: Provider
