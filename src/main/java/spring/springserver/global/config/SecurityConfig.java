@@ -101,7 +101,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/post"
-                        ).hasRole("USER")
+                        ).permitAll()
 
                         .requestMatchers(
                                 HttpMethod.DELETE,
