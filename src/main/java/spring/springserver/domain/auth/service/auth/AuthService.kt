@@ -10,11 +10,17 @@ import spring.springserver.domain.auth.data.response.SignUpResponse
 
 interface AuthService {
 
-    fun signUp(signUpRequest: SignUpRequest) : SignUpResponse
+    fun signUp(
+        signUpRequest: SignUpRequest
+    ) : SignUpResponse
 
-    fun signIn(signInRequest: SignInRequest,
-               httpServletResponse: HttpServletResponse) : SignInResponse
+    fun signIn(
+        signInRequest: SignInRequest,
+        httpServletResponse: HttpServletResponse
+    ) : SignInResponse
 
-    fun signOut(httpServletRequest: HttpServletRequest,
-                httpServletResponse: HttpServletResponse) : SignOutResponse
+    fun signOut(
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ) : SignOutResponse
 }
