@@ -1,0 +1,195 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Java 21 설정
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: 배포 Secret 검증
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_KEY }}
+        run: |
+          set -e
+
+          for key in EC2_HOST EC2_USER EC2_KEY; do
+            if [ -z "${!key}" ]; then
+              echo "필수 Secret이 설정되지 않았습니다: $key"
+              exit 1
+            fi
+          done
+
+      - name: Gradle 설치
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14'
+
+      - name: 테스트 및 JAR 빌드
+        run: gradle test bootJar
+
+      - name: Docker 이미지 메타데이터 설정
+        run: |
+          OWNER="${GITHUB_REPOSITORY_OWNER,,}"
+          echo "IMAGE_NAME=ghcr.io/$OWNER/spring-server" >> "$GITHUB_ENV"
+
+      - name: GHCR 로그인
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Docker 이미지 빌드
+        run: |
+          docker build \
+            -t "$IMAGE_NAME:${{ github.sha }}" \
+            -t "$IMAGE_NAME:latest" .
+
+      - name: Docker 이미지 GHCR Push
+        run: |
+          docker push "$IMAGE_NAME:${{ github.sha }}"
+          docker push "$IMAGE_NAME:latest"
+
+      - name: EC2에서 Blue-Green 컨테이너 전환
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            set -e
+
+            APP_DIR="/opt/spring-server"
+            NETWORK_NAME="spring-server-network"
+            PROXY_NAME="spring-server-proxy"
+            OWNER="${{ github.repository_owner }}"
+            OWNER="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
+            IMAGE_NAME="ghcr.io/$OWNER/spring-server:${{ github.sha }}"
+            HEALTH_PATH="/v3/api-docs"
+
+            mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
+            echo "${{ github.token }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            sudo docker pull "$IMAGE_NAME"
+
+            if [ ! -f "$APP_DIR/.env" ]; then
+              echo "필수 환경 변수 파일이 없습니다: $APP_DIR/.env"
+              exit 1
+            fi
+
+            for key in DB_URL DB_USERNAME DB_PASSWORD JWT_SECRET ACCESS_EXPIRATION REFRESH_EXPIRATION EMAIL EMAIL_PASSWORD REDIS_HOST REDIS_PORT CLIENT_ID CLIENT_SECRET KAKAO_CLIENT_ID KAKAO_CLIENT_SECRET NAVER_CLIENT_ID NAVER_CLIENT_SECRET; do
+              if ! grep -Eq "^[[:space:]]*$key=" "$APP_DIR/.env"; then
+                echo "필수 환경 변수가 .env에 없습니다: $key"
+                exit 1
+              fi
+            done
+
+            sudo docker network create "$NETWORK_NAME" 2>/dev/null || true
+
+            NGINX_CONF="$APP_DIR/nginx/conf.d/default.conf"
+            ACTIVE_COLOR="none"
+
+            if [ -f "$NGINX_CONF" ]; then
+              if grep -q "server spring-server-blue:8080;" "$NGINX_CONF"; then
+                ACTIVE_COLOR="blue"
+              elif grep -q "server spring-server-green:8080;" "$NGINX_CONF"; then
+                ACTIVE_COLOR="green"
+              fi
+            fi
+
+            if [ "$ACTIVE_COLOR" = "blue" ]; then
+              NEW_COLOR="green"
+              OLD_COLOR="blue"
+              NEW_PORT="8082"
+            else
+              NEW_COLOR="blue"
+              OLD_COLOR="$ACTIVE_COLOR"
+              NEW_PORT="8081"
+            fi
+
+            NEW_CONTAINER="spring-server-$NEW_COLOR"
+            OLD_CONTAINER="spring-server-$OLD_COLOR"
+
+            sudo docker rm -f "$NEW_CONTAINER" 2>/dev/null || true
+
+            sudo docker run -d \
+              --name "$NEW_CONTAINER" \
+              --network "$NETWORK_NAME" \
+              --restart unless-stopped \
+              -p "$NEW_PORT:8080" \
+              --env-file "$APP_DIR/.env" \
+              -v "$APP_DIR/files:/app/files" \
+              "$IMAGE_NAME"
+
+            for i in $(seq 1 30); do
+              if curl -fsS "http://localhost:$NEW_PORT$HEALTH_PATH" >/dev/null; then
+                break
+              fi
+
+              if [ "$i" -eq 30 ]; then
+                sudo docker logs "$NEW_CONTAINER" --tail 100
+                sudo docker rm -f "$NEW_CONTAINER"
+                echo "새 컨테이너 health check 실패"
+                exit 1
+              fi
+
+              sleep 3
+            done
+
+            sudo tee "$APP_DIR/nginx/conf.d/default.conf" > /dev/null <<EOF
+            upstream spring_server {
+                server $NEW_CONTAINER:8080;
+            }
+
+            server {
+                listen 80;
+
+                location / {
+                    proxy_pass http://spring_server;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                }
+            }
+            EOF
+
+            sudo docker rm -f spring-server 2>/dev/null || true
+
+            if sudo docker ps --format '{{.Names}}' | grep -q "^$PROXY_NAME$"; then
+              sudo docker exec "$PROXY_NAME" nginx -t
+              sudo docker exec "$PROXY_NAME" nginx -s reload
+            else
+              sudo docker rm -f "$PROXY_NAME" 2>/dev/null || true
+              sudo docker run -d \
+                --name "$PROXY_NAME" \
+                --network "$NETWORK_NAME" \
+                --restart unless-stopped \
+                -p 8080:80 \
+                -v "$APP_DIR/nginx/conf.d:/etc/nginx/conf.d:ro" \
+                nginx:alpine
+            fi
+
+            if [ "$OLD_COLOR" != "none" ]; then
+              sudo docker rm -f "$OLD_CONTAINER" 2>/dev/null || true
+            fi
+
+            sudo docker image prune -f
+            echo "Blue-green Docker 배포 완료! active=$NEW_COLOR"

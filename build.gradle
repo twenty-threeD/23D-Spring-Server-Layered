@@ -1,7 +1,11 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '4.0.4'
+    id 'org.springframework.boot' version '3.5.13'
     id 'io.spring.dependency-management' version '1.1.7'
+
+    id 'org.jetbrains.kotlin.jvm'
+    id "org.jetbrains.kotlin.plugin.jpa" version '2.3.10'
+    id "org.jetbrains.kotlin.plugin.spring" version '2.3.10'
 }
 
 group = 'spring'
@@ -10,8 +14,12 @@ description = 'springServer'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(21)
     }
+}
+
+kotlin {
+    jvmToolchain(21)
 }
 
 configurations {
@@ -22,60 +30,76 @@ configurations {
 
 dependencies {
 
-    // spring security
+    // Spring Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.security:spring-security-messaging'
-    testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
 
-    // webmvc
-    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
-    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    // Phone
+    implementation 'com.github.L98293:phone:2.1.1'
 
-    // phone
-    implementation 'com.github.l98293:phone:1.1.0'
-
-    // lombok
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // postgresQL
+    // PostgreSQL
     runtimeOnly 'org.postgresql:postgresql'
 
-    // redis
+    // Redis
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-    runtimeOnly 'org.postgresql:postgresql'
 
-    // junit
+    // MongoDB
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // unit
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // jwt
+    // JJWT
     implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
     implementation 'io.jsonwebtoken:jjwt-impl:0.13.0'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 
-    // env
+    // Dotenv
     developmentOnly 'me.paulschwarz:springboot3-dotenv:5.1.0'
 
     // JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
-    // web
+    // Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
-    // validation
+    // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // mail
+    // Mail
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-    // thymeleaf
+    // Thymeleaf
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
     // spring boot test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.2.1'
 
-    //WebSocket
+    // WebSocket
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+    // OAuth
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+    // tika
+    implementation 'org.apache.tika:tika-core:3.2.1'
+    implementation 'org.apache.tika:tika-parsers-standard-package:3.2.1'
+
+    // secp256k1
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.80'
+    
+    // Kotlin
+    implementation 'org.jetbrains.kotlin:kotlin-reflect'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 tasks.named('test') {
