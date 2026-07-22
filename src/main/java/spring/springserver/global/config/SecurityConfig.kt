@@ -30,6 +30,7 @@ class SecurityConfig(
 
     @Bean
     fun passwordEncoder(): PasswordEncoder {
+
         return BCryptPasswordEncoder()
     }
 
@@ -39,8 +40,11 @@ class SecurityConfig(
         customOAuthUserService: CustomOAuthUserService,
         oAuth2SuccessHandler: OAuth2SuccessHandler
     ): SecurityFilterChain {
+
         httpSecurity
-            .httpBasic { httpBasic -> httpBasic.disable() }
+            .httpBasic {
+                httpBasic -> httpBasic.disable()
+            }
             .formLogin { formLogin -> formLogin.disable() }
             .csrf { csrf -> csrf.disable() }
             .cors { }
@@ -67,15 +71,42 @@ class SecurityConfig(
                         "/login",
                         "/loginSuccess"
                     ).permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/auth/password/reset/check").hasRole("USER")
-                    .requestMatchers(HttpMethod.DELETE, "/api/delete/account").hasRole("USER")
-                    .requestMatchers(HttpMethod.GET, "/api/token/username").permitAll()
-                    .requestMatchers("/chat-test.html", "/ws-stomp/**").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/files/upload").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/post").hasRole("USER")
-                    .requestMatchers(HttpMethod.PATCH, "/api/post").hasRole("USER")
-                    .requestMatchers(HttpMethod.GET, "/api/post/*").permitAll()
-                    .requestMatchers(HttpMethod.DELETE, "/api/post/*").hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/auth/password/reset/check"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/delete/account")
+                    .hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/token/username"
+                    ).permitAll()
+                    .requestMatchers(
+                        "/chat-test.html",
+                        "/ws-stomp/**"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/files/upload"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/post"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/post")
+                    .hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/post/*"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/post/*")
+                    .hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/email/code/send",
@@ -108,27 +139,33 @@ class SecurityConfig(
                     .anyRequest()
                     .authenticated()
             }
-            .oauth2Login { oauth2 ->
-                oauth2
-                    .userInfoEndpoint { userInfo ->
-                        userInfo.userService(customOAuthUserService)
+            .oauth2Login {
+                oauth2 -> oauth2
+                    .userInfoEndpoint {
+                        userInfo -> userInfo.userService(customOAuthUserService)
                     }
                     .successHandler(oAuth2SuccessHandler)
             }
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter::class.java)
+            .addFilterBefore(
+                jwtAuthFilter,
+                UsernamePasswordAuthenticationFilter::class.java
+            )
 
         return httpSecurity.build()
     }
 
     @Bean
     fun corsFilter(): CorsFilter {
+
         val config = CorsConfiguration().apply {
+
             allowCredentials = true
             addAllowedOriginPattern("*")
             addAllowedHeader("*")
             addAllowedMethod("*")
         }
         val source = UrlBasedCorsConfigurationSource().apply {
+
             registerCorsConfiguration("/**", config)
         }
 

@@ -13,6 +13,7 @@ class WebConfig(
 ) : WebMvcConfigurer {
 
     override fun addResourceHandlers(resourceHandlerRegistry: ResourceHandlerRegistry) {
+
         resourceHandlerRegistry.addResourceHandler("/files/**")
             .addResourceLocations("file:${Path.of(fileDir).toAbsolutePath().normalize()}/")
     }

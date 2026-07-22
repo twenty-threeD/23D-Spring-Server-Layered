@@ -8,6 +8,7 @@ data class FileUploadResponse(
     companion object {
 
         fun of(fileUrl: String, message: String): FileUploadResponse {
+
             return FileUploadResponse(
                 fileUrl,
                 message

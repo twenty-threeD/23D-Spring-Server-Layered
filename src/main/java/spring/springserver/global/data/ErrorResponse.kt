@@ -11,7 +11,9 @@ data class ErrorResponse(
     val details: Map<String, String>? = null
 ) {
     companion object {
+
         fun of(code: String, message: String): ErrorResponse {
+
             return ErrorResponse(
                 code = code,
                 message = message,
@@ -24,6 +26,7 @@ data class ErrorResponse(
             message: String,
             details: Map<String, String>
         ): ErrorResponse {
+
             return ErrorResponse(
                 code = code,
                 message = message,

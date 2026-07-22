@@ -10,7 +10,11 @@ data class BaseResponse<T>(
     val error: ErrorResponse?
 ) {
     companion object {
-        fun <T> ok(data: T): BaseResponse<T> {
+
+        fun <T> ok(
+            data: T
+        ): BaseResponse<T> {
+
             return BaseResponse(
                 status = HttpStatus.OK.value(),
                 data = data,
@@ -19,6 +23,7 @@ data class BaseResponse<T>(
         }
 
         fun ok(data: Nothing?): BaseResponse<Void> {
+
             return BaseResponse(
                 status = HttpStatus.OK.value(),
                 data = null,
@@ -30,6 +35,7 @@ data class BaseResponse<T>(
             httpStatus: HttpStatus,
             errorResponse: ErrorResponse
         ): BaseResponse<Void> {
+
             return BaseResponse(
                 status = httpStatus.value(),
                 data = null,

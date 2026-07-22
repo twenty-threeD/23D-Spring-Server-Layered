@@ -15,15 +15,27 @@ class ApplicationException(
     )
 
     companion object {
-        fun of(statusCode: StatusCode): ApplicationException {
+
+        fun of(
+            statusCode: StatusCode
+        ): ApplicationException {
+
             return ApplicationException(statusCode)
         }
 
-        fun of(statusCode: StatusCode, throwable: Throwable): ApplicationException {
+        fun of(
+            statusCode: StatusCode,
+            throwable: Throwable
+        ): ApplicationException {
+
             return ApplicationException(statusCode, throwable)
         }
 
-        fun of(statusCode: StatusCode, customMessage: String): ApplicationException {
+        fun of(
+            statusCode: StatusCode,
+            customMessage: String
+        ): ApplicationException {
+
             return ApplicationException(statusCode, customMessage)
         }
     }

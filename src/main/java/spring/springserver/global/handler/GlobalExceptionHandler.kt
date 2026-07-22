@@ -21,10 +21,12 @@ import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
     @ExceptionHandler(ApplicationException::class)
     fun handleApplicationException(
         applicationException: ApplicationException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val statusCode = applicationException.statusCode
         val error = ErrorResponse.of(
             statusCode.getCode(),
@@ -40,9 +42,12 @@ class GlobalExceptionHandler {
     fun handleValidationException(
         methodArgumentNotValidException: MethodArgumentNotValidException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val details = mutableMapOf<String, String>()
 
-        methodArgumentNotValidException.bindingResult.allErrors.forEach { error ->
+        methodArgumentNotValidException.bindingResult.allErrors.forEach {
+
+            error ->
             val field = (error as FieldError).field
             val message = error.defaultMessage ?: "잘못된 입력값 입니다."
             details[field] = message
@@ -61,10 +66,12 @@ class GlobalExceptionHandler {
     fun handleConstraintViolationException(
         constraintViolationException: ConstraintViolationException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val details = mutableMapOf<String, String>()
 
-        constraintViolationException.constraintViolations.forEach { violation ->
-            details[violation.propertyPath.toString()] = violation.message
+        constraintViolationException.constraintViolations.forEach {
+
+            violation -> details[violation.propertyPath.toString()] = violation.message
         }
 
         val error = ErrorResponse.of(
@@ -80,6 +87,7 @@ class GlobalExceptionHandler {
     fun handleMissingServletRequestParameterException(
         missingServletRequestParameterException: MissingServletRequestParameterException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             CommonStatusCode.INVALID_ARGUMENT.getCode(),
             "필수 파라미터가 누락되었습니다: ${missingServletRequestParameterException.parameterName}"
@@ -92,6 +100,7 @@ class GlobalExceptionHandler {
     fun handleMethodArgumentTypeMismatchException(
         methodArgumentTypeMismatchException: MethodArgumentTypeMismatchException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             CommonStatusCode.INVALID_ARGUMENT.getCode(),
             "파라미터 타입이 잘못되었습니다: ${methodArgumentTypeMismatchException.name}"
@@ -104,6 +113,7 @@ class GlobalExceptionHandler {
     fun handleIllegalArgumentException(
         illegalArgumentException: IllegalArgumentException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             CommonStatusCode.INVALID_ARGUMENT.getCode(),
             illegalArgumentException.message ?: "잘못된 요청 파라미터입니다."
@@ -116,6 +126,7 @@ class GlobalExceptionHandler {
     fun handleBadCredentialsException(
         badCredentialsException: BadCredentialsException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             AuthStatusCode.INVALID_CREDENTIALS.getCode(),
             AuthStatusCode.INVALID_CREDENTIALS.getMessage()
@@ -130,6 +141,7 @@ class GlobalExceptionHandler {
     fun handleAccountLockedException(
         lockedException: LockedException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             AuthStatusCode.ACCOUNT_LOCKED.getCode(),
             AuthStatusCode.ACCOUNT_LOCKED.getMessage()
@@ -144,6 +156,7 @@ class GlobalExceptionHandler {
     fun handleAccountDisabledException(
         disabledException: DisabledException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             AuthStatusCode.ACCOUNT_DISABLED.getCode(),
             AuthStatusCode.ACCOUNT_DISABLED.getMessage()
@@ -158,6 +171,7 @@ class GlobalExceptionHandler {
     fun handleNoResourceFoundException(
         noResourceFoundException: NoResourceFoundException
     ): ResponseEntity<BaseResponse<Void>> {
+
         val error = ErrorResponse.of(
             CommonStatusCode.ENDPOINT_NOT_FOUND.getCode(),
             CommonStatusCode.ENDPOINT_NOT_FOUND.getMessage()
@@ -169,7 +183,10 @@ class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception::class)
-    fun handleException(exception: Exception): ResponseEntity<BaseResponse<Void>> {
+    fun handleException(
+        exception: Exception
+    ): ResponseEntity<BaseResponse<Void>> {
+
         log.error("요청 처리 중 에러 발생: {}", exception.message)
 
         val error = ErrorResponse.of(
@@ -182,7 +199,10 @@ class GlobalExceptionHandler {
             .body(BaseResponse.error(CommonStatusCode.INTERNAL_SERVER_ERROR.getHttpStatus(), error))
     }
 
-    private fun invalidArgument(error: ErrorResponse): ResponseEntity<BaseResponse<Void>> {
+    private fun invalidArgument(
+        error: ErrorResponse
+    ): ResponseEntity<BaseResponse<Void>> {
+
         return ResponseEntity
             .status(CommonStatusCode.INVALID_ARGUMENT.getHttpStatus())
             .body(
@@ -194,6 +214,7 @@ class GlobalExceptionHandler {
     }
 
     companion object {
+
         private val log = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
     }
 }

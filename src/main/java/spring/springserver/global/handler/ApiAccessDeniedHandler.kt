@@ -15,11 +15,13 @@ import spring.springserver.global.exception.status_code.CommonStatusCode
 class ApiAccessDeniedHandler(
     private val objectMapper: ObjectMapper
 ) : AccessDeniedHandler {
+
     override fun handle(
         request: HttpServletRequest,
         response: HttpServletResponse,
         accessDeniedException: AccessDeniedException
     ) {
+
         val error = ErrorResponse.of(
             CommonStatusCode.INVALID_ARGUMENT.getCode(),
             "접근 권한이 없습니다."

@@ -14,11 +14,13 @@ import spring.springserver.global.data.ErrorResponse
 class ApiAuthenticationEntryPoint(
     private val objectMapper: ObjectMapper
 ) : AuthenticationEntryPoint {
+
     override fun commence(
         request: HttpServletRequest,
         response: HttpServletResponse,
         authException: AuthenticationException
     ) {
+
         val error = ErrorResponse.of(
             AuthStatusCode.INVALID_JWT.getCode(),
             AuthStatusCode.INVALID_JWT.getMessage()

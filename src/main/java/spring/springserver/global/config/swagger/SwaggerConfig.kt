@@ -14,6 +14,7 @@ class SwaggerConfig {
 
     @Bean
     fun openAPI(): OpenAPI {
+
         val jwtSchemeName = "JWT"
         val securityRequirement = SecurityRequirement().addList(jwtSchemeName)
         val components = Components()

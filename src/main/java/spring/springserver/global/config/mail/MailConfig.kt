@@ -28,6 +28,7 @@ class MailConfig(
         redisConfig: RedisConfig,
         templateEngine: TemplateEngine
     ): EmailServiceImpl {
+
         return EmailServiceImpl(
             javaMailSender,
             redisConfig,
@@ -37,12 +38,15 @@ class MailConfig(
 
     @Bean
     fun mailSender(): JavaMailSender {
+
         return JavaMailSenderImpl().apply {
+
             host = this@MailConfig.host
             port = 587
             username = this@MailConfig.username
             password = this@MailConfig.password
             javaMailProperties = Properties().apply {
+
                 put("mail.transport.protocol", "smtp")
                 put("mail.debug", "true")
                 put("mail.smtp.ssl.trust", "smtp.gmail.com")

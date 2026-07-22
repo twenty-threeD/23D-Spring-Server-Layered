@@ -19,12 +19,15 @@ class RedisConfig(
 
     @Bean
     fun redisConnectionFactory(): RedisConnectionFactory {
+
         return LettuceConnectionFactory(host, port)
     }
 
     @Bean
     fun redisTemplate(): RedisTemplate<String, String> {
+
         return RedisTemplate<String, String>().apply {
+
             keySerializer = StringRedisSerializer()
             valueSerializer = StringRedisSerializer()
             connectionFactory = redisConnectionFactory()

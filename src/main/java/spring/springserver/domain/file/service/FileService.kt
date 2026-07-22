@@ -21,25 +21,32 @@ class FileService(
 
     private val tika = Tika()
 
-    fun uploadFile(fileUploadRequest: FileUploadRequest): FileUploadResponse {
+    fun uploadFile(
+            fileUploadRequest: FileUploadRequest
+        ): FileUploadResponse {
+
         val multipartFile = fileUploadRequest.multipartFile
 
         if (multipartFile == null || multipartFile.isEmpty) {
+
             throw ApplicationException(FileStatusCode.FILE_EMPTY)
         }
 
         try {
-            val detectedType = multipartFile.inputStream.use { inputStream ->
-                tika.detect(inputStream)
+
+            val detectedType = multipartFile.inputStream.use {
+                inputStream -> tika.detect(inputStream)
             }
 
             if (detectedType !in ALLOWED_MIME) {
+
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
             val originalFilename = multipartFile.originalFilename
 
             if (originalFilename == null || !originalFilename.contains(".")) {
+
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
@@ -48,6 +55,7 @@ class FileService(
                 .lowercase()
 
             if (ext !in ALLOWED_EXT) {
+
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
@@ -64,11 +72,13 @@ class FileService(
                 .normalize()
 
             if (!targetPath.startsWith(uploadPath)) {
+
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
-            multipartFile.inputStream.use { inputStream ->
-                Files.copy(
+            multipartFile.inputStream.use {
+
+                inputStream -> Files.copy(
                     inputStream,
                     targetPath,
                     StandardCopyOption.REPLACE_EXISTING
@@ -80,6 +90,7 @@ class FileService(
                 "파일 업로드가 완료되었습니다."
             )
         } catch (ioException: IOException) {
+
             throw ApplicationException(
                 FileStatusCode.FILE_UPLOAD_FAILED,
                 ioException
@@ -88,11 +99,14 @@ class FileService(
     }
 
     fun deleteFile(fileUrl: String?) {
+
         if (fileUrl.isNullOrBlank()) {
+
             return
         }
 
         try {
+
             val uploadPath = Path.of(fileDirectory)
                 .toAbsolutePath()
                 .normalize()
@@ -104,11 +118,13 @@ class FileService(
                 .normalize()
 
             if (!targetPath.startsWith(uploadPath)) {
+
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
             Files.deleteIfExists(targetPath)
         } catch (ioException: IOException) {
+
             throw ApplicationException(
                 FileStatusCode.FILE_UPLOAD_FAILED,
                 ioException
@@ -117,6 +133,7 @@ class FileService(
     }
 
     companion object {
+
         private val ALLOWED_MIME = setOf(
             "image/jpeg",
             "image/png",
