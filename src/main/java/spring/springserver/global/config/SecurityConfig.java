@@ -59,7 +59,7 @@ public class SecurityConfig {
 								"/api/auth/signup",
 								"/api/auth/signin",
 								"/api/auth/signout",
-								"/api/auth/password/reset",
+								"/api/member/password/reset",
 								"/api/member/check-username",
 								"/api/member/check-email",
 								"/api/member/check-phone",
@@ -70,7 +70,7 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.POST,
-								"/api/auth/password/reset/check"
+								"/api/member/password/reset/check"
 						).hasRole("USER")
 
 						.requestMatchers(
@@ -80,7 +80,8 @@ public class SecurityConfig {
 
 						.requestMatchers(
 								HttpMethod.GET,
-								"/api/token/username"
+								"/api/token/username",
+								"/api/member/username"
 						).permitAll()
 
 						.requestMatchers(
