@@ -146,10 +146,10 @@ class TossPaymentsClient(
 
                 ?: if (exception.statusCode.is4xxClientError) {
 
-                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID.message
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID.getMessage()
                 } else {
 
-                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.getMessage()
                 }
 
             val statusCode = if (exception.statusCode.is4xxClientError) {
@@ -166,7 +166,7 @@ class TossPaymentsClient(
 
             throw ApplicationException(
                 PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED,
-                exception.message ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                exception.message ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.getMessage()
             )
         }
     }
