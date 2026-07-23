@@ -20,6 +20,7 @@ class FileController(
     fun uploadFile(
         @ModelAttribute @Valid fileUploadRequest: FileUploadRequest
     ): BaseResponse<FileUploadResponse> {
+
         return BaseResponse.ok(fileService.uploadFile(fileUploadRequest))
     }
 }
