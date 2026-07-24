@@ -22,7 +22,7 @@ class ChatStompControllerAdvice(
             principal.name,
             "/queue/errors",
             ErrorResponse.of(
-                exception.statusCode.code,
+                exception.statusCode.getCode(),
                 exception.message ?: "Internal error"
             )
         )
