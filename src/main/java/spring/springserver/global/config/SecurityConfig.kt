@@ -90,7 +90,7 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/files/upload"
-                    ).permitAll()
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/post"

@@ -11,11 +11,14 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.regex.Pattern
 import java.util.UUID
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 class FileService(
-    @Value("\${app.upload.file-dir}")
+    @param:Value($$"${app.upload.file-dir}")
     private val fileDirectory: String
 ) {
 
@@ -38,7 +41,7 @@ class FileService(
                 inputStream -> tika.detect(inputStream)
             }
 
-            if (detectedType !in ALLOWED_MIME) {
+            if (detectedType !in ALLOWED_MIME_EXTENSIONS) {
 
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
@@ -54,7 +57,9 @@ class FileService(
                 .substring(originalFilename.lastIndexOf('.') + 1)
                 .lowercase()
 
-            if (ext !in ALLOWED_EXT) {
+            val allowedExtensions = ALLOWED_MIME_EXTENSIONS[detectedType]
+
+            if (allowedExtensions == null || ext !in allowedExtensions) {
 
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
@@ -85,6 +90,8 @@ class FileService(
                 )
             }
 
+            registerRollbackCleanup(storedFileName)
+
             return FileUploadResponse.of(
                 "/files/$storedFileName",
                 "파일 업로드가 완료되었습니다."
@@ -107,14 +114,26 @@ class FileService(
 
         try {
 
+            val normalizedFileUrl = fileUrl.trim()
+
+            if (!normalizedFileUrl.startsWith("/files/")) {
+
+                throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
+            }
+
+            val fileName = normalizedFileUrl.removePrefix("/files/")
+
+            if (!ALLOWED_STORED_FILE_NAME.matcher(fileName).matches()) {
+
+                throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
+            }
+
             val uploadPath = Path.of(fileDirectory)
                 .toAbsolutePath()
                 .normalize()
 
-            val fileName = Path.of(fileUrl).fileName ?: return
-
             val targetPath = uploadPath
-                .resolve(fileName.toString())
+                .resolve(fileName)
                 .normalize()
 
             if (!targetPath.startsWith(uploadPath)) {
@@ -134,19 +153,42 @@ class FileService(
 
     companion object {
 
-        private val ALLOWED_MIME = setOf(
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "application/pdf"
+        private val ALLOWED_MIME_EXTENSIONS = mapOf(
+            "image/jpeg" to setOf("jpg", "jpeg"),
+            "image/png" to setOf("png"),
+            "image/webp" to setOf("webp"),
+            "application/pdf" to setOf("pdf")
         )
 
-        private val ALLOWED_EXT = setOf(
-            "jpg",
-            "jpeg",
-            "png",
-            "webp",
-            "pdf"
-        )
+        private val ALLOWED_STORED_FILE_NAME: Pattern =
+            Pattern.compile("^[0-9a-fA-F\\-]{36}\\.(jpg|jpeg|png|webp|pdf)$")
+    }
+
+    private fun registerRollbackCleanup(storedFileName: String) {
+
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+
+            return
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+
+            override fun afterCompletion(status: Int) {
+
+                if (status != TransactionSynchronization.STATUS_COMMITTED) {
+
+                    runCatching {
+                        
+                        val uploadPath = Path.of(fileDirectory)
+                            .toAbsolutePath()
+                            .normalize()
+
+                        Files.deleteIfExists(
+                            uploadPath.resolve(storedFileName).normalize()
+                        )
+                    }
+                }
+            }
+        })
     }
 }
