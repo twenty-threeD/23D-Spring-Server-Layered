@@ -22,7 +22,9 @@ data class BaseResponse<T>(
             )
         }
 
-        fun ok(data: Nothing?): BaseResponse<Void> {
+        fun ok(
+            data: Nothing?
+        ): BaseResponse<Void> {
 
             return BaseResponse(
                 status = HttpStatus.OK.value(),

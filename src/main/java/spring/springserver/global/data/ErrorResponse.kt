@@ -12,7 +12,10 @@ data class ErrorResponse(
 ) {
     companion object {
 
-        fun of(code: String, message: String): ErrorResponse {
+        fun of(
+            code: String,
+            message: String
+        ): ErrorResponse {
 
             return ErrorResponse(
                 code = code,

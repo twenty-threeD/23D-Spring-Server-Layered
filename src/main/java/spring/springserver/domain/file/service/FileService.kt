@@ -26,7 +26,7 @@ class FileService(
 
     fun uploadFile(
             fileUploadRequest: FileUploadRequest
-        ): FileUploadResponse {
+    ): FileUploadResponse {
 
         val multipartFile = fileUploadRequest.multipartFile
 
@@ -105,7 +105,9 @@ class FileService(
         }
     }
 
-    fun deleteFile(fileUrl: String?) {
+    fun deleteFile(
+        fileUrl: String?
+    ) {
 
         if (fileUrl.isNullOrBlank()) {
 
@@ -178,7 +180,7 @@ class FileService(
                 if (status != TransactionSynchronization.STATUS_COMMITTED) {
 
                     runCatching {
-                        
+
                         val uploadPath = Path.of(fileDirectory)
                             .toAbsolutePath()
                             .normalize()
