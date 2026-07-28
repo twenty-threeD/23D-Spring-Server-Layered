@@ -166,7 +166,9 @@ class FileService(
             Pattern.compile("^[0-9a-fA-F\\-]{36}\\.(jpg|jpeg|png|webp|pdf)$")
     }
 
-    private fun registerRollbackCleanup(storedFileName: String) {
+    private fun registerRollbackCleanup(
+        storedFileName: String
+    ) {
 
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
 
@@ -175,7 +177,9 @@ class FileService(
 
         TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
 
-            override fun afterCompletion(status: Int) {
+            override fun afterCompletion(
+                status: Int
+            ) {
 
                 if (status != TransactionSynchronization.STATUS_COMMITTED) {
 
