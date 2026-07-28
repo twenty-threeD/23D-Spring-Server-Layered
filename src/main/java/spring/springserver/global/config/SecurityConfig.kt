@@ -84,10 +84,6 @@ class SecurityConfig(
                         "/api/token/username"
                     ).permitAll()
                     .requestMatchers(
-                        "/chat-test.html",
-                        "/ws-stomp/**"
-                    ).permitAll()
-                    .requestMatchers(
                         HttpMethod.POST,
                         "/api/files/upload"
                     ).hasRole("USER")
