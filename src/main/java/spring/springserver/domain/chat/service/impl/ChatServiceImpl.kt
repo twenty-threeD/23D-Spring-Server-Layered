@@ -205,8 +205,13 @@ class ChatServiceImpl(
         return response
     }
 
-    override fun getOtherParticipantUsername(roomId: Long, username: String): ChatParticipantResponse {
+    override fun getOtherParticipantUsername(
+        roomId: Long,
+        username: String
+    ): ChatParticipantResponse {
+
         val participant = getVisibleParticipant(roomId, username)
+        
         return ChatParticipantResponse(getOtherParticipant(participant.room, username).username)
     }
 
