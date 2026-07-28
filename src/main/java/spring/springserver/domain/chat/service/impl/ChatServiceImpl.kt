@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
+import spring.springserver.domain.chat.data.response.ChatParticipantResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
 import spring.springserver.domain.chat.entity.ChatRoom
@@ -202,6 +203,11 @@ class ChatServiceImpl(
         appendRoomMessage(room.getId()!!, response)
 
         return response
+    }
+
+    override fun getOtherParticipantUsername(roomId: Long, username: String): ChatParticipantResponse {
+        val participant = getVisibleParticipant(roomId, username)
+        return ChatParticipantResponse(getOtherParticipant(participant.room, username).username)
     }
 
     override fun canAccessRoom(

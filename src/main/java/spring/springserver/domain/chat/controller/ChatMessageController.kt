@@ -3,8 +3,10 @@ package spring.springserver.domain.chat.controller
 import jakarta.validation.Valid
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.SimpMessagingTemplate
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Controller
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
+import spring.springserver.domain.chat.event.ChatMessageSentEvent
 import spring.springserver.domain.chat.service.ChatService
 import java.security.Principal
 
@@ -12,6 +14,7 @@ import java.security.Principal
 class ChatMessageController(
     private val chatService: ChatService,
     private val messagingTemplate: SimpMessagingTemplate,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     @MessageMapping("/chat.send")
@@ -28,6 +31,13 @@ class ChatMessageController(
         messagingTemplate.convertAndSend(
             "/topic/chat/rooms/${response.roomId}",
             response
+        )
+
+        eventPublisher.publishEvent(
+            ChatMessageSentEvent(
+                senderUsername = principal.name,
+                message = response
+            )
         )
     }
 }
