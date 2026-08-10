@@ -13,6 +13,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.CorsFilter
+import spring.springserver.domain.auth.handler.OAuth2FailureHandler
 import spring.springserver.domain.auth.handler.OAuth2SuccessHandler
 import spring.springserver.domain.auth.service.oauth.CustomOAuthUserService
 import spring.springserver.global.handler.ApiAccessDeniedHandler
@@ -37,7 +38,8 @@ class SecurityConfig(
     fun filterChain(
         httpSecurity: HttpSecurity,
         customOAuthUserService: CustomOAuthUserService,
-        oAuth2SuccessHandler: OAuth2SuccessHandler
+        oAuth2SuccessHandler: OAuth2SuccessHandler,
+        oAuth2FailureHandler: OAuth2FailureHandler
     ): SecurityFilterChain {
 
         httpSecurity
@@ -143,6 +145,7 @@ class SecurityConfig(
                         userInfo -> userInfo.userService(customOAuthUserService)
                     }
                     .successHandler(oAuth2SuccessHandler)
+                    .failureHandler(oAuth2FailureHandler)
             }
             .addFilterBefore(
                 jwtAuthFilter,

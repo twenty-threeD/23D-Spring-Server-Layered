@@ -98,6 +98,12 @@ springdoc:
 app:
   upload:
     file-dir: ./files
+  oauth2:
+    redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth/success}
+    failure-redirect-uri: ${OAUTH2_FAILURE_REDIRECT_URI:http://localhost:3000/oauth/fail}
+  cookie:
+    same-site: ${COOKIE_SAME_SITE:Lax}
+    secure: ${COOKIE_SECURE:false}
 
 toss-payments:
   secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}

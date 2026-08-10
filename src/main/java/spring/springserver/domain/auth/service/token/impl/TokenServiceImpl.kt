@@ -1,10 +1,11 @@
 package spring.springserver.domain.auth.service.token.impl
 
-import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.http.HttpHeaders
+import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
@@ -20,7 +21,9 @@ class TokenServiceImpl(
     private val jwtProvider: JwtProvider,
     private val redisTemplate: RedisTemplate<String, String>,
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
-    @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long
+    @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long,
+    @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
+    @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean
 ): TokenService {
 
     override fun generateAccessToken(
@@ -161,11 +164,18 @@ class TokenServiceImpl(
         httpServletResponse: HttpServletResponse?
     ) {
 
-        val cookie = Cookie(name, value)
-        cookie.path = "/"
-        cookie.isHttpOnly = httpOnly
-        cookie.maxAge = age
-        httpServletResponse?.addCookie(cookie)
+        val responseCookie = ResponseCookie.from(name, value ?: "")
+            .path("/")
+            .httpOnly(httpOnly)
+            .secure(cookieSecure || cookieSameSite.equals("None", ignoreCase = true))
+            .sameSite(cookieSameSite)
+            .maxAge(age.toLong())
+            .build()
+
+        httpServletResponse?.addHeader(
+            HttpHeaders.SET_COOKIE,
+            responseCookie.toString()
+        )
     }
 
     private fun toCookieMaxAge(expirationMillis: Long): Int {
