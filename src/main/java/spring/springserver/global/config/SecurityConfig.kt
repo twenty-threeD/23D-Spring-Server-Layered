@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer
 import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
@@ -14,8 +13,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.CorsFilter
-import spring.springserver.domain.oauth.handler.OAuth2SuccessHandler
-import spring.springserver.domain.oauth.service.CustomOAuthUserService
+import spring.springserver.domain.auth.handler.OAuth2SuccessHandler
+import spring.springserver.domain.auth.service.oauth.CustomOAuthUserService
 import spring.springserver.global.handler.ApiAccessDeniedHandler
 import spring.springserver.global.handler.ApiAuthenticationEntryPoint
 import spring.springserver.global.jwt.JwtAuthFilter

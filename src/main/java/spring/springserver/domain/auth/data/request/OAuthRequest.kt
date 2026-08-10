@@ -1,4 +1,4 @@
-package spring.springserver.domain.oauth.data.request
+package spring.springserver.domain.auth.data.request
 
 import jakarta.persistence.EnumType
 import jakarta.persistence.Enumerated
