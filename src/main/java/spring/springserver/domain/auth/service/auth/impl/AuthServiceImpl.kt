@@ -18,6 +18,7 @@ import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.util.PhoneNormalizer
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -33,22 +34,18 @@ class AuthServiceImpl(
         signUpRequest: SignUpRequest
     ): SignUpResponse {
 
-        if(memberRepository.existsByUsername(signUpRequest.username)){
+        val phone = PhoneNormalizer.normalize(signUpRequest.phone)
 
-            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        }
+        if(memberRepository.existsByUsername(signUpRequest.username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        if (memberRepository.existsByEmail(signUpRequest.email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        if (memberRepository.existsByPhone(phone)) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
 
-        if (memberRepository.existsByEmail(signUpRequest.email)) {
-
-            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
-        }
-
-        if (memberRepository.existsByPhone(signUpRequest.phone)) {
-
-            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
-        }
-
-        val member = memberRepository.save(signUpRequest.toEntity(passwordEncoder.encode(signUpRequest.password)))
+        val member = memberRepository.save(
+            signUpRequest.toEntity(
+                encodedPassword = passwordEncoder.encode(signUpRequest.password),
+                normalizedPhone = phone
+            )
+        )
 
         keyService.generateKeyPair(
             memberId = member.getId()!!
@@ -67,7 +64,7 @@ class AuthServiceImpl(
         val member = memberRepository.findByEmail(signInRequest.email)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
-        if(!passwordEncoder.matches(signInRequest.password, member.password)){
+        if(!passwordEncoder.matches(signInRequest.password, member.password)) {
 
             throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
         }

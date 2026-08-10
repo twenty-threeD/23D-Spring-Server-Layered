@@ -26,7 +26,6 @@ data class SignUpRequest(
         region = Region.KR,
         format = Format.LOCAL
     )
-
     val phone: String,
 
     @field:NotBlank
@@ -43,16 +42,19 @@ data class SignUpRequest(
     var provider: Provider
 ) {
 
-        fun toEntity(encodedPassword: String): Member {
+    fun toEntity(
+        encodedPassword: String,
+        normalizedPhone: String
+    ): Member {
 
-            return Member(
-                username,
-                name,
-                email,
-                phone,
-                encodedPassword,
-                Role.USER,
-                provider
-            )
-        }
+        return Member(
+            username,
+            name,
+            email,
+            normalizedPhone,
+            encodedPassword,
+            Role.USER,
+            provider
+        )
+    }
 }
