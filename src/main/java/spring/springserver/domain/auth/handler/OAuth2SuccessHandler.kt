@@ -1,4 +1,4 @@
-package spring.springserver.domain.oauth.handler
+package spring.springserver.domain.auth.handler
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletRequest
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 import spring.springserver.domain.auth.service.token.impl.TokenServiceImpl
 import spring.springserver.domain.member.entity.Role
-import spring.springserver.domain.oauth.data.response.OAuthResponse
+import spring.springserver.domain.auth.data.response.OAuthResponse
 import spring.springserver.global.data.BaseResponse
 
 /**

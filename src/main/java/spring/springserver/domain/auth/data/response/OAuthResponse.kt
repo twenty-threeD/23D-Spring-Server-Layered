@@ -1,4 +1,4 @@
-package spring.springserver.domain.oauth.data.response
+package spring.springserver.domain.auth.data.response
 
 /**
  * @author @gnlandkmg(개발)

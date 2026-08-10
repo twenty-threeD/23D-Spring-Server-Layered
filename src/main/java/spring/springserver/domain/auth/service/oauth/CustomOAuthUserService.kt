@@ -1,4 +1,4 @@
-package spring.springserver.domain.oauth.service
+package spring.springserver.domain.auth.service.oauth
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
@@ -12,6 +12,7 @@ import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.entity.Role
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import kotlin.collections.get
 
 /**
  * @author @gnlandkmg(개발)
