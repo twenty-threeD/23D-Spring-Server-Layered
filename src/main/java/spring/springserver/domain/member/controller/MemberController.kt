@@ -3,11 +3,15 @@ package spring.springserver.domain.member.controller
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
@@ -20,6 +24,7 @@ import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
+@Validated
 @RequestMapping("/api/member")
 class MemberController(
     private val memberService: MemberService
@@ -71,25 +76,25 @@ class MemberController(
         )
     }
 
-    @PostMapping("/check-email")
+    @GetMapping("/check-email")
     fun checkEmail(
-        @RequestBody email: String
+        @RequestParam @Email @NotBlank email: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkEmail(email))
     }
 
-    @PostMapping("/check-phone")
+    @GetMapping("/check-phone")
     fun checkPhone(
-        @RequestBody phone: String
+        @RequestParam @NotBlank phone: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkPhone(phone))
     }
 
-    @PostMapping("/check-username")
+    @GetMapping("/check-username")
     fun checkUsername(
-        @RequestBody username: String
+        @RequestParam @NotBlank username: String
     ): BaseResponse<UsernameCheckResponse> {
 
         return BaseResponse.ok(memberService.checkUsername(username))
