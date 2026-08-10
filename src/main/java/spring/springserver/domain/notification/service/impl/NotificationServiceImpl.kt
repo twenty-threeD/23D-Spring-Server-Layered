@@ -1,11 +1,10 @@
 package spring.springserver.domain.notification.service.impl
 
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import spring.springserver.domain.notification.data.response.ChatNotificationResponse
 import spring.springserver.domain.notification.service.NotificationService
-import java.io.IOException
-import java.lang.IllegalStateException
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
@@ -18,7 +17,10 @@ class NotificationServiceImpl : NotificationService {
     ): SseEmitter {
 
         val emitter = SseEmitter(TIMEOUT_MILLIS)
-        emitters.computeIfAbsent(username) { ConcurrentHashMap.newKeySet() }.add(emitter)
+
+        emitters.compute(username) { _, userEmitters ->
+            (userEmitters ?: ConcurrentHashMap.newKeySet()).apply { add(emitter) }
+        }
 
         emitter.onCompletion { remove(username, emitter) }
         emitter.onTimeout { remove(username, emitter) }
@@ -32,7 +34,9 @@ class NotificationServiceImpl : NotificationService {
                     .reconnectTime(RECONNECT_MILLIS)
                     .data("connected")
             )
-        } catch (exception: IOException) {
+        } catch (exception: Exception) {
+
+            log.warn("SSE 최초 연결 이벤트 전송 실패: username={}", username, exception)
 
             remove(username, emitter)
             emitter.completeWithError(exception)
@@ -60,16 +64,21 @@ class NotificationServiceImpl : NotificationService {
                         .name("chat")
                         .data(notification)
                 )
-            } catch (_: IOException) {
+            } catch (exception: Exception) {
 
-                failed += emitter
-            } catch (_: IllegalStateException) {
+                log.debug("SSE 알림 전송 실패로 emitter 정리: username={}", receiverUsername, exception)
 
                 failed += emitter
             }
         }
 
-        failed.forEach { remove(receiverUsername, it) }
+        failed.forEach {
+
+            emitter ->
+            remove(receiverUsername, emitter)
+
+            runCatching { emitter.complete() }
+        }
     }
 
     private fun remove(
@@ -87,5 +96,7 @@ class NotificationServiceImpl : NotificationService {
 
         private const val TIMEOUT_MILLIS = 5L * 60L * 1000L
         private const val RECONNECT_MILLIS = 3_000L
+
+        private val log = LoggerFactory.getLogger(NotificationServiceImpl::class.java)
     }
 }
