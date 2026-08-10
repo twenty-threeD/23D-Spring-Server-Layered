@@ -100,8 +100,9 @@ class MemberServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun checkEmail(email: String): CheckResponse {
-
+    override fun checkEmail(
+        email: String
+    ): CheckResponse {
 
         if (memberRepository.existsByEmail(email)) {
 
@@ -111,7 +112,10 @@ class MemberServiceImpl(
         return CheckResponse.of("사용할 수 있는 이메일입니다.")
     }
 
-    override fun checkPhone(phone: String): CheckResponse {
+    @Transactional(readOnly = true)
+    override fun checkPhone(
+        phone: String
+    ): CheckResponse {
 
         if (memberRepository.existsByPhone(phone)) {
 
@@ -121,13 +125,16 @@ class MemberServiceImpl(
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
 
-    override fun checkUsername(username: String): UsernameCheckResponse {
+    @Transactional(readOnly = true)
+    override fun checkUsername(
+        username: String
+    ): UsernameCheckResponse {
 
-        val available = !memberRepository.existsByUsername(username)
+        if (memberRepository.existsByUsername(username)) {
 
-        return UsernameCheckResponse.of(
-            available,
-            if (available) "사용 가능한 사용자명입니다." else "이미 사용 중인 사용자명입니다."
-        )
+            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        }
+
+        return UsernameCheckResponse.of("사용 가능한 사용자명입니다.")
     }
 }
