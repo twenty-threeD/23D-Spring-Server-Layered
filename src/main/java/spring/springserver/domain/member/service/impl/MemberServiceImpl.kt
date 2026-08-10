@@ -17,6 +17,7 @@ import spring.springserver.domain.member.data.response.UsernameCheckResponse
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.util.PhoneNormalizer
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -70,10 +71,7 @@ class MemberServiceImpl(
             httpServletRequest,
         )
 
-        if(accessToken.isNullOrBlank()) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
-        }
+        if(accessToken.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
         val member = memberRepository.findByUsername(passwordResetRequest.username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
@@ -104,10 +102,7 @@ class MemberServiceImpl(
         email: String
     ): CheckResponse {
 
-        if (memberRepository.existsByEmail(email)) {
-
-            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
-        }
+        if (memberRepository.existsByEmail(email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
 
         return CheckResponse.of("사용할 수 있는 이메일입니다.")
     }
@@ -115,12 +110,9 @@ class MemberServiceImpl(
     @Transactional(readOnly = true)
     override fun checkPhone(
         phone: String
-    ): CheckResponse {
+        ): CheckResponse {
 
-        if (memberRepository.existsByPhone(phone)) {
-
-            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
-        }
+        if (memberRepository.existsByPhone(PhoneNormalizer.normalize(phone))) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
 
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
@@ -130,10 +122,7 @@ class MemberServiceImpl(
         username: String
     ): UsernameCheckResponse {
 
-        if (memberRepository.existsByUsername(username)) {
-
-            throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        }
+        if (memberRepository.existsByUsername(username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
 
         return UsernameCheckResponse.of("사용 가능한 사용자명입니다.")
     }
