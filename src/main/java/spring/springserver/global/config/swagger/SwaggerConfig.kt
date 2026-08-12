@@ -37,8 +37,11 @@ class SwaggerConfig {
             .servers(
                 listOf(
                     Server()
-                        .url("http://13.125.161.66:8080")
-                        .description("EC2 Server")
+                        .url("https://api.idta.store")
+                        .description("운영 서버"),
+                    Server()
+                        .url("http://localhost:8080")
+                        .description("로컬 서버")
                 )
             )
             .addSecurityItem(securityRequirement)
