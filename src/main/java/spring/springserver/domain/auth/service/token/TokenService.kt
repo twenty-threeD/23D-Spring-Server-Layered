@@ -21,11 +21,6 @@ interface TokenService {
         httpServletResponse: HttpServletResponse
     )
 
-    fun extractTokenFromCookie(
-        cookieName: String,
-        httpServletRequest: HttpServletRequest
-    ) : String?
-
     fun getCurrentUsername(
         httpServletRequest: HttpServletRequest
     ) : String?

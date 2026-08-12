@@ -9,10 +9,16 @@ import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
+import spring.springserver.domain.auth.entity.RefreshToken
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.auth.repository.RefreshTokenRepository
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.JwtProvider
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -20,6 +26,8 @@ import java.util.concurrent.TimeUnit
 class TokenServiceImpl(
     private val jwtProvider: JwtProvider,
     private val redisTemplate: RedisTemplate<String, String>,
+    private val memberRepository: MemberRepository,
+    private val refreshTokenRepository: RefreshTokenRepository,
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
     @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long,
     @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
@@ -56,20 +64,31 @@ class TokenServiceImpl(
     ): String {
 
         val refreshToken = jwtProvider.generateRefreshToken(getTokenRequest)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
-        redisTemplate.opsForValue().set(
-            "refreshToken:${getTokenRequest.username}",
-            refreshToken!!,
-            refreshTokenExpiration,
-            TimeUnit.MILLISECONDS
-        )
+        val member = memberRepository.findByUsername(getTokenRequest.username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
-        addCookie(
-            "refreshToken",
-            refreshToken,
-            toCookieMaxAge(refreshTokenExpiration),
-            true, httpServletResponse
-        )
+        val expiresAt = toExpiresAt(refreshTokenExpiration)
+
+        val saved = refreshTokenRepository.findByMemberId(member.getId()!!)
+
+        if (saved != null) {
+
+            saved.update(
+                refreshToken,
+                expiresAt
+            )
+        } else {
+
+            refreshTokenRepository.save(
+                RefreshToken(
+                    member = member,
+                    token = refreshToken,
+                    expiresAt = expiresAt
+                )
+            )
+        }
 
         return refreshToken
     }
@@ -77,10 +96,7 @@ class TokenServiceImpl(
     override fun deleteTokens(httpServletRequest: HttpServletRequest,
                               httpServletResponse: HttpServletResponse) {
 
-        val accessToken = extractTokenFromCookie(
-            "accessToken",
-            httpServletRequest
-        ) ?: jwtProvider.resolveToken(httpServletRequest)
+        val accessToken = resolveAccessToken(httpServletRequest)
 
         if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
@@ -88,72 +104,55 @@ class TokenServiceImpl(
         }
 
         val username = jwtProvider.getUsernameFromToken(accessToken)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
-        val savedRefreshToken = redisTemplate.opsForValue().get("refreshToken:$username")
-        val savedAccessToken = redisTemplate.opsForValue().get("accessToken:$username")
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
-        if(savedAccessToken.isNullOrBlank() && savedAccessToken != accessToken || savedRefreshToken.isNullOrBlank()) {
+        addCookie(
+            "accessToken",
+            null,
+            0,
+            true,
+            httpServletResponse
+        )
 
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
-        } else {
-
-            addCookie(
-                "accessToken",
-                null,
-                0,
-                false,
-                httpServletResponse
-            )
-
-            addCookie(
-                "refreshToken",
-                null,
-                0,
-                false,
-                httpServletResponse
-            )
-
-            redisTemplate.delete("accessToken:$username")
-            redisTemplate.delete("refreshToken:$username")
-        }
-    }
-
-    override fun extractTokenFromCookie(cookieName: String,
-                               httpServletRequest: HttpServletRequest
-    ): String? {
-
-        val cookies = httpServletRequest.cookies
-
-        try {
-
-            for(cookie in cookies) {
-
-                if (cookie.name == cookieName) {
-
-                    return cookie.value
-                }
-            }
-        } catch (_: Exception) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
-        }
-
-        return null
+        redisTemplate.delete("accessToken:$username")
+        refreshTokenRepository.deleteByMemberId(member.getId()!!)
     }
 
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {
 
-        val accessToken = extractTokenFromCookie(
-            "accessToken",
-            httpServletRequest
-        )
+        val accessToken = resolveAccessToken(httpServletRequest)
 
-        if(accessToken.isNullOrBlank()) {
+        if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
             throw ApplicationException(AuthStatusCode.INVALID_JWT)
         }
 
         return jwtProvider.getUsernameFromToken(accessToken)
+    }
+
+    /**
+     * accessToken은 쿠키를 우선으로 하고, 없으면 Authorization 헤더에서 읽는다.
+     */
+    private fun resolveAccessToken(
+        httpServletRequest: HttpServletRequest
+    ): String? {
+
+        return extractTokenFromCookie("accessToken", httpServletRequest)
+            ?: jwtProvider.resolveToken(httpServletRequest)
+    }
+
+    private fun extractTokenFromCookie(
+        cookieName: String,
+        httpServletRequest: HttpServletRequest
+    ): String? {
+
+        return httpServletRequest.cookies
+            ?.firstOrNull { it.name == cookieName }
+            ?.value
+            ?.takeIf { it.isNotBlank() }
     }
 
     private fun addCookie(
@@ -181,5 +180,13 @@ class TokenServiceImpl(
     private fun toCookieMaxAge(expirationMillis: Long): Int {
 
         return (expirationMillis / 1000).toInt()
+    }
+
+    private fun toExpiresAt(expirationMillis: Long): LocalDateTime {
+
+        return LocalDateTime.ofInstant(
+            Instant.now().plusMillis(expirationMillis),
+            ZoneId.systemDefault()
+        )
     }
 }

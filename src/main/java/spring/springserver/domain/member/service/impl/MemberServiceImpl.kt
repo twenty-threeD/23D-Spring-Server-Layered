@@ -59,19 +59,15 @@ class MemberServiceImpl(
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
 
-    @Transactional(readOnly = true)
     override fun resetPasswordWithAuth(
         passwordResetRequest: PasswordResetRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): PasswordResetResponse {
 
-        val accessToken = tokenService.extractTokenFromCookie(
-            "accessToken",
-            httpServletRequest,
-        )
+        val username = tokenService.getCurrentUsername(httpServletRequest)
 
-        if(accessToken.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        if(username.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
         val member = memberRepository.findByUsername(passwordResetRequest.username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
