@@ -2,6 +2,7 @@ package spring.springserver.domain.payment.service.impl
 
 import org.springframework.stereotype.Service
 import spring.springserver.domain.blockchain.service.BlockchainService
+import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
@@ -15,7 +16,8 @@ import java.security.MessageDigest
 class PaymentServiceImpl(
     private val tossPaymentsClient: TossPaymentsClient,
     private val keyService: KeyService,
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    private val estimateService: EstimateService
 ) : PaymentService {
 
     override fun confirm(
@@ -24,6 +26,18 @@ class PaymentServiceImpl(
     ): PaymentResponse {
 
         val response = tossPaymentsClient.confirm(confirmPaymentRequest)
+
+        /**
+         * 견적서 결제라면 승인 직후 결제 완료 처리한다.
+         * 이후 해당 견적서는 조회만 가능하다.
+         */
+        confirmPaymentRequest.estimateId?.let { estimateId ->
+
+            estimateService.markAsPaid(
+                estimateId,
+                memberId
+            )
+        }
 
         val hash = sha256("${response.paymentKey} | ${response.orderId} | ${response.totalAmount} | ${response.approvedAt}")
         val buyerSignature = keyService.signHash(memberId, hash)
