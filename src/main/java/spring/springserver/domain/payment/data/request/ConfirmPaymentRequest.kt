@@ -13,5 +13,11 @@ data class ConfirmPaymentRequest(
     val orderId: String,
 
     @field:Min(value = 1, message = "amount는 1 이상이어야 합니다.")
-    val amount: Long
+    val amount: Long,
+
+    /**
+     * 견적서 결제인 경우에만 전달한다.
+     * 결제가 승인되면 해당 견적서는 결제 완료 처리되어 수정·삭제가 막힌다.
+     */
+    val estimateId: Long? = null
 )

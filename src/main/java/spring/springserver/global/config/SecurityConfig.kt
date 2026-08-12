@@ -140,6 +140,23 @@ class SecurityConfig(
                         "/api/payment/orders/*"
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/estimate"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/estimate/*"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/estimate/*"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/estimate",
+                        "/api/estimate/*"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
                         HttpMethod.GET,
                         "/api/community/post/",
                         "/api/community/post/{postId}",

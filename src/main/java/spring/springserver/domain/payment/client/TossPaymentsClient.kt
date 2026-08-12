@@ -35,7 +35,17 @@ class TossPaymentsClient(
         confirmPaymentRequest: ConfirmPaymentRequest
     ): PaymentResponse {
 
-        return post("/v1/payments/confirm", confirmPaymentRequest)
+        /**
+         * estimateId는 우리 서버 내부에서만 쓰는 값이라 토스로는 보내지 않는다.
+         */
+        return post(
+            "/v1/payments/confirm",
+            mapOf(
+                "paymentKey" to confirmPaymentRequest.paymentKey,
+                "orderId" to confirmPaymentRequest.orderId,
+                "amount" to confirmPaymentRequest.amount
+            )
+        )
     }
 
     fun findByPaymentKey(
