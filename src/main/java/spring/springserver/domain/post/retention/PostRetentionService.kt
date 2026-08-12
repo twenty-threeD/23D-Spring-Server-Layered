@@ -10,12 +10,14 @@ import spring.springserver.domain.file.service.FileService
 import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.favorite.repository.PostFavoriteRepository
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.post.review.repository.PostReviewRepository
 import java.time.LocalDateTime
 
 @Component
 class PostRetentionService(
     private val postRepository: PostRepository,
     private val postFavoriteRepository: PostFavoriteRepository,
+    private val postReviewRepository: PostReviewRepository,
     private val fileService: FileService,
 ) {
 
@@ -31,12 +33,20 @@ class PostRetentionService(
 
         val threshold = LocalDateTime.now().minusDays(RETENTION_DAYS)
 
+        val expiredReviews = postReviewRepository.findAllByDeletedAtBefore(threshold)
+
+        if (expiredReviews.isNotEmpty()) {
+
+            postReviewRepository.deleteAll(expiredReviews)
+        }
+
         val expiredPosts = postRepository.findAllByIsDeletedTrueAndDeletedAtBefore(threshold)
 
         if (expiredPosts.isNotEmpty()) {
 
             registerAttachedFileCommitCleanup(expiredPosts)
             postFavoriteRepository.deleteAllByPostIn(expiredPosts)
+            postReviewRepository.deleteAllByPostIn(expiredPosts)
             postRepository.deleteAll(expiredPosts)
         }
     }
