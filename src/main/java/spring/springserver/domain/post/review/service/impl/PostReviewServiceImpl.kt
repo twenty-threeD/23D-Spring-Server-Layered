@@ -58,10 +58,7 @@ class PostReviewServiceImpl(
 
         if (writtenReview != null) {
 
-            if (writtenReview.deletedAt == null) {
-
-                throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_POST)
-            }
+            if (writtenReview.deletedAt == null) throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_POST)
 
             writtenReview.rewrite(
                 createPostReviewRequest.rating,
