@@ -7,6 +7,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler
 import org.springframework.stereotype.Component
+import org.springframework.web.util.UriComponentsBuilder
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
@@ -37,7 +38,7 @@ class OAuth2SuccessHandler(
             Role.valueOf(oAuth2User.attributes["role"].toString())
         )
 
-        tokenService.generateAccessToken(
+        val accessToken = tokenService.generateAccessToken(
             generateTokenRequest,
             httpServletResponse
         )
@@ -47,6 +48,13 @@ class OAuth2SuccessHandler(
             httpServletResponse
         )
 
-        httpServletResponse.sendRedirect(redirectUri)
+        val successRedirectUri = UriComponentsBuilder
+            .fromUriString(redirectUri)
+            .queryParam("accessToken", accessToken)
+            .build()
+            .encode()
+            .toUriString()
+
+        httpServletResponse.sendRedirect(successRedirectUri)
     }
 }
