@@ -101,6 +101,22 @@ class SecurityConfig(
                     .hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
+                        "/api/post/**"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/post/review"
+                    ).authenticated()
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/post/review"
+                    ).authenticated()
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/post/review"
+                    ).authenticated()
+                    .requestMatchers(
+                        HttpMethod.GET,
                         "/api/post/*"
                     ).permitAll()
                     .requestMatchers(
