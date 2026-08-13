@@ -3,18 +3,35 @@ package spring.springserver.domain.notification.service.impl
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
+import spring.springserver.domain.member.exception.MemberStatusCode
+import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.notification.data.request.SendNoticeNotificationRequest
 import spring.springserver.domain.notification.data.response.ChatNotificationResponse
+import spring.springserver.domain.notification.data.response.DeletedNotificationResponse
+import spring.springserver.domain.notification.data.response.NotificationResponse
+import spring.springserver.domain.notification.data.response.UnreadNotificationCountResponse
+import spring.springserver.domain.notification.entity.Notification
+import spring.springserver.domain.notification.entity.NotificationType
+import spring.springserver.domain.notification.exception.NotificationStatusCode
+import spring.springserver.domain.notification.repository.NotificationRepository
 import spring.springserver.domain.notification.service.NotificationService
+import spring.springserver.global.exception.exception.ApplicationException
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class NotificationServiceImpl : NotificationService {
+class NotificationServiceImpl(
+    private val notificationRepository: NotificationRepository,
+    private val memberRepository: MemberRepository
+) : NotificationService {
 
     private val emitters = ConcurrentHashMap<String, MutableSet<SseEmitter>>()
 
     override fun subscribe(
-        username: String
+        username: String,
+        lastEventId: Long?
     ): SseEmitter {
 
         val emitter = SseEmitter(TIMEOUT_MILLIS)
@@ -44,20 +61,128 @@ class NotificationServiceImpl : NotificationService {
             throw exception
         }
 
+        replayMissedNotifications(username, emitter, lastEventId)
+
         return emitter
     }
 
+    /**
+     * 오프라인이었던 동안 쌓인 알림은 SSE로 전달되지 못했으므로,
+     * 재접속 시 DB에 저장해 둔 미수신 알림을 그대로 다시 흘려보낸다.
+     */
+    private fun replayMissedNotifications(
+        username: String,
+        emitter: SseEmitter,
+        lastEventId: Long?
+    ) {
+
+        val missed = notificationRepository.findMissedByReceiverUsername(
+            username = username,
+            lastEventId = lastEventId ?: 0L
+        )
+
+        if (missed.isEmpty()) {
+
+            return
+        }
+
+        try {
+
+            missed.forEach {
+
+                notification ->
+                emitter.send(event(NotificationResponse.of(notification)))
+            }
+        } catch (exception: Exception) {
+
+            log.warn("놓친 알림 재전송 실패: username={}", username, exception)
+
+            remove(username, emitter)
+            emitter.completeWithError(exception)
+        }
+    }
+
+    @Transactional
     override fun sendChatNotification(
         receiverUsername: String,
         notification: ChatNotificationResponse
-    ) {
+    ): NotificationResponse {
 
-        dispatch(receiverUsername) {
+        val response = save(
+            type = NotificationType.CHAT,
+            receiverUsername = receiverUsername,
+            senderUsername = notification.senderUsername,
+            message = notification.message,
+            sentAt = notification.createdAt,
+            roomId = notification.roomId
+        )
 
-            SseEmitter.event()
-                .name("chat")
-                .data(notification)
+        dispatch(receiverUsername) { event(response) }
+
+        return response
+    }
+
+    @Transactional
+    override fun sendNoticeNotification(
+        sendNoticeNotificationRequest: SendNoticeNotificationRequest
+    ): NotificationResponse {
+
+        val response = save(
+            type = NotificationType.NOTICE,
+            receiverUsername = sendNoticeNotificationRequest.receiverUsername,
+            senderUsername = null,
+            message = sendNoticeNotificationRequest.message,
+            sentAt = Instant.now(),
+            roomId = null
+        )
+
+        dispatch(sendNoticeNotificationRequest.receiverUsername) { event(response) }
+
+        return response
+    }
+
+    @Transactional(readOnly = true)
+    override fun getNotifications(
+        username: String
+    ): List<NotificationResponse> {
+
+        return notificationRepository.findAllByReceiverUsername(username)
+            .map { NotificationResponse.of(it) }
+    }
+
+    @Transactional(readOnly = true)
+    override fun getUnreadCount(
+        username: String
+    ): UnreadNotificationCountResponse {
+
+        return UnreadNotificationCountResponse(notificationRepository.countByReceiverUsername(username))
+    }
+
+    @Transactional
+    override fun readNotification(
+        username: String,
+        notificationId: Long
+    ): DeletedNotificationResponse {
+
+        val notification = notificationRepository.findById(notificationId).orElse(null)
+            ?: throw ApplicationException.of(NotificationStatusCode.NOTIFICATION_NOT_FOUND)
+
+        if (notification.receiver.username != username) {
+
+            throw ApplicationException.of(NotificationStatusCode.FORBIDDEN_NOTIFICATION_ACCESS)
         }
+
+        notificationRepository.delete(notification)
+
+        return DeletedNotificationResponse(1)
+    }
+
+    @Transactional
+    override fun readAllNotifications(
+        username: String
+    ): DeletedNotificationResponse {
+
+        return DeletedNotificationResponse(notificationRepository.deleteAllByReceiverUsername(username))
     }
 
     /**
@@ -73,6 +198,50 @@ class NotificationServiceImpl : NotificationService {
             dispatch(username) { SseEmitter.event().comment("ping") }
         }
     }
+
+    private fun save(
+        type: NotificationType,
+        receiverUsername: String,
+        senderUsername: String?,
+        message: String,
+        sentAt: Instant,
+        roomId: Long?
+    ): NotificationResponse {
+
+        val receiver = memberRepository.findByUsername(receiverUsername)
+            ?: throw ApplicationException.of(MemberStatusCode.MEMBER_NOT_FOUND)
+
+        val sender = senderUsername?.let {
+
+            memberRepository.findByUsername(it)
+                ?: throw ApplicationException.of(MemberStatusCode.MEMBER_NOT_FOUND)
+        }
+
+        val notification = notificationRepository.save(
+            Notification(
+                type = type,
+                receiver = receiver,
+                message = message,
+                sentAt = sentAt,
+                sender = sender,
+                roomId = roomId
+            )
+        )
+
+        return NotificationResponse.of(notification)
+    }
+
+    /**
+     * 이벤트 id로 알림 id를 실어 보낸다. 브라우저 EventSource가 재연결할 때
+     * 이 값을 Last-Event-ID 헤더로 되돌려주므로 놓친 알림의 기준점이 된다.
+     */
+    private fun event(
+        notificationResponse: NotificationResponse
+    ): SseEmitter.SseEventBuilder =
+        SseEmitter.event()
+            .id(notificationResponse.notificationId.toString())
+            .name(notificationResponse.type.name.lowercase())
+            .data(notificationResponse)
 
     private fun dispatch(
         username: String,
@@ -118,7 +287,7 @@ class NotificationServiceImpl : NotificationService {
 
     companion object {
 
-        private const val TIMEOUT_MILLIS = 5L * 60L * 1000L
+        private const val TIMEOUT_MILLIS = 30L * 60L * 1000L
         private const val RECONNECT_MILLIS = 3_000L
         private const val HEARTBEAT_MILLIS = 15_000L
 
