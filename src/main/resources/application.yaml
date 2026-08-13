@@ -13,8 +13,14 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      leak-detection-threshold: 20000
 
   jpa:
+    # SSE처럼 오래 열려 있는 요청이 EntityManager와 JDBC 커넥션을 요청 종료까지
+    # 붙잡고 있어 커넥션 풀이 고갈되므로 OSIV를 끈다.
+    open-in-view: false
     hibernate:
       ddl-auto: update
     show-sql: true

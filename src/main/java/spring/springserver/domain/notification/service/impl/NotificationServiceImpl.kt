@@ -76,19 +76,15 @@ class NotificationServiceImpl(
         lastEventId: Long?
     ) {
 
-        val missed = notificationRepository.findMissedByReceiverUsername(
-            username = username,
-            lastEventId = lastEventId ?: 0L
-        )
-
-        if (missed.isEmpty()) {
-
-            return
-        }
-
+        // 재전송에 실패하더라도 연결 자체는 유지한다.
+        // 여기서 emitter를 끊으면 클라이언트가 곧바로 재접속해 조회를 반복하고,
+        // 그 과정에서 커넥션 풀이 더 빠르게 고갈된다.
         try {
 
-            missed.forEach {
+            notificationRepository.findMissedByReceiverUsername(
+                username = username,
+                lastEventId = lastEventId ?: 0L
+            ).forEach {
 
                 notification ->
                 emitter.send(event(NotificationResponse.of(notification)))
@@ -96,9 +92,6 @@ class NotificationServiceImpl(
         } catch (exception: Exception) {
 
             log.warn("놓친 알림 재전송 실패: username={}", username, exception)
-
-            remove(username, emitter)
-            emitter.completeWithError(exception)
         }
     }
 
