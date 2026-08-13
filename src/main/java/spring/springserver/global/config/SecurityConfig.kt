@@ -130,6 +130,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/payment/prepare",
                         "/api/payment/confirm",
                         "/api/payment/*/cancel",
                         "/api/payment/virtual-accounts"

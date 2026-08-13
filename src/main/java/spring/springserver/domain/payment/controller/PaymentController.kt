@@ -11,8 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
+import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.PaymentResponse
+import spring.springserver.domain.payment.data.response.PreparePaymentResponse
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.data.BaseResponse
 import spring.springserver.global.jwt.MemberDetails
@@ -22,6 +24,20 @@ import spring.springserver.global.jwt.MemberDetails
 class PaymentController(
     private val paymentService: PaymentService
 ) {
+
+    @PostMapping("/prepare")
+    fun prepare(
+        @Valid @RequestBody preparePaymentRequest: PreparePaymentRequest,
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<PreparePaymentResponse> {
+
+        return BaseResponse.ok(
+            paymentService.prepare(
+                preparePaymentRequest,
+                memberDetails.getId()!!
+            )
+        )
+    }
 
     @PostMapping("/confirm")
     fun confirm(

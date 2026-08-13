@@ -23,6 +23,41 @@ enum class PaymentStatusCode(
         "TOSS_PAYMENTS_REQUEST_FAILED",
         "토스페이먼츠 요청에 실패했습니다.",
         HttpStatus.BAD_GATEWAY
+    ),
+    PAYMENT_NOT_FOUND(
+        "PAYMENT_NOT_FOUND",
+        "결제 정보를 찾을 수 없습니다.",
+        HttpStatus.NOT_FOUND
+    ),
+    PAYMENT_ORDER_ID_DUPLICATED(
+        "PAYMENT_ORDER_ID_DUPLICATED",
+        "이미 사용된 주문번호입니다.",
+        HttpStatus.CONFLICT
+    ),
+    PAYMENT_AMOUNT_MISMATCH(
+        "PAYMENT_AMOUNT_MISMATCH",
+        "결제 금액이 일치하지 않습니다.",
+        HttpStatus.BAD_REQUEST
+    ),
+    PAYMENT_MEMBER_MISMATCH(
+        "PAYMENT_MEMBER_MISMATCH",
+        "결제를 요청한 회원이 아닙니다.",
+        HttpStatus.FORBIDDEN
+    ),
+    PAYMENT_ALREADY_PROCESSED(
+        "PAYMENT_ALREADY_PROCESSED",
+        "이미 처리된 결제입니다.",
+        HttpStatus.CONFLICT
+    ),
+    PAYMENT_BLOCKCHAIN_RECORD_FAILED(
+        "PAYMENT_BLOCKCHAIN_RECORD_FAILED",
+        "블록체인 기록에 실패하여 결제가 취소되었습니다.",
+        HttpStatus.BAD_GATEWAY
+    ),
+    PAYMENT_CANCEL_FAILED(
+        "PAYMENT_CANCEL_FAILED",
+        "결제 취소에 실패했습니다. 고객센터로 문의해주세요.",
+        HttpStatus.INTERNAL_SERVER_ERROR
     );
 
     override fun getCode(): String = code
