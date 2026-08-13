@@ -9,7 +9,8 @@ data class ChatRoomResponse(
     val participantUsername: String,
     val participantName: String,
     val lastMessagePreview: String?,
-    val lastMessageAt: Instant?
+    val lastMessageAt: Instant?,
+    val createdAt: Instant?
 ) {
 
     companion object {
@@ -23,7 +24,8 @@ data class ChatRoomResponse(
                 participantUsername = participant.username,
                 participantName = participant.name,
                 lastMessagePreview = room.lastMessagePreview,
-                lastMessageAt = room.lastMessageAt
+                lastMessageAt = room.lastMessageAt,
+                createdAt = room.getCreatedAt()
             )
     }
 }
