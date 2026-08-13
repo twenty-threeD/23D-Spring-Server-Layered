@@ -154,6 +154,17 @@ jobs:
             done
 
             sudo tee "$APP_DIR/nginx/conf.d/default.conf" > /dev/null <<EOF
+            # 상위 프록시(TLS 종료 지점)가 보낸 값이 있으면 유지하고, 없을 때만 이 nginx의 값을 사용한다
+            map \$http_x_forwarded_proto \$forwarded_proto {
+                default \$http_x_forwarded_proto;
+                ""      \$scheme;
+            }
+
+            map \$http_x_forwarded_host \$forwarded_host {
+                default \$http_x_forwarded_host;
+                ""      \$host;
+            }
+
             upstream spring_server {
                 server $NEW_CONTAINER:8080;
             }
@@ -163,10 +174,11 @@ jobs:
 
                 location / {
                     proxy_pass http://spring_server;
-                    proxy_set_header Host \$host;
+                    proxy_set_header Host \$forwarded_host;
                     proxy_set_header X-Real-IP \$remote_addr;
                     proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header X-Forwarded-Proto \$scheme;
+                    proxy_set_header X-Forwarded-Proto \$forwarded_proto;
+                    proxy_set_header X-Forwarded-Host \$forwarded_host;
                 }
             }
             EOF
