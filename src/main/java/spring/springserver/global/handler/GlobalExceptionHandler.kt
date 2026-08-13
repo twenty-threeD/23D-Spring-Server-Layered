@@ -11,6 +11,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.MissingServletRequestParameterException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import spring.springserver.domain.auth.exception.AuthStatusCode
@@ -180,6 +182,30 @@ class GlobalExceptionHandler {
         return ResponseEntity
             .status(CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus())
             .body(BaseResponse.error(CommonStatusCode.ENDPOINT_NOT_FOUND.getHttpStatus(), error))
+    }
+
+    /**
+     * SSE 등 비동기 요청이 타임아웃되면 발생한다. 정상적인 연결 종료이며
+     * text/event-stream 응답에는 JSON [BaseResponse]를 쓸 수 없으므로 아무것도 반환하지 않는다.
+     */
+    @ExceptionHandler(AsyncRequestTimeoutException::class)
+    fun handleAsyncRequestTimeoutException(
+        asyncRequestTimeoutException: AsyncRequestTimeoutException
+    ) {
+
+        log.debug("비동기 요청 타임아웃으로 연결을 종료합니다.")
+    }
+
+    /**
+     * 클라이언트가 SSE 연결을 끊은 뒤 응답을 쓰려고 할 때 발생한다.
+     * 이미 응답을 쓸 수 없는 상태이므로 로그만 남기고 무시한다.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException::class)
+    fun handleAsyncRequestNotUsableException(
+        asyncRequestNotUsableException: AsyncRequestNotUsableException
+    ) {
+
+        log.debug("클라이언트가 연결을 종료하여 응답을 쓸 수 없습니다.")
     }
 
     @ExceptionHandler(Exception::class)
