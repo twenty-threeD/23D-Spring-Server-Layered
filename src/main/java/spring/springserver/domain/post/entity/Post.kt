@@ -11,6 +11,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.post.category.entity.PostCategory
 import java.time.LocalDateTime
 
 @Entity
@@ -35,6 +36,10 @@ class Post(
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_member_id", nullable = false)
     var member: Member,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_category_id")
+    var category: PostCategory? = null,
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
     var attachments: MutableList<PostAttach> = mutableListOf()
