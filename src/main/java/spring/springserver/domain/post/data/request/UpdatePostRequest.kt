@@ -18,4 +18,7 @@ data class UpdatePostRequest(
     val content: String,
 
     val fileUrl: String?,
+
+    @field:Positive
+    val categoryId: Long?,
 )

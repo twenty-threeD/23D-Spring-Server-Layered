@@ -101,7 +101,8 @@ class SecurityConfig(
                     .hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/post/**"
+                        "/api/post/**",
+                        "/api/post-category"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,

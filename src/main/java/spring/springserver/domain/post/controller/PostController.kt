@@ -51,12 +51,13 @@ class PostController(
     }
 
     @GetMapping("/search")
-    fun searchPostsByTitle(
-        @RequestParam title: String,
+    fun searchPosts(
+        @RequestParam(required = false) title: String?,
+        @RequestParam(required = false) categoryId: Long?,
         @ParameterObject pageable: Pageable
     ): BaseResponse<Page<PostResponse>> {
 
-        return BaseResponse.ok(postService.searchPostsByTitle(title, pageable))
+        return BaseResponse.ok(postService.searchPosts(title, categoryId, pageable))
     }
 
     @PatchMapping

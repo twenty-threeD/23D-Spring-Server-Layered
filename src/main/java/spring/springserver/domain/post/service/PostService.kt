@@ -21,8 +21,9 @@ interface PostService {
         pageable: Pageable
     ): Page<PostResponse>
 
-    fun searchPostsByTitle(
-        title: String,
+    fun searchPosts(
+        title: String?,
+        categoryId: Long?,
         pageable: Pageable
     ): Page<PostResponse>
 

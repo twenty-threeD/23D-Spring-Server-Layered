@@ -1,8 +1,10 @@
 package spring.springserver.domain.post.data.request
 
 import jakarta.validation.constraints.NotBlank
+import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.post.category.entity.PostCategory
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -17,10 +19,14 @@ data class CreatePostRequest(
 
     val fileUrl: String?,
 
+    @field:Positive
+    val categoryId: Long?,
+
 ) {
 
     fun toEntity(
-        member: Member
+        member: Member,
+        category: PostCategory?
     ): Post {
 
         return Post(
@@ -28,6 +34,7 @@ data class CreatePostRequest(
             content = content,
             updatedAt = LocalDateTime.now(),
             member = member,
+            category = category,
         )
     }
 }
