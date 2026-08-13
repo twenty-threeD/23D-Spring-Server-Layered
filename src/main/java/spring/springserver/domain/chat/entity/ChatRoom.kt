@@ -9,6 +9,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Index
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
+import jakarta.persistence.PrePersist
 import jakarta.persistence.Table
 import jakarta.persistence.UniqueConstraint
 import spring.springserver.domain.member.entity.Member
@@ -51,7 +52,18 @@ class ChatRoom(
     @Column(name = "last_message_preview", length = 200)
     var lastMessagePreview: String? = null
 
+    @Column(name = "created_at", updatable = false)
+    private var createdAt: Instant? = null
+
+    @PrePersist
+    fun prePersistDate() {
+
+        createdAt = Instant.now()
+    }
+
     fun getId(): Long? = id
+
+    fun getCreatedAt(): Instant? = createdAt
 
     fun updateLastMessageMeta(
         at: Instant,

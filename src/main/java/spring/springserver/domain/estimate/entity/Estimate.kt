@@ -29,6 +29,9 @@ class Estimate(
     @Column(nullable = false, length = 500)
     var url: String,
 
+    @Column(name = "total_pay", nullable = false)
+    var totalPay: Long,
+
     @Column(nullable = false)
     var paid: Boolean = false
 ) {
@@ -53,10 +56,12 @@ class Estimate(
     fun getUpdatedAt(): LocalDateTime? = updatedAt
 
     fun update(
-        url: String
+        url: String,
+        totalPay: Long
     ) {
 
         this.url = url
+        this.totalPay = totalPay
     }
 
     fun markAsPaid() {

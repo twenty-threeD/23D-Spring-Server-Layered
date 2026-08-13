@@ -61,6 +61,20 @@ class PaymentServiceImpl(
             return tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId)
         }
 
+        /**
+         * 견적서 결제라면 승인을 요청하기 전에 금액부터 대조한다.
+         * 조작된 금액으로 실제 결제가 일어나는 것을 막는다.
+         * 결제 건을 선점하기 전에 확인해야 실패한 요청이 IN_PROGRESS로 남지 않는다.
+         */
+        confirmPaymentRequest.estimateId?.let { estimateId ->
+
+            estimateService.validatePayable(
+                estimateId,
+                memberId,
+                confirmPaymentRequest.amount
+            )
+        }
+
         val payment = paymentRecordService.startConfirm(
             confirmPaymentRequest.orderId,
             confirmPaymentRequest.amount,
@@ -104,14 +118,16 @@ class PaymentServiceImpl(
         )
 
         /**
-         * 견적서 결제라면 체인 기록까지 끝난 뒤 결제 완료 처리한다.
-         * 보상 취소된 결제가 완료로 남지 않도록 순서를 마지막에 둔다.
+         * 승인된 실제 금액으로 한 번 더 대조한 뒤 결제 완료 처리한다.
+         * 체인 기록까지 끝난 뒤에 호출해야 보상 취소된 결제가 완료로 남지 않는다.
+         * 이후 해당 견적서는 조회만 가능하다.
          */
         confirmPaymentRequest.estimateId?.let { estimateId ->
 
             estimateService.markAsPaid(
                 estimateId,
-                memberId
+                memberId,
+                response.totalAmount ?: confirmPaymentRequest.amount
             )
         }
 

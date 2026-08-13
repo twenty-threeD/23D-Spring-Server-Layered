@@ -11,6 +11,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.file.service.FileService
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.category.entity.PostCategory
+import spring.springserver.domain.post.category.service.PostCategoryService
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
 import spring.springserver.domain.post.data.response.DeletedPostResponse
@@ -27,7 +29,8 @@ import java.time.LocalDateTime
 class PostServiceImpl(
     private val postRepository: PostRepository,
     private val memberRepository: MemberRepository,
-    private val fileService: FileService
+    private val fileService: FileService,
+    private val postCategoryService: PostCategoryService
 ): PostService {
 
     override fun createPost(
@@ -35,7 +38,11 @@ class PostServiceImpl(
     ): PostResponse {
 
         val member = getCurrentMember()
-        val post = createPostRequest.toEntity(member)
+
+        val post = createPostRequest.toEntity(
+            member,
+            resolveCategory(createPostRequest.categoryId, null)
+        )
 
         createPostRequest.fileUrl
             ?.trim()
@@ -78,15 +85,25 @@ class PostServiceImpl(
             .map { post -> PostResponse.of(post) }
     }
 
-    override fun searchPostsByTitle(
-        title: String,
+    override fun searchPosts(
+        title: String?,
+        categoryId: Long?,
         pageable: Pageable
     ): Page<PostResponse> {
 
-        val normalizedTitle = title.trim()
+        val normalizedTitle = title?.trim().orEmpty()
 
-        return postRepository.searchPostsByTitle(
+        if (categoryId == null) {
+
+            return postRepository.searchPostsByTitle(
+                normalizedTitle,
+                pageable.withoutSort()
+            ).map { post -> PostResponse.of(post) }
+        }
+
+        return postRepository.searchPostsByTitleAndCategoryIds(
             normalizedTitle,
+            postCategoryService.getCategoryIdsIncludingDescendants(categoryId),
             pageable.withoutSort()
         ).map { post -> PostResponse.of(post) }
     }
@@ -108,6 +125,8 @@ class PostServiceImpl(
         post.title = updatePostRequest.title
 
         post.content = updatePostRequest.content
+
+        post.category = resolveCategory(updatePostRequest.categoryId, post.category)
 
         updatePostRequest.fileUrl
             ?.trim()
@@ -139,6 +158,22 @@ class PostServiceImpl(
         post.deletedAt = LocalDateTime.now()
 
         return DeletedPostResponse.of("삭제되었습니다")
+    }
+
+    /**
+     * categoryId가 없으면 기존 카테고리를 그대로 둔다. (Profile의 직종 수정과 같은 규칙)
+     */
+    private fun resolveCategory(
+        categoryId: Long?,
+        current: PostCategory?
+    ): PostCategory? {
+
+        if (categoryId == null) {
+
+            return current
+        }
+
+        return postCategoryService.getPostCategory(categoryId)
     }
 
     private fun validatePostAuthor(
