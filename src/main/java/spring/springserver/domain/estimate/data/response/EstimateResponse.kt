@@ -12,6 +12,8 @@ data class EstimateResponse(
 
     val url: String,
 
+    val totalPay: Long,
+
     val paid: Boolean,
 
     val createdAt: LocalDateTime?,
@@ -30,6 +32,7 @@ data class EstimateResponse(
                 estimate.client.getId(),
                 estimate.professional.getId(),
                 estimate.url,
+                estimate.totalPay,
                 estimate.paid,
                 estimate.getCreatedAt(),
                 estimate.getUpdatedAt()

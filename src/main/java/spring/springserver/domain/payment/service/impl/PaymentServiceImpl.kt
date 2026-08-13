@@ -25,17 +25,31 @@ class PaymentServiceImpl(
         memberId: Long
     ): PaymentResponse {
 
+        /**
+         * 견적서 결제라면 승인을 요청하기 전에 금액부터 대조한다.
+         * 조작된 금액으로 실제 결제가 일어나는 것을 막는다.
+         */
+        confirmPaymentRequest.estimateId?.let { estimateId ->
+
+            estimateService.validatePayable(
+                estimateId,
+                memberId,
+                confirmPaymentRequest.amount
+            )
+        }
+
         val response = tossPaymentsClient.confirm(confirmPaymentRequest)
 
         /**
-         * 견적서 결제라면 승인 직후 결제 완료 처리한다.
+         * 승인된 실제 금액으로 한 번 더 대조한 뒤 결제 완료 처리한다.
          * 이후 해당 견적서는 조회만 가능하다.
          */
         confirmPaymentRequest.estimateId?.let { estimateId ->
 
             estimateService.markAsPaid(
                 estimateId,
-                memberId
+                memberId,
+                response.totalAmount ?: confirmPaymentRequest.amount
             )
         }
 
