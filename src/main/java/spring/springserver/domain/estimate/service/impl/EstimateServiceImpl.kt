@@ -42,7 +42,8 @@ class EstimateServiceImpl(
             Estimate(
                 client = client,
                 professional = professional,
-                url = createEstimateRequest.url!!.trim()
+                url = createEstimateRequest.url!!.trim(),
+                totalPay = createEstimateRequest.totalPay!!
             )
         )
 
@@ -82,7 +83,10 @@ class EstimateServiceImpl(
         validateOwner(estimate, member)
         validateNotPaid(estimate)
 
-        estimate.update(updateEstimateRequest.url!!.trim())
+        estimate.update(
+            updateEstimateRequest.url!!.trim(),
+            updateEstimateRequest.totalPay!!
+        )
 
         return EstimateResponse.of(estimate)
     }
@@ -102,19 +106,31 @@ class EstimateServiceImpl(
         return DeleteEstimateResponse.of("견적서가 삭제되었습니다.")
     }
 
+    @Transactional(readOnly = true)
+    override fun validatePayable(
+        estimateId: Long,
+        memberId: Long,
+        amount: Long
+    ) {
+
+        val estimate = getEstimateEntity(estimateId)
+
+        validateClient(estimate, memberId)
+        validateNotPaid(estimate)
+        validateAmount(estimate, amount)
+    }
+
     override fun markAsPaid(
         estimateId: Long,
-        memberId: Long
+        memberId: Long,
+        paidAmount: Long
     ): EstimateResponse {
 
         val estimate = getEstimateEntity(estimateId)
 
-        if (estimate.client.getId() != memberId) {
-
-            throw ApplicationException(EstimateStatusCode.ESTIMATE_FORBIDDEN)
-        }
-
+        validateClient(estimate, memberId)
         validateNotPaid(estimate)
+        validateAmount(estimate, paidAmount)
 
         estimate.markAsPaid()
 
@@ -148,6 +164,31 @@ class EstimateServiceImpl(
      * 견적서의 작성·수정·삭제 권한은 일을 맡기는 클라이언트에게 있다.
      * 전문가는 자신에게 온 견적서를 조회만 할 수 있다.
      */
+    private fun validateClient(
+        estimate: Estimate,
+        memberId: Long
+    ) {
+
+        if (estimate.client.getId() != memberId) {
+
+            throw ApplicationException(EstimateStatusCode.ESTIMATE_FORBIDDEN)
+        }
+    }
+
+    /**
+     * 결제 금액이 견적서의 최종 금액과 다르면 결제를 인정하지 않는다.
+     */
+    private fun validateAmount(
+        estimate: Estimate,
+        amount: Long
+    ) {
+
+        if (estimate.totalPay != amount) {
+
+            throw ApplicationException(EstimateStatusCode.ESTIMATE_AMOUNT_MISMATCH)
+        }
+    }
+
     private fun validateOwner(
         estimate: Estimate,
         member: Member
