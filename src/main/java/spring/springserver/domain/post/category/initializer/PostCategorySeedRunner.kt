@@ -31,7 +31,7 @@ class PostCategorySeedRunner(
     }
 
     @Transactional
-    override fun run(args: ApplicationArguments) {
+    override fun run(applicationArguments: ApplicationArguments) {
 
         if (postCategoryRepository.count() > 0L) {
 
