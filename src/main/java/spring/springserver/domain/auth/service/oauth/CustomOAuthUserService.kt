@@ -8,11 +8,14 @@ import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.entity.Role
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import kotlin.collections.get
 
@@ -21,8 +24,13 @@ import kotlin.collections.get
  * @author @L98293(코틀린 변환)
  */
 @Service
-class CustomOAuthUserService(private val memberRepository: MemberRepository): DefaultOAuth2UserService() {
+class CustomOAuthUserService(
+    private val memberRepository: MemberRepository,
+    private val keyService: KeyService,
+    private val profileService: ProfileService
+): DefaultOAuth2UserService() {
 
+    @Transactional(rollbackFor = [Exception::class])
     override fun loadUser(oAuth2UserRequest: OAuth2UserRequest): OAuth2User {
 
         try {
@@ -108,19 +116,29 @@ class CustomOAuthUserService(private val memberRepository: MemberRepository): De
             else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
         }
 
-        val member = memberRepository.findByEmail(email)
-            ?.apply { update(name) }
-            ?: Member(
-                username = email,
-                name = name,
-                email = email,
-                phone = null,
-                password = null,
-                role = Role.USER,
-                provider = provider
+        val existingMember = memberRepository.findByEmail(email)?.apply { update(name) }
+
+        val member = memberRepository.save(
+            existingMember
+                ?: Member(
+                    username = email,
+                    name = name,
+                    email = email,
+                    phone = null,
+                    password = null,
+                    role = Role.USER,
+                    provider = provider
+                )
+        )
+
+        if (existingMember == null) {
+
+            keyService.generateKeyPair(
+                memberId = member.getId()!!
             )
 
-        memberRepository.save(member)
+            profileService.createDefaultProfile(member)
+        }
 
         customAttributes["username"] = member.username
         customAttributes["role"] = member.role.name
