@@ -7,10 +7,12 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.post.category.entity.PostCategory
 import spring.springserver.domain.post.category.repository.PostCategoryRepository
+import spring.springserver.domain.post.repository.PostRepository
 
 @Component
 class PostCategorySeedRunner(
-    private val postCategoryRepository: PostCategoryRepository
+    private val postCategoryRepository: PostCategoryRepository,
+    private val postRepository: PostRepository
 ) : ApplicationRunner {
 
     companion object {
@@ -18,47 +20,68 @@ class PostCategorySeedRunner(
         private val log = LoggerFactory.getLogger(PostCategorySeedRunner::class.java)
 
         /**
-         * 초기 용역 카테고리. 테이블이 비어 있을 때만 넣으므로 운영 데이터를 덮어쓰지 않는다.
-         * 실제 서비스 분류에 맞게 자유롭게 수정하면 된다.
+         * 서비스에서 사용하는 용역 카테고리. 이 목록이 곧 카테고리 전체이므로,
+         * 목록에 없는 카테고리는 시작할 때 정리되고 빠진 카테고리는 새로 추가된다.
          */
-        private val DEFAULT_CATEGORIES = linkedMapOf(
-            "건설·시공" to listOf("전기", "배관", "목공", "도배·장판", "타일", "미장·방수", "철거"),
-            "인테리어" to listOf("주방", "욕실", "샷시·창호", "조명"),
-            "청소" to listOf("입주청소", "사무실청소", "에어컨청소"),
-            "설치·수리" to listOf("가전 설치", "가구 조립", "보일러 수리"),
-            "이사·운반" to listOf("가정 이사", "사무실 이사", "용달")
+        private val DEFAULT_CATEGORIES = listOf(
+            "이사/청소",
+            "설치/수리",
+            "인테리어",
+            "외주",
+            "법률/금융",
+            "과외",
+            "자동차",
+            "기타"
         )
     }
 
     @Transactional
     override fun run(applicationArguments: ApplicationArguments) {
 
-        if (postCategoryRepository.count() > 0L) {
+        val categories = postCategoryRepository.findAll()
+
+        // 하위 카테고리는 더 이상 쓰지 않으므로, 최상위로 있으면서 목록에 있는 것만 그대로 둔다.
+        val retained = categories.filter {
+
+            category ->
+            category.parent == null && DEFAULT_CATEGORIES.contains(category.name)
+        }
+
+        val obsolete = categories - retained.toSet()
+        removeObsoleteCategories(obsolete)
+
+        val retainedNames = retained.map { category -> category.name }.toSet()
+
+        val created = DEFAULT_CATEGORIES.filterNot(retainedNames::contains)
+            .map {
+
+                categoryName ->
+                postCategoryRepository.save(PostCategory(name = categoryName))
+            }
+
+        if (created.isNotEmpty() || obsolete.isNotEmpty()) {
+
+            log.info("Synced post categories. (created: {}, removed: {})", created.size, obsolete.size)
+        }
+    }
+
+    private fun removeObsoleteCategories(
+        obsolete: List<PostCategory>
+    ) {
+
+        if (obsolete.isEmpty()) {
 
             return
         }
 
-        var createdCount = 0
+        val obsoleteIds = obsolete.mapNotNull(PostCategory::getId)
 
-        DEFAULT_CATEGORIES.forEach {
+        // 사라지는 카테고리를 참조하던 게시글은 카테고리 없는 상태로 남긴다.
+        postRepository.detachCategories(obsoleteIds)
 
-            (parentName, childNames) ->
-            val parent = postCategoryRepository.save(PostCategory(name = parentName))
-            createdCount++
+        // 하위 카테고리가 상위 카테고리를 참조한 채로 지우면 FK 제약에 걸리므로 부모 참조부터 끊는다.
+        postCategoryRepository.detachParents(obsoleteIds)
 
-            childNames.forEach {
-
-                childName ->
-                postCategoryRepository.save(
-                    PostCategory(
-                        name = childName,
-                        parent = parent
-                    )
-                )
-                createdCount++
-            }
-        }
-
-        log.info("Seeded {} post category(s).", createdCount)
+        postCategoryRepository.deleteAllById(obsoleteIds)
     }
 }
