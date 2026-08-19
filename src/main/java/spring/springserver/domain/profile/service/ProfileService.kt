@@ -20,4 +20,8 @@ interface ProfileService {
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): UpdateProfileResponse
+
+    fun getImageUrlsByMemberIds(
+        memberIds: Collection<Long>
+    ): Map<Long, String?>
 }

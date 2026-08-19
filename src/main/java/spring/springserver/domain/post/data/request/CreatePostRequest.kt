@@ -17,7 +17,8 @@ data class CreatePostRequest(
     @field:Size(max = 2000, message = "내용은 2000자 이하여야 합니다.")
     val content: String,
 
-    val fileUrl: String?,
+    @field:Size(max = 4, message = "이미지는 최대 4개까지 첨부할 수 있습니다.")
+    val fileUrls: List<String> = emptyList(),
 
     @field:Positive
     val categoryId: Long?,

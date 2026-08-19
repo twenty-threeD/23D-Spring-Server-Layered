@@ -8,18 +8,22 @@ data class PostMemberResponse(
     val username: String,
 
     val name: String,
+
+    val imageUrl: String?,
 ) {
 
     companion object {
 
         fun of(
-            member: Member
+            member: Member,
+            imageUrl: String?
         ): PostMemberResponse {
 
             return PostMemberResponse(
                 member.getId(),
                 member.username,
-                member.name
+                member.name,
+                imageUrl
             )
         }
     }

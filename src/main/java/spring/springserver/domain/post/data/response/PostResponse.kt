@@ -25,7 +25,8 @@ data class PostResponse(
     companion object {
 
         fun of(
-            post: Post
+            post: Post,
+            memberImageUrl: String?
         ): PostResponse {
 
             return PostResponse(
@@ -35,7 +36,10 @@ data class PostResponse(
                 post.viewCount,
                 post.updatedAt,
                 post.attachments.mapNotNull { it.fileUrl },
-                PostMemberResponse.of(post.member),
+                PostMemberResponse.of(
+                    post.member,
+                    memberImageUrl
+                ),
                 post.category?.let { PostCategoryResponse.of(it) }
             )
         }
