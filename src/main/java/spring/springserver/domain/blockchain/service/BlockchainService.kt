@@ -12,6 +12,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import spring.springserver.domain.blockchain.data.response.ChainPaymentRecordResponse
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.exception.BlockchainSequenceMismatchException
@@ -280,6 +281,23 @@ class BlockchainService(
         }
 
         throw BlockchainCommitTimeoutException("tx not committed within timeout (txhash=$txHash)")
+    }
+
+    fun findRecord(
+        orderId: String
+    ): ChainPaymentRecordResponse? {
+
+        val url = "${cosmosProperties.nodeUrl}/itda/payment/v1/payments/$orderId"
+
+        return runCatching {
+            (restTemplate.getForObject(url, Map::class.java)?.get("record") as? Map<*, *>)
+                ?.let { ChainPaymentRecordResponse.of(it) }
+        }.getOrElse {
+
+            log.warn("기록을 조회할 수 없습니다. orderId = {}", orderId, it)
+
+            null
+        }
     }
 
     /**

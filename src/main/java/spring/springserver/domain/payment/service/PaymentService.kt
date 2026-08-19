@@ -1,5 +1,6 @@
 package spring.springserver.domain.payment.service
 
+import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
@@ -36,4 +37,9 @@ interface PaymentService {
     fun issueVirtualAccount(
         virtualAccountRequest: VirtualAccountRequest
     ): PaymentResponse
+
+    fun verify(
+        orderId: String,
+        memberId: Long
+    ): PaymentVerificationResponse
 }

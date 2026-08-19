@@ -58,6 +58,11 @@ enum class PaymentStatusCode(
         "PAYMENT_CANCEL_FAILED",
         "결제 취소에 실패했습니다. 고객센터로 문의해주세요.",
         HttpStatus.INTERNAL_SERVER_ERROR
+    ),
+    PAYMENT_NOT_RECORDED_ON_CHAIN(
+        "PAYMENT_NOT_RECORDED_ON_CHAIN",
+        "블록체인에 기록되지 않은 결제입니다.",
+        HttpStatus.NOT_FOUND
     );
 
     override fun getCode(): String = code

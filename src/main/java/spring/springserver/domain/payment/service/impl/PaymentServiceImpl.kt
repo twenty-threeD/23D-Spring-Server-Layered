@@ -2,6 +2,7 @@ package spring.springserver.domain.payment.service.impl
 
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
+import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.service.BlockchainService
@@ -132,6 +133,35 @@ class PaymentServiceImpl(
         }
 
         return response
+    }
+
+    override fun verify(
+        orderId: String,
+        memberId: Long
+    ): PaymentVerificationResponse {
+
+        val payment = paymentRecordService.findByOrderId(orderId = orderId)
+
+        if (payment.getMemberId() != memberId) throw ApplicationException(PaymentStatusCode.PAYMENT_MEMBER_MISMATCH)
+
+        val record = blockchainService.findRecord(orderId = orderId)
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN)
+        val response = tossPaymentsClient.findByOrderId(orderId = orderId)
+        val recalculateHash = sha256(
+            "${response.paymentKey} | ${response.orderId} | ${response.totalAmount} | ${response.approvedAt}"
+        )
+
+        return PaymentVerificationResponse.of(
+            record,
+            recalculatedHash = recalculateHash,
+            keyService.verifySignature(
+                payment.getMemberId(),
+                record.paymentHash,
+                record.buyerSignature
+            ),
+            record.buyerAddress == keyService.deriveCosmosAddress(payment.getMemberId()),
+            record.amount == response.totalAmount
+        )
     }
 
     private fun confirmOnToss(

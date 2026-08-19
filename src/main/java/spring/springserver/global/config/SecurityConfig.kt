@@ -139,7 +139,8 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/payment/*",
-                        "/api/payment/orders/*"
+                        "/api/payment/orders/*",
+                        "/api/payment/orders/*/verify",
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
@@ -91,5 +92,19 @@ class PaymentController(
     ): BaseResponse<PaymentResponse> {
 
         return BaseResponse.ok(paymentService.issueVirtualAccount(virtualAccountRequest))
+    }
+
+    @GetMapping("/orders/{orderId}/verify")
+    fun verify(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<PaymentVerificationResponse> {
+
+        return BaseResponse.ok(
+            paymentService.verify(
+                orderId = orderId,
+                memberId = memberDetails.getId()!!
+            )
+        )
     }
 }
