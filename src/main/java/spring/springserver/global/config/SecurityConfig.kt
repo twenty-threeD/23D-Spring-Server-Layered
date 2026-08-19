@@ -131,6 +131,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/payment/prepare",
                         "/api/payment/confirm",
                         "/api/payment/*/cancel",
                         "/api/payment/virtual-accounts"
@@ -138,7 +139,8 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/payment/*",
-                        "/api/payment/orders/*"
+                        "/api/payment/orders/*",
+                        "/api/payment/orders/*/verify",
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
