@@ -46,7 +46,7 @@ class PostServiceImpl(
             resolveCategory(createPostRequest.categoryId, null)
         )
 
-        requireAttachments(normalizeFileUrls(createPostRequest.fileUrls.orEmpty()))
+        requireAttachments(normalizeFileUrls(createPostRequest.fileUrl.orEmpty()))
             .forEach { fileUrl -> post.addAttachment(fileUrl) }
 
         return toResponse(postRepository.save(post))
