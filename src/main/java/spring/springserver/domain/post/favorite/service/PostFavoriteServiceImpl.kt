@@ -17,6 +17,7 @@ import spring.springserver.domain.post.favorite.data.response.PostFavoriteRespon
 import spring.springserver.domain.post.favorite.entity.PostFavorite
 import spring.springserver.domain.post.favorite.repository.PostFavoriteRepository
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 
@@ -25,7 +26,8 @@ import spring.springserver.global.exception.status_code.CommonStatusCode
 class PostFavoriteServiceImpl(
     private val postFavoriteRepository: PostFavoriteRepository,
     private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val profileService: ProfileService
 ): PostFavoriteService {
 
     override fun favoritePost(
@@ -92,10 +94,22 @@ class PostFavoriteServiceImpl(
 
         val member = getCurrentMember()
 
-        return postFavoriteRepository.findFavoritePostsByMember(
+        val posts = postFavoriteRepository.findFavoritePostsByMember(
             member,
             pageable.withoutSort()
-        ).map { post -> PostResponse.of(post) }
+        )
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            posts.content.mapNotNull { post -> post.member.getId() }
+        )
+
+        return posts.map {
+            post ->
+            PostResponse.of(
+                post,
+                imageUrls[post.member.getId()]
+            )
+        }
     }
 
     private fun getCurrentMember() = SecurityContextHolder.getContext().authentication?.name

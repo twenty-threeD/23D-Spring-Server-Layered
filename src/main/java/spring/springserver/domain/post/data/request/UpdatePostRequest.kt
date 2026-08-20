@@ -17,7 +17,12 @@ data class UpdatePostRequest(
     @field:Size(max = 2000, message = "내용은 2000자 이하여야 합니다.")
     val content: String,
 
-    val fileUrl: String?,
+    /**
+     * null이면 기존 첨부를 그대로 두고, 값이 오면 그 목록으로 통째로 교체한다.
+     * 빈 배열을 보내면 첨부를 모두 제거한다.
+     */
+    @field:Size(max = 4, message = "이미지는 최대 4개까지 첨부할 수 있습니다.")
+    val fileUrls: List<String>? = null,
 
     @field:Positive
     val categoryId: Long?,

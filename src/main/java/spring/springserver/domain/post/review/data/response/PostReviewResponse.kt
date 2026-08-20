@@ -25,7 +25,8 @@ data class PostReviewResponse(
     companion object {
 
         fun of(
-            postReview: PostReview
+            postReview: PostReview,
+            memberImageUrl: String?
         ): PostReviewResponse {
 
             return PostReviewResponse(
@@ -34,7 +35,10 @@ data class PostReviewResponse(
                 postReview.rating,
                 postReview.content,
                 postReview.isEdited,
-                PostMemberResponse.of(postReview.member),
+                PostMemberResponse.of(
+                    postReview.member,
+                    memberImageUrl
+                ),
                 postReview.getCreatedAt(),
                 postReview.getUpdatedAt(),
             )

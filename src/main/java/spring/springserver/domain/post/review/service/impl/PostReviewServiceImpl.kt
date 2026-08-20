@@ -22,6 +22,7 @@ import spring.springserver.domain.post.review.entity.PostReview
 import spring.springserver.domain.post.review.exception.PostReviewStatusCode
 import spring.springserver.domain.post.review.repository.PostReviewRepository
 import spring.springserver.domain.post.review.service.PostReviewService
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 import kotlin.math.round
@@ -31,7 +32,8 @@ import kotlin.math.round
 class PostReviewServiceImpl(
     private val postReviewRepository: PostReviewRepository,
     private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val profileService: ProfileService
 ): PostReviewService {
 
     companion object {
@@ -66,7 +68,7 @@ class PostReviewServiceImpl(
                 LocalDateTime.now()
             )
 
-            return PostReviewResponse.of(writtenReview)
+            return toResponse(writtenReview)
         }
 
         val postReview = try {
@@ -84,7 +86,7 @@ class PostReviewServiceImpl(
             throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_POST)
         }
 
-        return PostReviewResponse.of(postReview)
+        return toResponse(postReview)
     }
 
     @Transactional(readOnly = true)
@@ -95,10 +97,22 @@ class PostReviewServiceImpl(
 
         getActivePost(postId)
 
-        return postReviewRepository.findActiveReviewsByPostId(
+        val postReviews = postReviewRepository.findActiveReviewsByPostId(
             postId,
             pageable.withoutSort()
-        ).map { postReview -> PostReviewResponse.of(postReview) }
+        )
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            postReviews.content.mapNotNull { postReview -> postReview.member.getId() }
+        )
+
+        return postReviews.map { postReview ->
+
+            PostReviewResponse.of(
+                postReview,
+                imageUrls[postReview.member.getId()]
+            )
+        }
     }
 
     @Transactional(readOnly = true)
@@ -135,7 +149,7 @@ class PostReviewServiceImpl(
             updatePostReviewRequest.content.trim()
         )
 
-        return PostReviewResponse.of(postReview)
+        return toResponse(postReview)
     }
 
     override fun deleteReview(
@@ -151,6 +165,18 @@ class PostReviewServiceImpl(
         postReview.softDelete(LocalDateTime.now())
 
         return DeletedPostReviewResponse.of("삭제되었습니다.")
+    }
+
+    private fun toResponse(
+        postReview: PostReview
+    ): PostReviewResponse {
+
+        val memberId = postReview.member.getId()
+
+        return PostReviewResponse.of(
+            postReview,
+            memberId?.let { id -> profileService.getImageUrlsByMemberIds(listOf(id))[id] }
+        )
     }
 
     private fun getCurrentMember() = SecurityContextHolder.getContext().authentication?.name

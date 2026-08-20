@@ -94,6 +94,20 @@ class ProfileServiceImpl(
         return UpdateProfileResponse.of("프로필이 수정되었습니다.")
     }
 
+    @Transactional(readOnly = true)
+    override fun getImageUrlsByMemberIds(
+        memberIds: Collection<Long>
+    ): Map<Long, String?> {
+
+        if (memberIds.isEmpty()) {
+
+            return emptyMap()
+        }
+
+        return profileRepository.findMemberImageUrls(memberIds.distinct())
+            .associate { row -> (row[0] as Long) to (row[1] as String?) }
+    }
+
     private fun applyUsername(
         member: Member,
         username: String?
