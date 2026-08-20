@@ -46,7 +46,7 @@ class PostServiceImpl(
             resolveCategory(createPostRequest.categoryId, null)
         )
 
-        normalizeFileUrls(createPostRequest.fileUrls)
+        requireAttachments(normalizeFileUrls(createPostRequest.fileUrls.orEmpty()))
             .forEach { fileUrl -> post.addAttachment(fileUrl) }
 
         return toResponse(postRepository.save(post))
@@ -138,7 +138,7 @@ class PostServiceImpl(
 
                 replaceAttachments(
                     post,
-                    normalizeFileUrls(fileUrls)
+                    requireAttachments(normalizeFileUrls(fileUrls))
                 )
             }
 
@@ -234,6 +234,22 @@ class PostServiceImpl(
             ?.takeIf { username -> username.isNotBlank() && username != "anonymousUser" }
             ?.let { username -> memberRepository.findByUsername(username) }
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+    /**
+     * 게시글에는 이미지가 최소 1개 있어야 한다.
+     * 공백만 담긴 목록은 정규화 후 비므로 검증 애노테이션만으로는 걸러지지 않는다.
+     */
+    private fun requireAttachments(
+        fileUrls: List<String>
+    ): List<String> {
+
+        if (fileUrls.isEmpty()) {
+
+            throw ApplicationException(PostStatusCode.POST_IMAGE_REQUIRED)
+        }
+
+        return fileUrls
+    }
 
     private fun normalizeFileUrls(
         fileUrls: List<String>

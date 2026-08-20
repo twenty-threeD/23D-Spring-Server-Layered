@@ -3,6 +3,7 @@ package spring.springserver.global.handler
 import jakarta.validation.ConstraintViolationException
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.DisabledException
 import org.springframework.security.authentication.LockedException
@@ -111,6 +112,25 @@ class GlobalExceptionHandler {
         return invalidArgument(error)
     }
 
+    /**
+     * 요청 본문을 DTO로 변환하지 못했을 때 발생한다. 잘못된 JSON이나
+     * non-null 필드에 null이 온 경우이므로 서버 오류가 아니라 400으로 응답한다.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun handleHttpMessageNotReadableException(
+        httpMessageNotReadableException: HttpMessageNotReadableException
+    ): ResponseEntity<BaseResponse<Void>> {
+
+        log.warn("요청 본문을 읽을 수 없습니다", httpMessageNotReadableException)
+
+        val error = ErrorResponse.of(
+            CommonStatusCode.INVALID_ARGUMENT.getCode(),
+            "요청 본문을 읽을 수 없습니다."
+        )
+
+        return invalidArgument(error)
+    }
+
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgumentException(
         illegalArgumentException: IllegalArgumentException
@@ -208,12 +228,16 @@ class GlobalExceptionHandler {
         log.debug("클라이언트가 연결을 종료하여 응답을 쓸 수 없습니다.")
     }
 
-    @ExceptionHandler(Exception::class)
+    /**
+     * StackOverflowError처럼 Exception이 아닌 Throwable도 받는다.
+     * Exception만 잡으면 컨테이너가 로그 없이 빈 500을 내보내 원인을 추적할 수 없다.
+     */
+    @ExceptionHandler(Throwable::class)
     fun handleException(
-        exception: Exception
+        throwable: Throwable
     ): ResponseEntity<BaseResponse<Void>> {
 
-        log.error("요청 처리 중 에러 발생: {}", exception.message)
+        log.error("요청 처리 중 에러 발생", throwable)
 
         val error = ErrorResponse.of(
             CommonStatusCode.INTERNAL_SERVER_ERROR.getCode(),
