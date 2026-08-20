@@ -11,6 +11,6 @@ data class SendChatMessageRequest(
 
     val message: String? = null,
 
-    @field:Size(max = 4, message = "파일은 최대 4개까지 첨부할 수 있습니다.")
+    @field:Size(max = 10, message = "파일은 최대 10개까지 첨부할 수 있습니다.")
     val fileUrls: List<String> = emptyList()
 )

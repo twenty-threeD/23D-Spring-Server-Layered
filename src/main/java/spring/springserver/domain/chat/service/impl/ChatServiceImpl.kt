@@ -381,11 +381,11 @@ class ChatServiceImpl(
         attachmentUrls: List<String>
     ): List<String> {
 
-        if (attachmentUrls.size > 4) {
+        if (attachmentUrls.size > 10) {
 
             throw ApplicationException.of(
                 CommonStatusCode.INVALID_ARGUMENT,
-                "파일은 최대 4개까지 첨부할 수 있습니다."
+                "파일은 최대 10개까지 첨부할 수 있습니다."
             )
         }
 
