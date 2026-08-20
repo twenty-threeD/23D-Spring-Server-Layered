@@ -9,6 +9,7 @@ data class ChatRoomResponse(
     val postId: Long?,
     val participantUsername: String,
     val participantName: String,
+    val participantImageUrl: String?,
     val lastMessagePreview: String?,
     val lastMessageAt: Instant?,
     val createdAt: Instant?
@@ -18,13 +19,15 @@ data class ChatRoomResponse(
 
         fun of(
             room: ChatRoom,
-            participant: Member
+            participant: Member,
+            participantImageUrl: String?
         ): ChatRoomResponse =
             ChatRoomResponse(
                 roomId = room.getId(),
                 postId = room.post.getId(),
                 participantUsername = participant.username,
                 participantName = participant.name,
+                participantImageUrl = participantImageUrl,
                 lastMessagePreview = room.lastMessagePreview,
                 lastMessageAt = room.lastMessageAt,
                 createdAt = room.getCreatedAt()

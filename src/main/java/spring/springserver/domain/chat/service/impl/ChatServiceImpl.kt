@@ -24,6 +24,7 @@ import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.Instant
@@ -37,6 +38,7 @@ class ChatServiceImpl(
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val memberRepository: MemberRepository,
     private val postRepository: PostRepository,
+    private val profileService: ProfileService,
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
@@ -131,16 +133,24 @@ class ChatServiceImpl(
 
         val visibleRoomIds = chatRoomParticipantRepository.findVisibleRoomIdsByUsername(username)
 
-        return rooms.filter { it.getId() in visibleRoomIds }
-            .map { room ->
+        val visibleRooms = rooms.filter { it.getId() in visibleRoomIds }
 
-                val other = getOtherParticipant(room, username)
+        val others = visibleRooms.associateWith { getOtherParticipant(it, username) }
 
-                ChatRoomResponse.of(
-                    room = room,
-                    participant = other
-                )
-            }
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            others.values.mapNotNull { it.getId() }
+        )
+
+        return visibleRooms.map { room ->
+
+            val other = others.getValue(room)
+
+            ChatRoomResponse.of(
+                room = room,
+                participant = other,
+                participantImageUrl = other.getId()?.let { imageUrls[it] }
+            )
+        }
     }
 
     override fun getRoomMessages(
