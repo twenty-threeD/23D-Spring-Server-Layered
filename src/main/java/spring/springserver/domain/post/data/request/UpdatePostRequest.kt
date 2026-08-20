@@ -19,7 +19,7 @@ data class UpdatePostRequest(
 
     /**
      * null이면 기존 첨부를 그대로 두고, 값이 오면 그 목록으로 통째로 교체한다.
-     * 빈 배열을 보내면 첨부를 모두 제거한다.
+     * 게시글에는 이미지가 최소 1개 있어야 하므로 빈 배열은 거부한다.
      */
     @field:Size(max = 4, message = "이미지는 최대 4개까지 첨부할 수 있습니다.")
     val fileUrls: List<String>? = null,

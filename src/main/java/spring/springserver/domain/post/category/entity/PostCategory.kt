@@ -28,9 +28,23 @@ class PostCategory(
 
     fun getId(): Long? = id
 
+    /**
+     * 상위 카테고리를 거슬러 올라가며 전체 이름을 만든다.
+     * 이미 지나온 카테고리는 멈추므로, 데이터가 순환하더라도 무한 재귀가 되지 않는다.
+     */
     fun getFullName(): String {
 
-        return parent?.let { "${it.getFullName()} > $name" }
-            ?: name
+        val names = mutableListOf(name)
+        val visited = mutableSetOf(this)
+        var current = parent
+
+        while (current != null && visited.add(current)) {
+
+            names.add(current.name)
+            current = current.parent
+        }
+
+        return names.reversed()
+            .joinToString(" > ")
     }
 }
