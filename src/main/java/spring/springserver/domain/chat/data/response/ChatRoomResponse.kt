@@ -6,6 +6,7 @@ import java.time.Instant
 
 data class ChatRoomResponse(
     val roomId: Long?,
+    val postId: Long?,
     val participantUsername: String,
     val participantName: String,
     val lastMessagePreview: String?,
@@ -21,6 +22,7 @@ data class ChatRoomResponse(
         ): ChatRoomResponse =
             ChatRoomResponse(
                 roomId = room.getId(),
+                postId = room.post.getId(),
                 participantUsername = participant.username,
                 participantName = participant.name,
                 lastMessagePreview = room.lastMessagePreview,

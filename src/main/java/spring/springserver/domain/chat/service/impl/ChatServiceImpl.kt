@@ -21,6 +21,9 @@ import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.exception.PostStatusCode
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.Instant
@@ -33,6 +36,7 @@ class ChatServiceImpl(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val memberRepository: MemberRepository,
+    private val postRepository: PostRepository,
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
@@ -64,7 +68,8 @@ class ChatServiceImpl(
 
                 createOrGetDirectRoomInTransaction(
                     requesterUsername = requesterUsername,
-                    targetUsername = createChatRoomRequest.username
+                    targetUsername = createChatRoomRequest.username,
+                    postId = createChatRoomRequest.postId
                 )
             }!!
         } catch (_: DataIntegrityViolationException) {
@@ -73,7 +78,8 @@ class ChatServiceImpl(
 
                 getExistingDirectRoomResponse(
                     requesterUsername = requesterUsername,
-                    targetUsername = createChatRoomRequest.username
+                    targetUsername = createChatRoomRequest.username,
+                    postId = createChatRoomRequest.postId
                 )
             }!!
         }
@@ -81,14 +87,19 @@ class ChatServiceImpl(
 
     private fun createOrGetDirectRoomInTransaction(
         requesterUsername: String,
-        targetUsername: String
+        targetUsername: String,
+        postId: Long?
     ): CreateChatRoomResponse {
 
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
+        val post = resolvePost(postId)
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
 
-        val existingRoom = chatRoomRepository.findByDirectChatKey(directChatKey)
+        val existingRoom = chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = directChatKey,
+            postId = post.getId()!!
+        )
 
         if (existingRoom != null) {
 
@@ -97,6 +108,7 @@ class ChatServiceImpl(
 
             return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
+                postId = existingRoom.post.getId(),
                 participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
                 existingRoom = true
             )
@@ -105,7 +117,8 @@ class ChatServiceImpl(
         return createRoom(
             requester = requester,
             target = target,
-            requesterUsername = requesterUsername
+            requesterUsername = requesterUsername,
+            post = post
         )
     }
 
@@ -243,15 +256,16 @@ class ChatServiceImpl(
     private fun createRoom(
         requester: Member,
         target: Member,
-        requesterUsername: String
+        requesterUsername: String,
+        post: Post
     ): CreateChatRoomResponse {
 
         val room = if (isProfessional(requester)) {
 
-            ChatRoom(client = target, professional = requester)
+            ChatRoom(client = target, professional = requester, post = post)
         } else {
 
-            ChatRoom(client = requester, professional = target)
+            ChatRoom(client = requester, professional = target, post = post)
         }
 
         val savedRoom = chatRoomRepository.saveAndFlush(room)
@@ -261,6 +275,7 @@ class ChatServiceImpl(
 
         return CreateChatRoomResponse.of(
             roomId = savedRoom.getId(),
+            postId = savedRoom.post.getId(),
             participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
             existingRoom = false
         )
@@ -268,13 +283,18 @@ class ChatServiceImpl(
 
     private fun getExistingDirectRoomResponse(
         requesterUsername: String,
-        targetUsername: String
+        targetUsername: String,
+        postId: Long?
     ): CreateChatRoomResponse {
 
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
+        val post = resolvePost(postId)
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
-        val room = chatRoomRepository.findByDirectChatKey(directChatKey)
+        val room = chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = directChatKey,
+            postId = post.getId()!!
+        )
             ?: throw ApplicationException.of(
                 CommonStatusCode.ENDPOINT_NOT_FOUND,
                 "채팅방 생성 중 충돌이 발생했습니다."
@@ -285,6 +305,7 @@ class ChatServiceImpl(
 
         return CreateChatRoomResponse.of(
             roomId = room.getId(),
+            postId = room.post.getId(),
             participantUsername = getOtherParticipant(room, requesterUsername).username,
             existingRoom = true
         )
@@ -328,6 +349,30 @@ class ChatServiceImpl(
                 CommonStatusCode.INVALID_ARGUMENT,
                 "존재하지 않는 사용자입니다: $username"
             )
+
+    /**
+     * 게시글 없이는 채팅방을 만들 수 없다.
+     * postId는 검증에서 이미 걸러지지만, 서비스로 직접 들어오는 경로를 위해 여기서도 막는다.
+     */
+    private fun resolvePost(
+        postId: Long?
+    ): Post {
+
+        if (postId == null) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        return post
+    }
 
     private fun getOtherParticipant(
         room: ChatRoom,
