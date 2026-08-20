@@ -26,7 +26,8 @@ class Member(
     @field:Phone(
         region = Region.KR,
         format = Format.LOCAL
-        )
+    )
+    @Column(nullable = true)
     var phone: String?,
 
     var password: String?,

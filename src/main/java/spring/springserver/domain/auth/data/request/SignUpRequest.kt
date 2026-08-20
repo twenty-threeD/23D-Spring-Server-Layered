@@ -44,7 +44,7 @@ data class SignUpRequest(
 
     fun toEntity(
         encodedPassword: String,
-        normalizedPhone: String
+        normalizedPhone: String?
     ): Member {
 
         return Member(

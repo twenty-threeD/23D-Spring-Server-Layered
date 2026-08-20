@@ -8,10 +8,11 @@ object PhoneNormalizer {
     private val LOCAL_NUMBER = Regex("^0\\d{8,10}$")
 
     fun normalize(
-        phone: String
-    ): String {
+        phone: String?
+    ): String? {
 
-        val normalized = phone.filter { it.isDigit() }
+        val normalized = phone?.filter { it.isDigit() }
+            ?: return null
 
         if (!LOCAL_NUMBER.matches(normalized)) {
 
