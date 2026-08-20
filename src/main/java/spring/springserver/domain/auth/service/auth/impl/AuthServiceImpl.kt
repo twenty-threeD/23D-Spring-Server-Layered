@@ -38,7 +38,7 @@ class AuthServiceImpl(
 
         if(memberRepository.existsByUsername(signUpRequest.username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
         if (memberRepository.existsByEmail(signUpRequest.email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
-        if (memberRepository.existsByPhone(phone)) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        if (phone != null && memberRepository.existsByPhone(phone)) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
 
         val member = memberRepository.save(
             signUpRequest.toEntity(

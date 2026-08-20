@@ -17,6 +17,7 @@ import spring.springserver.domain.member.data.response.UsernameCheckResponse
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.exception.status_code.CommonStatusCode
 import spring.springserver.global.util.PhoneNormalizer
 
 @Service
@@ -108,7 +109,9 @@ class MemberServiceImpl(
         phone: String
         ): CheckResponse {
 
-        if (memberRepository.existsByPhone(PhoneNormalizer.normalize(phone))) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        if (memberRepository.existsByPhone(PhoneNormalizer.normalize(phone)
+                ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT))
+            ) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
 
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
