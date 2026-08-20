@@ -7,10 +7,6 @@ import spring.springserver.domain.chat.entity.ChatRoom
 
 interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
     
-    /**
-     * 방은 회원 쌍과 게시글의 조합마다 하나다.
-     * 같은 두 사람이라도 게시글이 다르면 다른 방을 쓴다.
-     */
     fun findByDirectChatKeyAndPostId(
         directChatKey: String,
         postId: Long
