@@ -92,7 +92,10 @@ dependencies {
 
     // secp256k1
     implementation 'org.bouncycastle:bcprov-jdk18on:1.80'
-    
+
+    // Solapi
+    implementation 'com.solapi:sdk:1.0.3'
+
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-reflect'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"

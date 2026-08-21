@@ -56,10 +56,10 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
             mimeMessageHelper.setSubject("잇다")
             mimeMessageHelper.setText(content, true)
             javaMailSender.send(sendMessage)
-        } catch (e: MessagingException) {
+        } catch (_: MessagingException) {
 
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
-        } catch (e: UnsupportedEncodingException) {
+        } catch (_: UnsupportedEncodingException) {
 
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
         }
