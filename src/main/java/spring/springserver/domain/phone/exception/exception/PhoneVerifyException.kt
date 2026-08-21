@@ -1,0 +1,7 @@
+package spring.springserver.domain.phone.exception.exception
+
+import spring.springserver.domain.phone.exception.status_code.PhoneVerifyStatusCode
+import spring.springserver.global.exception.exception.ApplicationException
+
+class CannotSendPhoneVerifyNumberException: ApplicationException(PhoneVerifyStatusCode.CANNOT_SEND_PHONE_VERIFY_NUMBER)
+class CannotVerifyPhoneException: ApplicationException(PhoneVerifyStatusCode.CANNOT_VERIFY_PHONE_NUMBER)

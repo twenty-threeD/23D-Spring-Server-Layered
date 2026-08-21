@@ -128,3 +128,8 @@ cosmos:
   submitter-private-key: ${COSMOS_SUBMITTER_PRIVATE_KEY}
   node-url: ${COSMOS_NODE_URL}
   chain-id: ${COSMOS_CHAIN_ID}
+
+solapi:
+  api-key: ${SOLAPI_API_KEY}
+  api-secret-key: ${SOLAPI_API_SECRET_KEY}
+  sender-number: ${SOLAPI_SENDER_NUMBER}

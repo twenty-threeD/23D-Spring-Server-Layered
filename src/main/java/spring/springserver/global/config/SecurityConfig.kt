@@ -166,6 +166,11 @@ class SecurityConfig(
                         "/api/community/post/search"
                     ).permitAll()
                     .requestMatchers(
+                        HttpMethod.POST,
+                        "/phone/send",
+                        "/phone/verify"
+                    ).permitAll()
+                    .requestMatchers(
                         HttpMethod.GET,
                         "/files/*",
                         "/images/*",

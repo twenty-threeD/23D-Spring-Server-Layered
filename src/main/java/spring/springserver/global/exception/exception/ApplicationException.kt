@@ -2,7 +2,7 @@ package spring.springserver.global.exception.exception
 
 import spring.springserver.global.exception.status_code.StatusCode
 
-class ApplicationException(
+open class ApplicationException(
     val statusCode: StatusCode,
     message: String = statusCode.getMessage(),
     throwable: Throwable? = null
