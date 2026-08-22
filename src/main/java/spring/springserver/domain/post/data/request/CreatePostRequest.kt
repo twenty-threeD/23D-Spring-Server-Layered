@@ -18,13 +18,8 @@ data class CreatePostRequest(
     @field:Size(max = 2000, message = "내용은 2000자 이하여야 합니다.")
     val content: String,
 
-    /**
-     * 이미지는 1개 이상 4개 이하로 첨부해야 한다.
-     * 타입을 nullable로 두는 것은 클라이언트가 null을 보냈을 때 역직렬화 단계에서
-     * 터지지 않고 검증 단계에서 걸러지도록 하기 위한 것이다.
-     */
     @field:NotEmpty(message = "이미지는 최소 1개 이상 첨부해야 합니다.")
-    @field:Size(max = 4, message = "이미지는 최대 4개까지 첨부할 수 있습니다.")
+    @field:Size(max = 6, message = "이미지는 최대 6개까지 첨부할 수 있습니다.")
     val fileUrl: List<String>? = null,
 
     @field:Positive

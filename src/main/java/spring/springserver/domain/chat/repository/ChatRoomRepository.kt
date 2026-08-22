@@ -6,7 +6,7 @@ import org.springframework.data.repository.query.Param
 import spring.springserver.domain.chat.entity.ChatRoom
 
 interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
-    
+
     fun findByDirectChatKeyAndPostId(
         directChatKey: String,
         postId: Long
