@@ -1,10 +1,15 @@
 package spring.springserver.domain.auth.controller
 
 import jakarta.servlet.http.HttpServletRequest
+import jakarta.servlet.http.HttpServletResponse
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import spring.springserver.domain.auth.data.request.ReissueTokenRequest
 import spring.springserver.domain.auth.data.response.CurrentUsernameResponse
+import spring.springserver.domain.auth.data.response.ReissueTokenResponse
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.global.data.BaseResponse
@@ -26,6 +31,22 @@ class TokenController(
                 tokenService.getCurrentUsername(
                     httpServletRequest = httpServletRequest
                 ) ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+            )
+        )
+    }
+
+    @PostMapping("/reissue")
+    fun reissueAccessToken(
+        @RequestBody(required = false) reissueTokenRequest: ReissueTokenRequest?,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ReissueTokenResponse> {
+
+        return BaseResponse.ok(
+            tokenService.reissueAccessToken(
+                reissueTokenRequest,
+                httpServletRequest,
+                httpServletResponse
             )
         )
     }

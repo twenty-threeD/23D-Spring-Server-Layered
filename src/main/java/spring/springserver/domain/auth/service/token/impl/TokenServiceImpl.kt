@@ -9,6 +9,8 @@ import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
+import spring.springserver.domain.auth.data.request.ReissueTokenRequest
+import spring.springserver.domain.auth.data.response.ReissueTokenResponse
 import spring.springserver.domain.auth.entity.RefreshToken
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.repository.RefreshTokenRepository
@@ -90,7 +92,68 @@ class TokenServiceImpl(
             )
         }
 
+        addCookie(
+            "refreshToken",
+            refreshToken,
+            toCookieMaxAge(refreshTokenExpiration),
+            true,
+            httpServletResponse
+        )
+
         return refreshToken
+    }
+
+    /**
+     * accessToken이 만료돼도 refreshToken이 살아 있으면 accessToken만 새로 발급한다.
+     * refreshToken은 회전시키지 않으므로 만료 시점까지 그대로 쓴다.
+     */
+    override fun reissueAccessToken(
+        reissueTokenRequest: ReissueTokenRequest?,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): ReissueTokenResponse {
+
+        val refreshToken = extractTokenFromCookie("refreshToken", httpServletRequest)
+            ?: reissueTokenRequest?.refreshToken?.takeIf { it.isNotBlank() }
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+
+        if (jwtProvider.isNotValidToken(refreshToken)) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
+        val saved = refreshTokenRepository.findByToken(refreshToken)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+
+        if (saved.isExpired()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
+        val username = jwtProvider.getUsernameFromToken(refreshToken)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 탈취된 토큰으로 남의 accessToken을 받아가지 못하도록
+         * refreshToken의 주인과 저장된 행의 주인이 같은지 확인한다.
+         */
+        if (saved.getMember().getId() != member.getId()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
+        val accessToken = generateAccessToken(
+            GenerateTokenRequest(
+                username = member.username,
+                role = member.role
+            ),
+            httpServletResponse
+        )
+
+        return ReissueTokenResponse.of(accessToken)
     }
 
     override fun deleteTokens(httpServletRequest: HttpServletRequest,
@@ -111,6 +174,14 @@ class TokenServiceImpl(
 
         addCookie(
             "accessToken",
+            null,
+            0,
+            true,
+            httpServletResponse
+        )
+
+        addCookie(
+            "refreshToken",
             null,
             0,
             true,
