@@ -89,6 +89,10 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/token/reissue"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/api/files/upload"
                     ).hasRole("USER")
                     .requestMatchers(
