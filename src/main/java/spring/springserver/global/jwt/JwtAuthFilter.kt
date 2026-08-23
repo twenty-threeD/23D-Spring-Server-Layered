@@ -4,15 +4,14 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
-import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
-import java.util.Collections
 
 @Component
 class JwtAuthFilter(
-    private val tokenProvider: TokenProvider
+    private val tokenProvider: TokenProvider,
+    private val memberDetailsService: MemberDetailsService
 ): OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -23,7 +22,7 @@ class JwtAuthFilter(
 
         val token = tokenProvider.resolveToken(httpServletRequest)
 
-        if (token == null || tokenProvider.isNotValidToken(token)) {
+        if (token == null || tokenProvider.isNotValidToken(token) || tokenProvider.isNotAccessToken(token)) {
 
             filterChain.doFilter(
                 httpServletRequest,
@@ -34,9 +33,8 @@ class JwtAuthFilter(
         }
 
         val username = tokenProvider.getUsernameFromToken(token)
-        val role = tokenProvider.getRole(token)?.name
 
-        if (username.isNullOrBlank() || role.isNullOrBlank()) {
+        if (username.isNullOrBlank()) {
 
             filterChain.doFilter(
                 httpServletRequest,
@@ -46,12 +44,25 @@ class JwtAuthFilter(
             return
         }
 
-        val authority = SimpleGrantedAuthority(role.takeIf { it.startsWith("ROLE_") } ?: "ROLE_$role")
+        val memberDetails = runCatching {
 
-        val authenticationToken = UsernamePasswordAuthenticationToken (
-            username,
+            memberDetailsService.loadUserByUsername(username = username)
+        }.getOrNull() as? MemberDetails
+
+        if (memberDetails == null) {
+
+            filterChain.doFilter(
+                httpServletRequest,
+                httpServletResponse
+            )
+
+            return
+        }
+
+        val authenticationToken = UsernamePasswordAuthenticationToken(
+            memberDetails,
             null,
-            Collections.singletonList(authority)
+            memberDetails.authorities
         )
 
         SecurityContextHolder.getContext().authentication = authenticationToken
