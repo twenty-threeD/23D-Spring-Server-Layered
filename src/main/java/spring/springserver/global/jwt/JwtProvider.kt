@@ -83,6 +83,10 @@ class JwtProvider(
         }.isFailure
     }
 
+    override fun isNotAccessToken(token: String): Boolean {
+
+        return getClaims(token = token)?.get("tokenType", String::class.java) != "accessToken"
+    }
 
     private fun getClaims(token: String): Claims? {
 
