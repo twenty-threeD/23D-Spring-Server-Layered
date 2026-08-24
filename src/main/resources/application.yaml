@@ -118,6 +118,7 @@ app:
   cookie:
     same-site: ${COOKIE_SAME_SITE:Lax}
     secure: ${COOKIE_SECURE:false}
+    domain: ${COOKIE_DOMAIN:}
 
 toss-payments:
   secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}

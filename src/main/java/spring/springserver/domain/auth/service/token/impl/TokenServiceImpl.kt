@@ -33,7 +33,8 @@ class TokenServiceImpl(
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
     @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long,
     @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
-    @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean
+    @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean,
+    @param:Value($$"${app.cookie.domain}") private val cookieDomain: String
 ): TokenService {
 
     override fun generateAccessToken(
@@ -234,12 +235,21 @@ class TokenServiceImpl(
         httpServletResponse: HttpServletResponse?
     ) {
 
+        /**
+         * 도메인을 지정하지 않으면 쿠키가 발급 호스트(api.idta.store)에만 심겨
+         * 프론트 도메인에서는 전송되지 않는다. 상위 도메인(.idta.store)을 지정해야
+         * 서브도메인 간에 함께 실린다. 로컬처럼 값이 비어 있으면 기존대로 호스트 전용으로 둔다.
+         */
         val responseCookie = ResponseCookie.from(name, value ?: "")
             .path("/")
             .httpOnly(httpOnly)
             .secure(cookieSecure || cookieSameSite.equals("None", ignoreCase = true))
             .sameSite(cookieSameSite)
             .maxAge(age.toLong())
+            .also { builder ->
+
+                if (cookieDomain.isNotBlank()) builder.domain(cookieDomain)
+            }
             .build()
 
         httpServletResponse?.addHeader(
