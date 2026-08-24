@@ -15,7 +15,13 @@ interface EstimateService {
         estimateId: Long
     ): EstimateResponse
 
-    fun getMyEstimates(): List<EstimateResponse>
+    /**
+     * 로그인한 회원이 의뢰인이거나 전문가인 견적서를 모두 반환한다.
+     * postId를 넘기면 해당 게시글의 견적서로만 좁힌다.
+     */
+    fun getMyEstimates(
+        postId: Long?
+    ): List<EstimateResponse>
 
     fun updateEstimate(
         estimateId: Long,
