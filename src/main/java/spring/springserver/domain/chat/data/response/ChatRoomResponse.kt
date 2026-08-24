@@ -7,6 +7,10 @@ import java.time.Instant
 data class ChatRoomResponse(
     val roomId: Long?,
     val postId: Long?,
+    /**
+     * 대화 상대의 memberId. 견적서 발행처럼 상대를 특정해야 하는 요청에 쓴다.
+     */
+    val participantId: Long?,
     val participantUsername: String,
     val participantName: String,
     val participantImageUrl: String?,
@@ -25,6 +29,7 @@ data class ChatRoomResponse(
             ChatRoomResponse(
                 roomId = room.getId(),
                 postId = room.post.getId(),
+                participantId = participant.getId(),
                 participantUsername = participant.username,
                 participantName = participant.name,
                 participantImageUrl = participantImageUrl,
