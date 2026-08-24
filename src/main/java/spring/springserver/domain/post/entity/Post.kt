@@ -10,8 +10,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
+import spring.springserver.domain.jobcategory.entity.JobCategory
 import spring.springserver.domain.member.entity.Member
-import spring.springserver.domain.post.category.entity.PostCategory
 import java.time.LocalDateTime
 
 @Entity
@@ -38,8 +38,8 @@ class Post(
     var member: Member,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_category_id")
-    var category: PostCategory? = null,
+    @JoinColumn(name = "job_category_id")
+    var category: JobCategory? = null,
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
     var attachments: MutableList<PostAttach> = mutableListOf()
