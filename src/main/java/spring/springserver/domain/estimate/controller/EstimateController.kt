@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.estimate.data.request.CreateEstimateRequest
 import spring.springserver.domain.estimate.data.request.UpdateEstimateRequest
@@ -39,9 +40,11 @@ class EstimateController(
     }
 
     @GetMapping
-    fun getMyEstimates(): BaseResponse<List<EstimateResponse>> {
+    fun getMyEstimates(
+        @RequestParam(required = false) postId: Long?
+    ): BaseResponse<List<EstimateResponse>> {
 
-        return BaseResponse.ok(estimateService.getMyEstimates())
+        return BaseResponse.ok(estimateService.getMyEstimates(postId))
     }
 
     @PatchMapping("/{estimateId}")
