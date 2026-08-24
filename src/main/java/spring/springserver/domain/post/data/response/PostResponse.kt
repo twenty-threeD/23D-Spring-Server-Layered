@@ -1,6 +1,6 @@
 package spring.springserver.domain.post.data.response
 
-import spring.springserver.domain.post.category.data.response.PostCategoryResponse
+import spring.springserver.domain.jobcategory.data.response.JobCategoryResponse
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -19,7 +19,7 @@ data class PostResponse(
 
     val member: PostMemberResponse,
 
-    val category: PostCategoryResponse?
+    val category: JobCategoryResponse?
 ) {
 
     companion object {
@@ -40,7 +40,7 @@ data class PostResponse(
                     post.member,
                     memberImageUrl
                 ),
-                post.category?.let { PostCategoryResponse.of(it) }
+                post.category?.let { JobCategoryResponse.of(it) }
             )
         }
     }

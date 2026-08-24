@@ -106,7 +106,7 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/post/**",
-                        "/api/post-category"
+                        "/api/job-category"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,

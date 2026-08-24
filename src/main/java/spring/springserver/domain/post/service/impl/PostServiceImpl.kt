@@ -10,9 +10,9 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.file.service.FileService
+import spring.springserver.domain.jobcategory.entity.JobCategory
+import spring.springserver.domain.jobcategory.service.JobCategoryService
 import spring.springserver.domain.member.repository.MemberRepository
-import spring.springserver.domain.post.category.entity.PostCategory
-import spring.springserver.domain.post.category.service.PostCategoryService
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
 import spring.springserver.domain.post.data.response.DeletedPostResponse
@@ -31,7 +31,7 @@ class PostServiceImpl(
     private val postRepository: PostRepository,
     private val memberRepository: MemberRepository,
     private val fileService: FileService,
-    private val postCategoryService: PostCategoryService,
+    private val jobCategoryService: JobCategoryService,
     private val profileService: ProfileService
 ): PostService {
 
@@ -107,7 +107,7 @@ class PostServiceImpl(
         return toResponses(
             postRepository.searchPostsByTitleAndCategoryIds(
                 normalizedTitle,
-                postCategoryService.getCategoryIdsIncludingDescendants(categoryId),
+                jobCategoryService.getCategoryIdsIncludingDescendants(categoryId),
                 pageable.withoutSort()
             )
         )
@@ -206,15 +206,15 @@ class PostServiceImpl(
      */
     private fun resolveCategory(
         categoryId: Long?,
-        current: PostCategory?
-    ): PostCategory? {
+        current: JobCategory?
+    ): JobCategory? {
 
         if (categoryId == null) {
 
             return current
         }
 
-        return postCategoryService.getPostCategory(categoryId)
+        return jobCategoryService.getJobCategory(categoryId)
     }
 
     private fun validatePostAuthor(

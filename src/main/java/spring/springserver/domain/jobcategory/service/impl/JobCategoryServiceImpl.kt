@@ -17,7 +17,7 @@ class JobCategoryServiceImpl(
 
     override fun getJobCategories(): List<JobCategoryResponse> {
 
-        return jobCategoryRepository.findAllLeafCategories()
+        return jobCategoryRepository.findAllByOrderByNameAsc()
             .map {
                 jobCategory -> JobCategoryResponse.of(jobCategory)
             }
@@ -27,7 +27,26 @@ class JobCategoryServiceImpl(
         jobCategoryId: Long
     ): JobCategory {
 
-            return jobCategoryRepository.findById(jobCategoryId).orElse(null)
-                ?: throw ApplicationException(JobCategoryStatusCode.JOB_CATEGORY_NOT_FOUND)
+        return jobCategoryRepository.findById(jobCategoryId).orElse(null)
+            ?: throw ApplicationException(JobCategoryStatusCode.JOB_CATEGORY_NOT_FOUND)
+    }
+
+    override fun getCategoryIdsIncludingDescendants(
+        jobCategoryId: Long
+    ): List<Long> {
+
+        val rootId = getJobCategory(jobCategoryId).getId()!!
+
+        val collected = linkedSetOf(rootId)
+        var currentLevel = listOf(rootId)
+
+        while (currentLevel.isNotEmpty()) {
+
+            // 이미 담긴 id는 걸러내므로, 데이터가 순환하더라도 무한 루프가 되지 않는다.
+            currentLevel = jobCategoryRepository.findIdsByParentIdIn(currentLevel)
+                .filter { childId -> collected.add(childId) }
+        }
+
+        return collected.toList()
     }
 }

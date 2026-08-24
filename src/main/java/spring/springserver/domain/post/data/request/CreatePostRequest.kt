@@ -4,8 +4,8 @@ import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotEmpty
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
+import spring.springserver.domain.jobcategory.entity.JobCategory
 import spring.springserver.domain.member.entity.Member
-import spring.springserver.domain.post.category.entity.PostCategory
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -29,7 +29,7 @@ data class CreatePostRequest(
 
     fun toEntity(
         member: Member,
-        category: PostCategory?
+        category: JobCategory?
     ): Post {
 
         return Post(

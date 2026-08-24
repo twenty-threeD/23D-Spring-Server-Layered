@@ -76,16 +76,4 @@ where p.id = :id and p.isDeleted = false
     fun incrementViewCount(
         @Param("id") id: Long
     ): Int
-
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query(
-        """
-update Post p
-set p.category = null
-where p.category.id in :categoryIds
-"""
-    )
-    fun detachCategories(
-        @Param("categoryIds") categoryIds: Collection<Long>
-    ): Int
 }
