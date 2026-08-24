@@ -135,6 +135,9 @@ jobs:
               --restart unless-stopped \
               -p "$NEW_PORT:8080" \
               --env-file "$APP_DIR/.env" \
+              -e COOKIE_DOMAIN=".idta.store" \
+              -e COOKIE_SAME_SITE="None" \
+              -e COOKIE_SECURE="true" \
               -v "$APP_DIR/files:/app/files" \
               "$IMAGE_NAME"
 
