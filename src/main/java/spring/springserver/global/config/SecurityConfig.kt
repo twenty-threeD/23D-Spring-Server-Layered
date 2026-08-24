@@ -149,15 +149,15 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/estimate"
-                    ).hasRole("USER")
+                    ).hasRole("PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.PATCH,
                         "/api/estimate/*"
-                    ).hasRole("USER")
+                    ).hasRole("PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.DELETE,
                         "/api/estimate/*"
-                    ).hasRole("USER")
+                    ).hasRole("PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/estimate",
