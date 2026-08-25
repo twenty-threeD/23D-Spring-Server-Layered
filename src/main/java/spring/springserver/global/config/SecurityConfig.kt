@@ -35,15 +35,6 @@ class SecurityConfig(
 
         return BCryptPasswordEncoder()
     }
-    
-    @Bean
-    fun roleHierarchy(): RoleHierarchy {
-
-        return RoleHierarchyImpl.withDefaultRolePrefix()
-            .role("ADMIN").implies("PROFESSIONAL")
-            .role("PROFESSIONAL").implies("USER")
-            .build()
-    }
 
     @Bean
     fun filterChain(
@@ -160,20 +151,20 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/estimate"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.PATCH,
                         "/api/estimate/*"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.DELETE,
                         "/api/estimate/*"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/estimate",
                         "/api/estimate/*"
-                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/community/post/",
