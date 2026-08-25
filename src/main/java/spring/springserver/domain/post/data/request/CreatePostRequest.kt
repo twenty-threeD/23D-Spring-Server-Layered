@@ -20,7 +20,7 @@ data class CreatePostRequest(
 
     @field:NotEmpty(message = "이미지는 최소 1개 이상 첨부해야 합니다.")
     @field:Size(max = 6, message = "이미지는 최대 6개까지 첨부할 수 있습니다.")
-    val fileUrl: List<String>? = null,
+    val fileUrls: List<String>? = null,
 
     @field:Positive
     val categoryId: Long?,
