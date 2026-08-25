@@ -6,6 +6,8 @@ import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.access.hierarchicalroles.RoleHierarchy
+import org.springframework.security.access.hierarchicalroles.RoleHierarchyImpl
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
@@ -149,20 +151,20 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/estimate"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.PATCH,
                         "/api/estimate/*"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.DELETE,
                         "/api/estimate/*"
-                    ).hasRole("PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/estimate",
                         "/api/estimate/*"
-                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/community/post/",
