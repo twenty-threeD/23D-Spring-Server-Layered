@@ -160,7 +160,7 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        verifyPasswordIfLocal(
+        ensureLocalAndVerifyPassword(
             member,
             changeEmailRequest.password
         )
@@ -201,7 +201,7 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        verifyPasswordIfLocal(
+        ensureLocalAndVerifyPassword(
             member,
             changePhoneRequest.password
         )
@@ -263,12 +263,15 @@ class MemberServiceImpl(
         }
     }
 
-    private fun verifyPasswordIfLocal(
+    private fun ensureLocalAndVerifyPassword(
         member: Member,
         rawPassword: String
     ) {
 
-        if (member.provider != Provider.AUTH) return
+        if (member.provider != Provider.AUTH) {
+
+            throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_CHANGE)
+        }
 
         val encodedPassword = member.password
 
