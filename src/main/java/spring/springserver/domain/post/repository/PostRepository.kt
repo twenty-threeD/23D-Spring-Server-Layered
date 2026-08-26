@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
+import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -20,6 +21,10 @@ interface PostRepository: JpaRepository<Post, Long> {
     fun findAllByIsDeletedFalseOrderByUpdatedAtDesc(
         pageable: Pageable
     ): Page<Post>
+
+    fun findAllByMemberAndIsDeletedFalseOrderByUpdatedAtDesc(
+        member: Member
+    ): List<Post>
 
     fun findAllByIsDeletedTrueAndDeletedAtBefore(
         deletedAt: LocalDateTime
