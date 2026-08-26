@@ -7,14 +7,19 @@ import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PatchMapping
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.RestController
+import spring.springserver.domain.member.data.request.ChangeEmailRequest
+import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.response.ChangeEmailResponse
+import spring.springserver.domain.member.data.response.ChangePhoneResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
@@ -98,5 +103,37 @@ class MemberController(
     ): BaseResponse<UsernameCheckResponse> {
 
         return BaseResponse.ok(memberService.checkUsername(username))
+    }
+
+    @PatchMapping("/email")
+    fun changeEmail(
+        @Valid @RequestBody changeEmailRequest: ChangeEmailRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ChangeEmailResponse> {
+
+        return BaseResponse.ok(
+            memberService.changeEmail(
+                changeEmailRequest,
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
+    }
+
+    @PatchMapping("/phone")
+    fun changePhone(
+        @Valid @RequestBody changePhoneRequest: ChangePhoneRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ChangePhoneResponse> {
+
+        return BaseResponse.ok(
+            memberService.changePhone(
+                changePhoneRequest,
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
     }
 }

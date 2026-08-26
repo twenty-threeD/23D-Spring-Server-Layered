@@ -82,6 +82,11 @@ class SecurityConfig(
                         "/api/auth/password/reset/check"
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/member/email",
+                        "/api/member/phone"
+                    ).hasRole("USER")
+                    .requestMatchers(
                         HttpMethod.DELETE,
                         "/api/delete/account")
                     .hasRole("USER")
@@ -135,6 +140,10 @@ class SecurityConfig(
                         "/api/email/code/send",
                         "/api/email/code/verify"
                     ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/email/change/code/send"
+                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/payment/prepare",

@@ -2,21 +2,30 @@ package spring.springserver.domain.member.service.impl
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.email.service.EmailService
+import spring.springserver.domain.member.data.request.ChangeEmailRequest
+import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.response.ChangeEmailResponse
+import spring.springserver.domain.member.data.response.ChangePhoneResponse
 import spring.springserver.domain.member.data.response.CheckResponse
 import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
 import spring.springserver.domain.member.data.response.UsernameCheckResponse
+import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
+import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import spring.springserver.global.util.PhoneNormalizer
@@ -26,6 +35,8 @@ import spring.springserver.global.util.PhoneNormalizer
 class MemberServiceImpl(
     private val memberRepository: MemberRepository,
     private val tokenService: TokenService,
+    private val emailService: EmailService,
+    private val phoneVerifyService: PhoneVerifyService,
     private val passwordEncoder: PasswordEncoder
 ) : MemberService {
 
@@ -138,6 +149,135 @@ class MemberServiceImpl(
         if (!member.isPhoneVerified()) {
 
             throw ApplicationException(MemberStatusCode.PHONE_NOT_VERIFIED)
+        }
+    }
+
+    override fun changeEmail(
+        changeEmailRequest: ChangeEmailRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): ChangeEmailResponse {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        ensureLocalAndVerifyPassword(
+            member,
+            changeEmailRequest.password
+        )
+
+        if (member.email != changeEmailRequest.newEmail && memberRepository.existsByEmail(changeEmailRequest.newEmail)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+
+        emailService.checkChangeEmailCode(
+            changeEmailRequest.newEmail,
+            changeEmailRequest.verifyCode
+        )
+
+        member.changeEmail(email = changeEmailRequest.newEmail)
+
+        try {
+
+            memberRepository.saveAndFlush(member)
+        } catch (_: DataIntegrityViolationException) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+
+        tokenService.deleteTokens(
+            httpServletRequest,
+            httpServletResponse
+        )
+
+        return ChangeEmailResponse.of("이메일이 변경되었습니다. 다시 로그인 해주세요.")
+    }
+
+    override fun changePhone(
+        changePhoneRequest: ChangePhoneRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): ChangePhoneResponse {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        ensureLocalAndVerifyPassword(
+            member,
+            changePhoneRequest.password
+        )
+
+        val normalizedPhone = PhoneNormalizer.normalize(changePhoneRequest.newPhone)
+            ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT)
+
+        if (member.phone != normalizedPhone && memberRepository.existsByPhone(normalizedPhone)) {
+
+            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        }
+
+        phoneVerifyService.verifyCodeOnly(
+            recipientNumber = changePhoneRequest.newPhone,
+            code = changePhoneRequest.code
+        )
+
+        member.changePhone(phone = normalizedPhone)
+
+        try {
+
+            memberRepository.saveAndFlush(member)
+        } catch (_: DataIntegrityViolationException) {
+
+            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        }
+
+        tokenService.deleteTokens(
+            httpServletRequest,
+            httpServletResponse
+        )
+
+        return ChangePhoneResponse.of("전화번호가 변경되었습니다. 다시 로그인 해주세요.")
+    }
+
+    private fun getAuthenticatedMember(
+        httpServletRequest: HttpServletRequest
+    ): Member {
+
+        val username = tokenService.getCurrentUsername(httpServletRequest)
+
+        if (username.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
+
+        return memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+    }
+
+    @Transactional(readOnly = true)
+    override fun assertEmailAvailableForChange(
+        email: String,
+        httpServletRequest: HttpServletRequest
+    ) {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        if (member.email != email && memberRepository.existsByEmail(email)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+    }
+
+    private fun ensureLocalAndVerifyPassword(
+        member: Member,
+        rawPassword: String
+    ) {
+
+        if (member.provider != Provider.AUTH) {
+
+            throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_CHANGE)
+        }
+
+        val encodedPassword = member.password
+
+        if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
         }
     }
 }

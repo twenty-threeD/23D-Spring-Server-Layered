@@ -9,4 +9,9 @@ interface EmailService {
 
     fun checkVerifyCode(email: String,
                         code: String): CheckVerifyCodeResponse
+
+    fun sendChangeEmailCode(email: String): SendVerifyCodeResponse
+
+    fun checkChangeEmailCode(email: String,
+                             code: String): CheckVerifyCodeResponse
 }

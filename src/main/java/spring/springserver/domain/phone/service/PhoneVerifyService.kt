@@ -17,4 +17,9 @@ interface PhoneVerifyService {
     fun consumePhoneVerification(
         phone: String
     ): Boolean
+
+    fun verifyCodeOnly(
+        recipientNumber: String,
+        code: String
+    ): String
 }
