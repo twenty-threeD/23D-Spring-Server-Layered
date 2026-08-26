@@ -3,8 +3,13 @@ package spring.springserver.domain.jobcategory.entity
 import jakarta.persistence.*
 import org.hibernate.annotations.BatchSize
 
+/**
+ * 카테고리 전체 이름을 만들 때 parent 체인을 타고 올라가므로,
+ * 상위 카테고리를 하나씩 조회하지 않도록 배치로 묶어 읽는다.
+ */
 @Entity
 @Table(name = "job_category")
+@BatchSize(size = 100)
 class JobCategory(
 
     @Column(nullable = false, length = 50)
@@ -12,7 +17,6 @@ class JobCategory(
 
     @JoinColumn(name = "parent_id")
     @ManyToOne(fetch = FetchType.LAZY)
-    @BatchSize(size = 100)
     var parent: JobCategory? = null
 ) {
 
