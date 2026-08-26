@@ -3,7 +3,6 @@ package spring.springserver.domain.community.post.repository
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
-import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 

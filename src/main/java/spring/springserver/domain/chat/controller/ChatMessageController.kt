@@ -1,9 +1,9 @@
 package spring.springserver.domain.chat.controller
 
 import jakarta.validation.Valid
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.simp.SimpMessagingTemplate
-import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Controller
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.event.ChatMessageSentEvent

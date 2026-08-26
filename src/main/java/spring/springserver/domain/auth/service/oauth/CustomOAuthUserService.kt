@@ -17,7 +17,6 @@ import spring.springserver.domain.member.entity.Role
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
-import kotlin.collections.get
 
 /**
  * @author @gnlandkmg(개발)

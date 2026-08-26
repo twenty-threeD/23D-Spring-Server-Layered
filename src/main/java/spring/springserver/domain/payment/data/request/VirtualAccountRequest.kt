@@ -1,15 +1,7 @@
 package spring.springserver.domain.payment.data.request
 
-import jakarta.validation.Constraint
-import jakarta.validation.Payload
-import jakarta.validation.Valid
-import jakarta.validation.ConstraintValidator
-import jakarta.validation.ConstraintValidatorContext
-import jakarta.validation.constraints.Min
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Max
-import jakarta.validation.constraints.Pattern
-import jakarta.validation.constraints.Size
+import jakarta.validation.*
+import jakarta.validation.constraints.*
 import kotlin.reflect.KClass
 
 @ValidVirtualAccountTiming
