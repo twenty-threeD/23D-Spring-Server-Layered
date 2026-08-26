@@ -164,13 +164,14 @@ class ProfileServiceImpl(
 
         return ProfileResponse.of(
             profile = profile,
+            memberId = member.getId(),
             username = member.username,
             email = member.email,
             phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified(),
-            posts = getMyPosts(member = member, imageUrl = profile.imageUrl)
+            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl)
         )
     }
 
@@ -198,10 +199,10 @@ class ProfileServiceImpl(
     /**
      * 본인 프로필에 붙는 목록이므로 작성자 프로필 이미지는 이미 들고 있는 값을 그대로 쓴다.
      */
-    private fun getMyPosts(
-        member: Member,
+    private fun getPostsByUsername(
+        username: String,
         imageUrl: String?
     ): List<PostResponse> =
-        postRepository.findAllByMemberAndIsDeletedFalseOrderByUpdatedAtDesc(member = member)
+        postRepository.findAllByMemberUsernameAndIsDeletedFalseOrderByUpdatedAtDesc(username = username)
             .map { post -> PostResponse.of(post, imageUrl) }
 }

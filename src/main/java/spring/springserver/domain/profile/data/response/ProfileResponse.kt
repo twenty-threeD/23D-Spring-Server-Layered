@@ -5,6 +5,8 @@ import spring.springserver.domain.profile.entity.Profile
 import java.time.LocalDateTime
 
 data class ProfileResponse(
+    val memberId: Long?,
+
     val username: String,
 
     val email: String,
@@ -38,6 +40,7 @@ data class ProfileResponse(
 
         fun of(
             profile: Profile,
+            memberId: Long?,
             username: String,
             email: String,
             phone: String?,
@@ -48,6 +51,7 @@ data class ProfileResponse(
         ): ProfileResponse {
 
             return ProfileResponse(
+                memberId,
                 username,
                 email,
                 phone,
