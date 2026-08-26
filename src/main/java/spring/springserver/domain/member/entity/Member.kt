@@ -27,7 +27,7 @@ class Member(
         region = Region.KR,
         format = Format.LOCAL
     )
-    @Column(nullable = true)
+    @Column(nullable = true, unique = true)
     var phone: String?,
 
     var password: String?,
@@ -43,6 +43,12 @@ class Member(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
 
+    @Column(
+        nullable = false,
+        columnDefinition = "boolean not null default false"
+    )
+    private var phoneVerified: Boolean = false
+
     private var createdAt: LocalDateTime? = null
 
     @PrePersist
@@ -52,6 +58,14 @@ class Member(
     }
 
    fun getId(): Long? = id
+
+    fun isPhoneVerified(): Boolean = phoneVerified
+
+    fun verifyPhone(phone: String) {
+
+        this.phone = phone
+        this.phoneVerified = true
+    }
 
     fun update(name: String) { this.name = name }
 }

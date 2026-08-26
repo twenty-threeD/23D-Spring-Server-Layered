@@ -16,6 +16,7 @@ import spring.springserver.domain.auth.service.auth.AuthService
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.PhoneNormalizer
@@ -27,7 +28,8 @@ class AuthServiceImpl(
     private val memberRepository: MemberRepository,
     private val tokenService: TokenService,
     private val keyService: KeyService,
-    private val profileService: ProfileService
+    private val profileService: ProfileService,
+    private val phoneVerifyService: PhoneVerifyService
 ): AuthService {
 
     override fun signUp(
@@ -40,12 +42,21 @@ class AuthServiceImpl(
         if (memberRepository.existsByEmail(signUpRequest.email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
         if (phone != null && memberRepository.existsByPhone(phone)) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
 
-        val member = memberRepository.save(
-            signUpRequest.toEntity(
-                encodedPassword = passwordEncoder.encode(signUpRequest.password),
-                normalizedPhone = phone
-            )
+        val newMember = signUpRequest.toEntity(
+            encodedPassword = passwordEncoder.encode(signUpRequest.password),
+            normalizedPhone = phone
         )
+
+        /**
+         * 가입 직전에 로그인 없이 본인인증을 마쳤다면 그 표식을 소비해 인증 상태로 가입시킨다.
+         * 건너뛰었다면 미인증 상태로 가입되고, 나중에 로그인 후 인증하면 된다.
+         */
+        if (phone != null && phoneVerifyService.consumePhoneVerification(phone = phone)) {
+
+            newMember.verifyPhone(phone = phone)
+        }
+
+        val member = memberRepository.save(newMember)
 
         keyService.generateKeyPair(
             memberId = member.getId()!!
