@@ -67,7 +67,8 @@ class SecurityConfig(
                         "/api/auth/password/reset",
                         "/oauth2",
                         "/login",
-                        "/loginSuccess"
+                        "/loginSuccess",
+                        "/api/auth/verify/password"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.GET,

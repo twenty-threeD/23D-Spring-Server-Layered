@@ -23,4 +23,9 @@ interface AuthService {
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ) : SignOutResponse
+
+    fun verifyPassword(
+        httpServletRequest: HttpServletRequest,
+        rawPassword: String
+    ): Boolean
 }

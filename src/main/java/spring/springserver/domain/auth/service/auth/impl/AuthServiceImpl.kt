@@ -109,4 +109,16 @@ class AuthServiceImpl(
 
         return SignOutResponse.of("로그아웃 되었습니다.")
     }
+
+    override fun verifyPassword(
+        httpServletRequest: HttpServletRequest,
+        rawPassword: String
+    ): Boolean {
+
+        return passwordEncoder.matches(rawPassword,
+            memberRepository.findByUsername(
+                tokenService.getCurrentUsername(httpServletRequest)
+            )?.password
+        )
+    }
 }
