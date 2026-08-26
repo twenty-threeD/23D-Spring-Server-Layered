@@ -1,14 +1,13 @@
 package spring.springserver.domain.post.favorite.service
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
-import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.entity.Post

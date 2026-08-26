@@ -3,6 +3,8 @@ package spring.springserver.domain.file.service
 import org.apache.tika.Tika
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import spring.springserver.domain.file.data.request.FileUploadRequest
 import spring.springserver.domain.file.data.response.FileUploadResponse
 import spring.springserver.domain.file.exception.FileStatusCode
@@ -11,10 +13,8 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.*
 import java.util.regex.Pattern
-import java.util.UUID
-import org.springframework.transaction.support.TransactionSynchronization
-import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 class FileService(

@@ -1,17 +1,15 @@
 package spring.springserver.domain.jobcategory.entity
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.Table
+import jakarta.persistence.*
+import org.hibernate.annotations.BatchSize
 
+/**
+ * 카테고리 전체 이름을 만들 때 parent 체인을 타고 올라가므로,
+ * 상위 카테고리를 하나씩 조회하지 않도록 배치로 묶어 읽는다.
+ */
 @Entity
 @Table(name = "job_category")
+@BatchSize(size = 100)
 class JobCategory(
 
     @Column(nullable = false, length = 50)

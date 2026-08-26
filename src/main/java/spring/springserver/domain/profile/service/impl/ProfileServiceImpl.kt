@@ -13,9 +13,9 @@ import spring.springserver.domain.location.entity.Sig
 import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
-import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
 import spring.springserver.domain.profile.entity.Profile
@@ -164,13 +164,14 @@ class ProfileServiceImpl(
 
         return ProfileResponse.of(
             profile = profile,
+            memberId = member.getId(),
             username = member.username,
             email = member.email,
             phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified(),
-            posts = getMyPosts(member = member, imageUrl = profile.imageUrl)
+            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl)
         )
     }
 
@@ -198,10 +199,10 @@ class ProfileServiceImpl(
     /**
      * 본인 프로필에 붙는 목록이므로 작성자 프로필 이미지는 이미 들고 있는 값을 그대로 쓴다.
      */
-    private fun getMyPosts(
-        member: Member,
+    private fun getPostsByUsername(
+        username: String,
         imageUrl: String?
     ): List<PostResponse> =
-        postRepository.findAllByMemberAndIsDeletedFalseOrderByUpdatedAtDesc(member = member)
+        postRepository.findAllWithDetailsByMemberUsername(username = username)
             .map { post -> PostResponse.of(post, imageUrl) }
 }

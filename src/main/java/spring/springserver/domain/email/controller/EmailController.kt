@@ -7,10 +7,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.email.data.request.CheckVerifyCodeRequest
-import spring.springserver.domain.email.service.EmailService
 import spring.springserver.domain.email.data.request.SendVerifyCodeRequest
 import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
 import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
+import spring.springserver.domain.email.service.EmailService
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
 
