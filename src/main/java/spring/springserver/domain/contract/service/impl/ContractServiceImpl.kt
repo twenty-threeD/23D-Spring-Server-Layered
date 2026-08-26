@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.contract.data.request.CreateContractRequest
-import spring.springserver.domain.contract.data.request.SignContractRequest
 import spring.springserver.domain.contract.data.response.ContractResponse
 import spring.springserver.domain.contract.entity.Contract
 import spring.springserver.domain.contract.exception.ContractStatusCode
@@ -68,37 +67,6 @@ class ContractServiceImpl(
         val contract = getContractEntity(contractId)
 
         validateParticipant(contract, member)
-
-        return ContractResponse.of(contract)
-    }
-
-    override fun signContract(
-        signContractRequest: SignContractRequest
-    ): ContractResponse {
-
-        val member = getCurrentMember()
-        val contract = getContractEntity(signContractRequest.contractId!!)
-
-        if (contract.partA.getId() == member.getId()) {
-
-            if (contract.isPartASigned()) {
-
-                throw ApplicationException(ContractStatusCode.CONTRACT_ALREADY_SIGNED_BY_MEMBER)
-            }
-
-            contract.signAsPartA()
-        } else if (contract.partB.getId() == member.getId()) {
-
-            if (contract.isPartBSigned()) {
-
-                throw ApplicationException(ContractStatusCode.CONTRACT_ALREADY_SIGNED_BY_MEMBER)
-            }
-
-            contract.signAsPartB()
-        } else {
-
-            throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
-        }
 
         return ContractResponse.of(contract)
     }

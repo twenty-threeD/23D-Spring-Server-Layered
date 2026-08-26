@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.contract.data.request.CreateContractRequest
-import spring.springserver.domain.contract.data.request.SignContractRequest
 import spring.springserver.domain.contract.data.response.ContractResponse
 import spring.springserver.domain.contract.service.ContractService
 import spring.springserver.global.data.BaseResponse
@@ -33,13 +32,5 @@ class ContractController(
     ): BaseResponse<ContractResponse> {
 
         return BaseResponse.ok(contractService.getContract(contractId))
-    }
-
-    @PostMapping("/sign")
-    fun signContract(
-        @Valid @RequestBody signContractRequest: SignContractRequest
-    ): BaseResponse<ContractResponse> {
-
-        return BaseResponse.ok(contractService.signContract(signContractRequest))
     }
 }

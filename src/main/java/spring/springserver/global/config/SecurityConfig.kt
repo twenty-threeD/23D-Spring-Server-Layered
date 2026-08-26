@@ -176,8 +176,7 @@ class SecurityConfig(
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/contract",
-                        "/api/contract/sign"
+                        "/api/contract"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,

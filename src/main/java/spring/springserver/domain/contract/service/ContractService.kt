@@ -1,7 +1,6 @@
 package spring.springserver.domain.contract.service
 
 import spring.springserver.domain.contract.data.request.CreateContractRequest
-import spring.springserver.domain.contract.data.request.SignContractRequest
 import spring.springserver.domain.contract.data.response.ContractResponse
 
 interface ContractService {
@@ -19,13 +18,5 @@ interface ContractService {
      */
     fun getContract(
         contractId: Long
-    ): ContractResponse
-
-    /**
-     * 로그인한 회원이 당사자로서 서명한다.
-     * 갑과 을이 모두 서명하면 계약이 성립한다.
-     */
-    fun signContract(
-        signContractRequest: SignContractRequest
     ): ContractResponse
 }
