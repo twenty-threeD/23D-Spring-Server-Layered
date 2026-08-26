@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.auth.data.request.SignInRequest
 import spring.springserver.domain.auth.data.request.SignUpRequest
+import spring.springserver.domain.auth.data.request.VerifyPasswordRequest
 import spring.springserver.domain.auth.data.response.SignInResponse
 import spring.springserver.domain.auth.data.response.SignOutResponse
 import spring.springserver.domain.auth.data.response.SignUpResponse
@@ -52,6 +53,18 @@ class AuthController(
             httpServletRequest,
             httpServletResponse
             )
+        )
+    }
+
+    @PostMapping("/verify/password")
+    fun verifyPassword(
+        httpServletRequest: HttpServletRequest,
+        @Valid @RequestBody verifyPasswordRequest: VerifyPasswordRequest
+    ): Boolean {
+
+        return authService.verifyPassword(
+            httpServletRequest = httpServletRequest,
+            rawPassword = verifyPasswordRequest.password
         )
     }
 }
