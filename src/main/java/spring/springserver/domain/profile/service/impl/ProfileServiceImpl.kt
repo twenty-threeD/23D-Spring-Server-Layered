@@ -203,6 +203,6 @@ class ProfileServiceImpl(
         username: String,
         imageUrl: String?
     ): List<PostResponse> =
-        postRepository.findAllByMemberUsernameAndIsDeletedFalseOrderByUpdatedAtDesc(username = username)
+        postRepository.findAllWithDetailsByMemberUsername(username = username)
             .map { post -> PostResponse.of(post, imageUrl) }
 }

@@ -21,8 +21,26 @@ interface PostRepository: JpaRepository<Post, Long> {
         pageable: Pageable
     ): Page<Post>
 
-    fun findAllByMemberUsernameAndIsDeletedFalseOrderByUpdatedAtDesc(
-        username: String
+    /**
+     * 프로필에서 본인 글 목록을 조립할 때 쓴다.
+     * 첨부/카테고리를 지연 로딩으로 두면 글 수만큼 추가 쿼리가 나가므로 한 번에 가져온다.
+     * 카테고리 전체 이름은 상위 체인을 타고 올라가므로 parent까지 함께 fetch 한다.
+     */
+    @Query(
+        """
+        select distinct p
+        from Post p
+        join fetch p.member m
+        left join fetch p.attachments
+        left join fetch p.category c
+        left join fetch c.parent
+        where m.username = :username
+          and p.isDeleted = false
+        order by p.updatedAt desc
+        """
+    )
+    fun findAllWithDetailsByMemberUsername(
+        @Param("username") username: String
     ): List<Post>
 
     fun findAllByIsDeletedTrueAndDeletedAtBefore(
