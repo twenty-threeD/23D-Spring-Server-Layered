@@ -2,6 +2,7 @@ package spring.springserver.domain.member.service.impl
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -152,7 +153,8 @@ class MemberServiceImpl(
 
     override fun changeEmail(
         changeEmailRequest: ChangeEmailRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): ChangeEmailResponse {
 
         val member = getAuthenticatedMember(httpServletRequest)
@@ -162,24 +164,38 @@ class MemberServiceImpl(
             changeEmailRequest.password
         )
 
-        if (memberRepository.existsByEmail(changeEmailRequest.newEmail)) {
+        if (member.email != changeEmailRequest.newEmail && memberRepository.existsByEmail(changeEmailRequest.newEmail)) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
         }
 
-        emailService.checkVerifyCode(
+        emailService.checkChangeEmailCode(
             changeEmailRequest.newEmail,
             changeEmailRequest.verifyCode
         )
 
         member.changeEmail(email = changeEmailRequest.newEmail)
 
-        return ChangeEmailResponse.of("이메일이 변경되었습니다.")
+        try {
+
+            memberRepository.saveAndFlush(member)
+        } catch (_: DataIntegrityViolationException) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+
+        tokenService.deleteTokens(
+            httpServletRequest,
+            httpServletResponse
+        )
+
+        return ChangeEmailResponse.of("이메일이 변경되었습니다. 다시 로그인 해주세요.")
     }
 
     override fun changePhone(
         changePhoneRequest: ChangePhoneRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): ChangePhoneResponse {
 
         val member = getAuthenticatedMember(httpServletRequest)
@@ -189,19 +205,35 @@ class MemberServiceImpl(
             changePhoneRequest.password
         )
 
-        val normalizedPhone = phoneVerifyService.verifyCodeOnly(
-            recipientNumber = changePhoneRequest.newPhone,
-            code = changePhoneRequest.code
-        )
+        val normalizedPhone = PhoneNormalizer.normalize(changePhoneRequest.newPhone)
+            ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT)
 
         if (member.phone != normalizedPhone && memberRepository.existsByPhone(normalizedPhone)) {
 
             throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
         }
 
-        member.verifyPhone(phone = normalizedPhone)
+        phoneVerifyService.verifyCodeOnly(
+            recipientNumber = changePhoneRequest.newPhone,
+            code = changePhoneRequest.code
+        )
 
-        return ChangePhoneResponse.of("전화번호가 변경되었습니다.")
+        member.changePhone(phone = normalizedPhone)
+
+        try {
+
+            memberRepository.saveAndFlush(member)
+        } catch (_: DataIntegrityViolationException) {
+
+            throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        }
+
+        tokenService.deleteTokens(
+            httpServletRequest,
+            httpServletResponse
+        )
+
+        return ChangePhoneResponse.of("전화번호가 변경되었습니다. 다시 로그인 해주세요.")
     }
 
     private fun getAuthenticatedMember(

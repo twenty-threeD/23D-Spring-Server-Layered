@@ -142,6 +142,10 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/email/change/code/send"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/api/payment/prepare",
                         "/api/payment/confirm",
                         "/api/payment/*/cancel",

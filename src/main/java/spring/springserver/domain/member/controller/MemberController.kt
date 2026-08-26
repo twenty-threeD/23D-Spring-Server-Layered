@@ -108,13 +108,15 @@ class MemberController(
     @PatchMapping("/email")
     fun changeEmail(
         @Valid @RequestBody changeEmailRequest: ChangeEmailRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): BaseResponse<ChangeEmailResponse> {
 
         return BaseResponse.ok(
             memberService.changeEmail(
                 changeEmailRequest,
-                httpServletRequest
+                httpServletRequest,
+                httpServletResponse
             )
         )
     }
@@ -122,13 +124,15 @@ class MemberController(
     @PatchMapping("/phone")
     fun changePhone(
         @Valid @RequestBody changePhoneRequest: ChangePhoneRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): BaseResponse<ChangePhoneResponse> {
 
         return BaseResponse.ok(
             memberService.changePhone(
                 changePhoneRequest,
-                httpServletRequest
+                httpServletRequest,
+                httpServletResponse
             )
         )
     }

@@ -53,11 +53,13 @@ interface MemberService {
 
     fun changeEmail(
         changeEmailRequest: ChangeEmailRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): ChangeEmailResponse
 
     fun changePhone(
         changePhoneRequest: ChangePhoneRequest,
-        httpServletRequest: HttpServletRequest
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
     ): ChangePhoneResponse
 }

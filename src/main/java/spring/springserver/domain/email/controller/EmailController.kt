@@ -30,4 +30,10 @@ class EmailController(private val emailService: EmailService) {
             checkVerifyCodeRequest.verifyCode
         ))
     }
+
+    @PostMapping("/change/code/send")
+    fun sendChangeEmailCode(@Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest): BaseResponse<SendVerifyCodeResponse> {
+
+        return BaseResponse.ok(emailService.sendChangeEmailCode(sendVerifyCodeRequest.email))
+    }
 }

@@ -72,5 +72,10 @@ class Member(
         this.email = email
     }
 
+    fun changePhone(phone: String) {
+
+        this.phone = phone
+    }
+
     fun update(name: String) { this.name = name }
 }
