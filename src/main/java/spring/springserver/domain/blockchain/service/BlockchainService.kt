@@ -21,7 +21,7 @@ import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
-import java.util.Base64
+import java.util.*
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 

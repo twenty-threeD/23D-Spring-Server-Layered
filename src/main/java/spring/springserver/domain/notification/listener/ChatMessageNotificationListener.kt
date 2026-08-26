@@ -4,8 +4,8 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import spring.springserver.domain.chat.event.ChatMessageSentEvent
 import spring.springserver.domain.chat.service.ChatService
-import spring.springserver.domain.notification.service.NotificationService
 import spring.springserver.domain.notification.data.response.ChatNotificationResponse
+import spring.springserver.domain.notification.service.NotificationService
 
 @Component
 class ChatMessageNotificationListener(

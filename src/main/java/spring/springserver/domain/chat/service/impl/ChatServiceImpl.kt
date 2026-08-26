@@ -1,5 +1,6 @@
 package spring.springserver.domain.chat.service.impl
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
@@ -7,7 +8,6 @@ import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
-import com.fasterxml.jackson.databind.ObjectMapper
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
@@ -30,7 +30,6 @@ import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-import kotlin.collections.forEach
 
 @Service
 @Transactional

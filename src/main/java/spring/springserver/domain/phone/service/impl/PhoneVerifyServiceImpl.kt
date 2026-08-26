@@ -1,8 +1,7 @@
 package spring.springserver.domain.phone.service.impl
 
-import com.solapi.sdk.message.model.Message
 import com.solapi.sdk.SolapiClient
-
+import com.solapi.sdk.message.model.Message
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate

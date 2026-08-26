@@ -6,10 +6,10 @@ import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
+import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
+import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
 import spring.springserver.domain.email.exception.EmailException
 import spring.springserver.domain.email.service.EmailService
-import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
-import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
 import spring.springserver.global.config.redis.RedisConfig
 import spring.springserver.global.exception.exception.ApplicationException
 import java.io.UnsupportedEncodingException

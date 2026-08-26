@@ -8,7 +8,7 @@ import org.springframework.mail.javamail.JavaMailSenderImpl
 import org.thymeleaf.TemplateEngine
 import spring.springserver.domain.email.service.impl.EmailServiceImpl
 import spring.springserver.global.config.redis.RedisConfig
-import java.util.Properties
+import java.util.*
 
 @Configuration
 class MailConfig(

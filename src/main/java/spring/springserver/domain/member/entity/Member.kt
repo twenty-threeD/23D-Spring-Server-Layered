@@ -3,14 +3,7 @@ package spring.springserver.domain.member.entity
 import com.l98293.phone.Format
 import com.l98293.phone.Phone
 import com.l98293.phone.Region
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.EnumType
-import jakarta.persistence.Enumerated
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.PrePersist
+import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity

@@ -13,9 +13,9 @@ import spring.springserver.domain.location.entity.Sig
 import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
-import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
 import spring.springserver.domain.profile.entity.Profile
