@@ -14,6 +14,8 @@ import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.profile.data.request.UpdateProfileRequest
+import spring.springserver.domain.post.data.response.PostResponse
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
 import spring.springserver.domain.profile.entity.Profile
@@ -29,7 +31,8 @@ class ProfileServiceImpl(
     private val memberRepository: MemberRepository,
     private val locationService: LocationService,
     private val jobCategoryService: JobCategoryService,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val postRepository: PostRepository
 ): ProfileService {
 
     override fun createDefaultProfile(
@@ -166,7 +169,8 @@ class ProfileServiceImpl(
             phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
-            phoneVerified = member.isPhoneVerified()
+            phoneVerified = member.isPhoneVerified(),
+            posts = getMyPosts(member = member, imageUrl = profile.imageUrl)
         )
     }
 
@@ -190,4 +194,14 @@ class ProfileServiceImpl(
         return memberRepository.findByUsername(username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
+
+    /**
+     * 본인 프로필에 붙는 목록이므로 작성자 프로필 이미지는 이미 들고 있는 값을 그대로 쓴다.
+     */
+    private fun getMyPosts(
+        member: Member,
+        imageUrl: String?
+    ): List<PostResponse> =
+        postRepository.findAllByMemberAndIsDeletedFalseOrderByUpdatedAtDesc(member = member)
+            .map { post -> PostResponse.of(post, imageUrl) }
 }

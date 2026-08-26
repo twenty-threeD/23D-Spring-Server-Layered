@@ -1,5 +1,6 @@
 package spring.springserver.domain.profile.data.response
 
+import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.profile.entity.Profile
 import java.time.LocalDateTime
 
@@ -28,6 +29,8 @@ data class ProfileResponse(
 
     val phoneVerified: Boolean,
 
+    val posts: List<PostResponse>,
+
     val updatedAt: LocalDateTime?
 ) {
 
@@ -40,7 +43,8 @@ data class ProfileResponse(
             phone: String?,
             locationName: String?,
             jobCategoryName: String?,
-            phoneVerified: Boolean
+            phoneVerified: Boolean,
+            posts: List<PostResponse>
         ): ProfileResponse {
 
             return ProfileResponse(
@@ -56,6 +60,7 @@ data class ProfileResponse(
                 profile.jobCategory?.getId(),
                 jobCategoryName,
                 phoneVerified,
+                posts,
                 profile.getUpdatedAt()
             )
         }
