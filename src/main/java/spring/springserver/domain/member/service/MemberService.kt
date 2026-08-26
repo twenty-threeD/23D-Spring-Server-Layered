@@ -62,4 +62,9 @@ interface MemberService {
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): ChangePhoneResponse
+
+    fun assertEmailAvailableForChange(
+        email: String,
+        httpServletRequest: HttpServletRequest
+    )
 }

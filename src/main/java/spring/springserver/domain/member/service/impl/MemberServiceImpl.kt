@@ -21,6 +21,7 @@ import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
 import spring.springserver.domain.member.data.response.UsernameCheckResponse
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
@@ -159,8 +160,8 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        verifyPassword(
-            member.password,
+        verifyPasswordIfLocal(
+            member,
             changeEmailRequest.password
         )
 
@@ -200,8 +201,8 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        verifyPassword(
-            member.password,
+        verifyPasswordIfLocal(
+            member,
             changePhoneRequest.password
         )
 
@@ -248,10 +249,28 @@ class MemberServiceImpl(
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
 
-    private fun verifyPassword(
-        encodedPassword: String?,
+    @Transactional(readOnly = true)
+    override fun assertEmailAvailableForChange(
+        email: String,
+        httpServletRequest: HttpServletRequest
+    ) {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        if (member.email != email && memberRepository.existsByEmail(email)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+    }
+
+    private fun verifyPasswordIfLocal(
+        member: Member,
         rawPassword: String
     ) {
+
+        if (member.provider != Provider.AUTH) return
+
+        val encodedPassword = member.password
 
         if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
 
