@@ -6,6 +6,10 @@ import java.time.LocalDateTime
 data class ProfileResponse(
     val username: String,
 
+    val email: String,
+
+    val phone: String?,
+
     val imageUrl: String?,
 
     val sigCd: String?,
@@ -32,6 +36,8 @@ data class ProfileResponse(
         fun of(
             profile: Profile,
             username: String,
+            email: String,
+            phone: String?,
             locationName: String?,
             jobCategoryName: String?,
             phoneVerified: Boolean
@@ -39,6 +45,8 @@ data class ProfileResponse(
 
             return ProfileResponse(
                 username,
+                email,
+                phone,
                 profile.imageUrl,
                 profile.sig?.getSigCd(),
                 locationName,

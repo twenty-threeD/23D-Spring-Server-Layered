@@ -162,6 +162,8 @@ class ProfileServiceImpl(
         return ProfileResponse.of(
             profile = profile,
             username = member.username,
+            email = member.email,
+            phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified()
