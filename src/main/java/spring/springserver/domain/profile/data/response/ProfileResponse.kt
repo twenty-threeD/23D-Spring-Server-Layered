@@ -22,6 +22,8 @@ data class ProfileResponse(
 
     val jobCategoryName: String?,
 
+    val phoneVerified: Boolean,
+
     val updatedAt: LocalDateTime?
 ) {
 
@@ -31,7 +33,8 @@ data class ProfileResponse(
             profile: Profile,
             username: String,
             locationName: String?,
-            jobCategoryName: String?
+            jobCategoryName: String?,
+            phoneVerified: Boolean
         ): ProfileResponse {
 
             return ProfileResponse(
@@ -44,6 +47,7 @@ data class ProfileResponse(
                 profile.shortDescription,
                 profile.jobCategory?.getId(),
                 jobCategoryName,
+                phoneVerified,
                 profile.getUpdatedAt()
             )
         }

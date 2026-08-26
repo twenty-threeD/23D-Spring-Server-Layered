@@ -163,7 +163,8 @@ class ProfileServiceImpl(
             profile = profile,
             username = member.username,
             locationName = profile.sig?.let { locationService.getFullName(it) },
-            jobCategoryName = profile.jobCategory?.getFullName()
+            jobCategoryName = profile.jobCategory?.getFullName(),
+            phoneVerified = member.isPhoneVerified()
         )
     }
 

@@ -14,6 +14,7 @@ import spring.springserver.domain.member.data.response.DeleteAccountResponse
 import spring.springserver.domain.member.data.response.FindUsernameResponse
 import spring.springserver.domain.member.data.response.PasswordResetResponse
 import spring.springserver.domain.member.data.response.UsernameCheckResponse
+import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -124,5 +125,19 @@ class MemberServiceImpl(
         if (memberRepository.existsByUsername(username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
 
         return UsernameCheckResponse.of("사용 가능한 사용자명입니다.")
+    }
+
+    @Transactional(readOnly = true)
+    override fun ensurePhoneVerified(
+        username: String
+    ) {
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+
+        if (!member.isPhoneVerified()) {
+
+            throw ApplicationException(MemberStatusCode.PHONE_NOT_VERIFIED)
+        }
     }
 }

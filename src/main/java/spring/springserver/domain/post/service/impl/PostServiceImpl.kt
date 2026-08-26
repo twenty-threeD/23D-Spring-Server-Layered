@@ -13,6 +13,7 @@ import spring.springserver.domain.file.service.FileService
 import spring.springserver.domain.jobcategory.entity.JobCategory
 import spring.springserver.domain.jobcategory.service.JobCategoryService
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
 import spring.springserver.domain.post.data.response.DeletedPostResponse
@@ -32,7 +33,8 @@ class PostServiceImpl(
     private val memberRepository: MemberRepository,
     private val fileService: FileService,
     private val jobCategoryService: JobCategoryService,
-    private val profileService: ProfileService
+    private val profileService: ProfileService,
+    private val memberService: MemberService
 ): PostService {
 
     override fun createPost(
@@ -40,6 +42,8 @@ class PostServiceImpl(
     ): PostResponse {
 
         val member = getCurrentMember()
+
+        memberService.ensurePhoneVerified(username = member.username)
 
         val post = createPostRequest.toEntity(
             member,

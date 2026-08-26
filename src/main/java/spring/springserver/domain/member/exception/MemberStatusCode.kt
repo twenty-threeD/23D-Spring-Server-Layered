@@ -9,7 +9,8 @@ enum class MemberStatusCode(
     private val httpStatus: HttpStatus
 ): StatusCode {
 
-    MEMBER_NOT_FOUND("MEMBER_NOT_FOUND", "사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
+    MEMBER_NOT_FOUND("MEMBER_NOT_FOUND", "사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    PHONE_NOT_VERIFIED("PHONE_NOT_VERIFIED", "휴대폰 본인인증이 필요합니다.", HttpStatus.FORBIDDEN);
 
     override fun getCode(): String = code
     override fun getMessage(): String = message

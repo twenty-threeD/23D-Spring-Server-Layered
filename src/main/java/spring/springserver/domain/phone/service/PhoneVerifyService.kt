@@ -13,4 +13,8 @@ interface PhoneVerifyService {
         recipientNumber: String,
         code: String
     ): PhoneVerifyResponse
+
+    fun consumePhoneVerification(
+        phone: String
+    ): Boolean
 }

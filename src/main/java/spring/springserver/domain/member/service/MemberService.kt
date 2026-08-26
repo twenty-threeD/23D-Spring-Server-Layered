@@ -42,4 +42,8 @@ interface MemberService {
     fun checkPhone(
         phone: String
     ): CheckResponse
+
+    fun ensurePhoneVerified(
+        username: String
+    )
 }

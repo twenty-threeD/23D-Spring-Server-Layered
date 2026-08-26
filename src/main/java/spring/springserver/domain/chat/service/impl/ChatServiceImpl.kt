@@ -21,6 +21,7 @@ import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
@@ -39,6 +40,7 @@ class ChatServiceImpl(
     private val memberRepository: MemberRepository,
     private val postRepository: PostRepository,
     private val profileService: ProfileService,
+    private val memberService: MemberService,
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
@@ -55,6 +57,8 @@ class ChatServiceImpl(
         requesterUsername: String,
         createChatRoomRequest: CreateChatRoomRequest
     ): CreateChatRoomResponse {
+
+        memberService.ensurePhoneVerified(username = requesterUsername)
 
         if (requesterUsername == createChatRoomRequest.username) {
 
@@ -182,6 +186,8 @@ class ChatServiceImpl(
         senderUsername: String,
         sendChatMessageRequest: SendChatMessageRequest
     ): ChatMessageResponse {
+
+        memberService.ensurePhoneVerified(username = senderUsername)
 
         val senderParticipant = getVisibleParticipant(
             roomId = sendChatMessageRequest.roomId,
