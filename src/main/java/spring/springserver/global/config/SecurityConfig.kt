@@ -174,20 +174,10 @@ class SecurityConfig(
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/contract",
-                        "/api/contract/sign"
-                    ).hasAnyRole("USER", "PROFESSIONAL")
-                    .requestMatchers(
-                        HttpMethod.PATCH,
-                        "/api/contract"
-                    ).hasAnyRole("USER", "PROFESSIONAL")
-                    .requestMatchers(
-                        HttpMethod.DELETE,
                         "/api/contract"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/contract",
                         "/api/contract/*"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
