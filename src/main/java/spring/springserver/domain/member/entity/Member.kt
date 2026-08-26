@@ -67,5 +67,10 @@ class Member(
         this.phoneVerified = true
     }
 
+    fun changeEmail(email: String) {
+
+        this.email = email
+    }
+
     fun update(name: String) { this.name = name }
 }

@@ -82,6 +82,11 @@ class SecurityConfig(
                         "/api/auth/password/reset/check"
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/member/email",
+                        "/api/member/phone"
+                    ).hasRole("USER")
+                    .requestMatchers(
                         HttpMethod.DELETE,
                         "/api/delete/account")
                     .hasRole("USER")

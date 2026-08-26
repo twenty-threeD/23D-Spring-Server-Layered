@@ -128,6 +128,26 @@ class PhoneVerifyServiceImpl(
         return PhoneVerifyResponse.of("본인인증이 완료되었습니다.")
     }
 
+    override fun verifyCodeOnly(
+        recipientNumber: String,
+        code: String
+    ): String {
+
+        val phoneNumber = PhoneNormalizer.normalize(phone = recipientNumber)
+            ?: throw CannotVerifyPhoneException()
+        val saved = redisTemplate.opsForValue().get("$phoneNumber:verify")
+            ?: throw CannotVerifyPhoneException()
+
+        if (saved != code) {
+
+            throw CannotVerifyPhoneException()
+        }
+
+        redisTemplate.delete("$phoneNumber:verify")
+
+        return phoneNumber
+    }
+
     override fun consumePhoneVerification(
         phone: String
     ): Boolean {
