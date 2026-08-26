@@ -6,9 +6,7 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.contract.data.request.CreateContractRequest
 import spring.springserver.domain.contract.data.request.SignContractRequest
-import spring.springserver.domain.contract.data.request.UpdateContractRequest
 import spring.springserver.domain.contract.data.response.ContractResponse
-import spring.springserver.domain.contract.data.response.DeleteContractResponse
 import spring.springserver.domain.contract.entity.Contract
 import spring.springserver.domain.contract.exception.ContractStatusCode
 import spring.springserver.domain.contract.repository.ContractRepository
@@ -74,32 +72,6 @@ class ContractServiceImpl(
         return ContractResponse.of(contract)
     }
 
-    @Transactional(readOnly = true)
-    override fun getMyContracts(): List<ContractResponse> {
-
-        val contracts = contractRepository.findAllByParticipant(getCurrentMember())
-
-        return contracts.map { ContractResponse.of(it) }
-    }
-
-    override fun updateContract(
-        updateContractRequest: UpdateContractRequest
-    ): ContractResponse {
-
-        val member = getCurrentMember()
-        val contract = getContractEntity(updateContractRequest.contractId!!)
-
-        validateWriter(contract, member)
-        validateNotSigned(contract)
-
-        contract.update(
-            normalizeUrl(updateContractRequest.contractUrl!!),
-            updateContractRequest.amount!!
-        )
-
-        return ContractResponse.of(contract)
-    }
-
     override fun signContract(
         signContractRequest: SignContractRequest
     ): ContractResponse {
@@ -131,21 +103,6 @@ class ContractServiceImpl(
         return ContractResponse.of(contract)
     }
 
-    override fun deleteContract(
-        contractId: Long
-    ): DeleteContractResponse {
-
-        val member = getCurrentMember()
-        val contract = getContractEntity(contractId)
-
-        validateWriter(contract, member)
-        validateNotSigned(contract)
-
-        contractRepository.delete(contract)
-
-        return DeleteContractResponse.of("계약서가 삭제되었습니다.")
-    }
-
     private fun getContractEntity(
         contractId: Long
     ): Contract {
@@ -153,6 +110,21 @@ class ContractServiceImpl(
         return contractRepository.findById(contractId).orElseThrow {
 
             ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+        }
+    }
+
+    /**
+     * 계약서는 갑·을 당사자만 들여다볼 수 있다.
+     */
+    private fun validateParticipant(
+        contract: Contract,
+        member: Member
+    ) {
+
+        if (contract.partA.getId() != member.getId() &&
+            contract.partB.getId() != member.getId()) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
     }
 
@@ -179,46 +151,6 @@ class ContractServiceImpl(
         }
 
         return normalizedUrl
-    }
-
-    /**
-     * 한쪽이 서명한 뒤에 내용이 바뀌면 그 서명이 무엇에 대한 동의였는지 알 수 없게 된다.
-     * 그래서 서명이 하나라도 있으면 수정·삭제를 막는다.
-     */
-    private fun validateNotSigned(
-        contract: Contract
-    ) {
-
-        if (contract.hasAnySignature()) {
-
-            throw ApplicationException(ContractStatusCode.CONTRACT_ALREADY_SIGNED)
-        }
-    }
-
-    /**
-     * 계약서를 올린 당사자만 계약서를 교체하거나 거둘 수 있다.
-     */
-    private fun validateWriter(
-        contract: Contract,
-        member: Member
-    ) {
-
-        if (contract.writer.getId() != member.getId()) {
-
-            throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
-        }
-    }
-
-    private fun validateParticipant(
-        contract: Contract,
-        member: Member
-    ) {
-
-        if (contract.partA.getId() != member.getId() &&
-            contract.partB.getId() != member.getId()) {
-
-            throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
-        }
     }
 
     private fun getCurrentMember(): Member {

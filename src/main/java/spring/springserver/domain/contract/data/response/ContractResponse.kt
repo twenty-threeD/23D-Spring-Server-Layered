@@ -8,7 +8,7 @@ data class ContractResponse(
     val id: Long?,
 
     /**
-     * 계약서 PDF 경로. 파일 조회 API로 그대로 내려받는다.
+     * 계약서 PDF 경로. 채팅 메시지에 첨부해 그대로 보여준다.
      */
     val contractUrl: String,
 
