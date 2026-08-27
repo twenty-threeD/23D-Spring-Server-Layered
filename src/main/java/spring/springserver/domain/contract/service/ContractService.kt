@@ -8,7 +8,7 @@ import spring.springserver.domain.contract.data.response.ViewContractResponse
 interface ContractService {
 
     /**
-     * 계약 당사자 중 한쪽이 갑·을과 계약 금액을 지정해 계약서 PDF를 등록한다.
+     * 계약 당사자 중 한쪽이 의뢰인(갑)·전문가(을)과 계약 금액을 지정해 계약서 PDF를 등록한다.
      */
     fun createContract(
         createContractRequest: CreateContractRequest
