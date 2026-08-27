@@ -1,7 +1,9 @@
 package spring.springserver.domain.contract.service
 
+import jakarta.servlet.http.HttpServletRequest
 import spring.springserver.domain.contract.data.request.CreateContractRequest
-import spring.springserver.domain.contract.data.response.ContractResponse
+import spring.springserver.domain.contract.data.response.CreateContractResponse
+import spring.springserver.domain.contract.data.response.ViewContractResponse
 
 interface ContractService {
 
@@ -10,13 +12,14 @@ interface ContractService {
      */
     fun createContract(
         createContractRequest: CreateContractRequest
-    ): ContractResponse
+    ): CreateContractResponse
 
     /**
      * 계약서 한 건의 현재 상태를 당사자에게 돌려준다.
      * PDF 자체는 채팅방에 첨부해 보여주므로 목록 조회는 두지 않는다.
      */
     fun getContract(
-        contractId: Long
-    ): ContractResponse
+        contractId: Long,
+        httpServletRequest: HttpServletRequest
+    ): ViewContractResponse
 }

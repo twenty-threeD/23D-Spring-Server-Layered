@@ -1,11 +1,14 @@
 package spring.springserver.domain.contract.service.impl
 
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.contract.data.request.CreateContractRequest
-import spring.springserver.domain.contract.data.response.ContractResponse
+import spring.springserver.domain.contract.data.response.CreateContractResponse
+import spring.springserver.domain.contract.data.response.ViewContractResponse
 import spring.springserver.domain.contract.entity.Contract
 import spring.springserver.domain.contract.exception.ContractStatusCode
 import spring.springserver.domain.contract.repository.ContractRepository
@@ -19,17 +22,14 @@ import spring.springserver.global.exception.exception.ApplicationException
 @Transactional(rollbackFor = [Exception::class])
 class ContractServiceImpl(
     private val contractRepository: ContractRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val tokenService: TokenService
 ): ContractService {
 
     override fun createContract(
         createContractRequest: CreateContractRequest
-    ): ContractResponse {
+    ): CreateContractResponse {
 
-        /**
-         * 계약서를 올리는 사람은 반드시 그 계약의 당사자여야 한다.
-         * 제3자가 남의 계약서를 만들어 두면 서명 주체를 신뢰할 수 없게 된다.
-         */
         val writer = getCurrentMember()
 
         val partA = getMemberEntity(createContractRequest.partA!!)
@@ -55,30 +55,31 @@ class ContractServiceImpl(
             )
         )
 
-        return ContractResponse.of(contract)
+        return CreateContractResponse.of(contract)
     }
 
     @Transactional(readOnly = true)
     override fun getContract(
-        contractId: Long
-    ): ContractResponse {
+        contractId: Long,
+        httpServletRequest: HttpServletRequest
+    ): ViewContractResponse {
 
-        val member = getCurrentMember()
         val contract = getContractEntity(contractId)
 
-        validateParticipant(contract, member)
+        validateParticipant(
+            contract,
+            memberRepository.findByUsername(tokenService.getCurrentUsername(httpServletRequest))
+                ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+        )
 
-        return ContractResponse.of(contract)
+        return ViewContractResponse.of(contract)
     }
 
     private fun getContractEntity(
         contractId: Long
     ): Contract {
 
-        return contractRepository.findById(contractId).orElseThrow {
-
-            ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
-        }
+        return contractRepository.findById(contractId).orElseThrow { ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND) }
     }
 
     /**
