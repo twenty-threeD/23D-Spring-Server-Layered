@@ -57,9 +57,7 @@ class Estimate(
     fun getCreatedAt(): LocalDateTime? = createdAt
     fun getUpdatedAt(): LocalDateTime? = updatedAt
     fun getStatus() = status
-
     fun isPaid() = status == EstimateStatus.PAID
-
     fun update(
         url: String,
         totalPay: Long
