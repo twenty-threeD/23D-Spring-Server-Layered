@@ -4,7 +4,7 @@ import spring.springserver.domain.contract.entity.Contract
 import spring.springserver.domain.contract.entity.ContractStatus
 import java.time.LocalDateTime
 
-data class ContractResponse(
+data class CreateContractResponse(
     val id: Long?,
 
     /**
@@ -50,9 +50,9 @@ data class ContractResponse(
 
         fun of(
             contract: Contract
-        ): ContractResponse {
+        ): CreateContractResponse {
 
-            return ContractResponse(
+            return CreateContractResponse(
                 contract.getId(),
                 contract.contractUrl,
                 contract.partA.getId(),
