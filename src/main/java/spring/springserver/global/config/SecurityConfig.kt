@@ -189,6 +189,18 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/community/job"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/community/job"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/community/job"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/phone/send",
                         "/phone/verify"
                     ).permitAll()

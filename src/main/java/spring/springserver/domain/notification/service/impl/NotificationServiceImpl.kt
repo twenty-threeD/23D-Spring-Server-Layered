@@ -134,6 +134,47 @@ class NotificationServiceImpl(
         return response
     }
 
+    @Transactional
+    override fun sendJobPostNotification(
+        receiverUsernames: Collection<String>,
+        message: String,
+        postId: Long
+    ): List<NotificationResponse> {
+
+        val sentAt = Instant.now()
+
+        return receiverUsernames.distinct()
+            .mapNotNull {
+
+                receiverUsername ->
+                runCatching {
+
+                    val response = save(
+                        type = NotificationType.JOB_POST,
+                        receiverUsername = receiverUsername,
+                        senderUsername = null,
+                        message = message,
+                        sentAt = sentAt,
+                        roomId = null,
+                        postId = postId
+                    )
+
+                    dispatch(receiverUsername) { event(response) }
+
+                    response
+                }.onFailure {
+
+                    throwable ->
+                    log.warn(
+                        "구인/구직 알림 전송 실패: username={}, postId={}",
+                        receiverUsername,
+                        postId,
+                        throwable
+                    )
+                }.getOrNull()
+            }
+    }
+
     @Transactional(readOnly = true)
     override fun getNotifications(
         username: String
@@ -198,7 +239,8 @@ class NotificationServiceImpl(
         senderUsername: String?,
         message: String,
         sentAt: Instant,
-        roomId: Long?
+        roomId: Long?,
+        postId: Long? = null
     ): NotificationResponse {
 
         val receiver = memberRepository.findByUsername(receiverUsername)
@@ -217,7 +259,8 @@ class NotificationServiceImpl(
                 message = message,
                 sentAt = sentAt,
                 sender = sender,
-                roomId = roomId
+                roomId = roomId,
+                postId = postId
             )
         )
 

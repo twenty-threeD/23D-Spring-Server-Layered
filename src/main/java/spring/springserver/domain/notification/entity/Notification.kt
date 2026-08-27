@@ -31,7 +31,13 @@ class Notification(
     var sender: Member? = null,
 
     @Column(name = "chat_room_id")
-    var roomId: Long? = null
+    var roomId: Long? = null,
+
+    /**
+     * 알림이 가리키는 커뮤니티 게시글. 채팅 알림에는 없다.
+     */
+    @Column(name = "community_post_id")
+    var postId: Long? = null
 ) {
 
     @Id
