@@ -32,26 +32,26 @@ class ContractServiceImpl(
 
         val writer = getCurrentMember()
 
-        val partA = getMemberEntity(createContractRequest.partA!!)
-        val partB = getMemberEntity(createContractRequest.partB!!)
+        val client = getMemberEntity(createContractRequest.clientId!!)
+        val professional = getMemberEntity(createContractRequest.professionalId!!)
 
-        if (partA.getId() == partB.getId()) {
+        if (client.getId() == professional.getId()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_MEMBER)
         }
 
-        if (writer.getId() != partA.getId() && writer.getId() != partB.getId()) {
+        if (writer.getId() != client.getId() && writer.getId() != professional.getId()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
 
         val contract = contractRepository.save(
             Contract(
-                partA = partA,
-                partB = partB,
+                client = client,
+                professional = professional,
                 writer = writer,
                 contractUrl = normalizeUrl(createContractRequest.contractUrl!!),
-                amount = createContractRequest.amount!!
+                price = createContractRequest.price!!
             )
         )
 
@@ -83,15 +83,15 @@ class ContractServiceImpl(
     }
 
     /**
-     * 계약서는 갑·을 당사자만 들여다볼 수 있다.
+     * 계약서는 의뢰인(갑)·전문가(을) 당사자만 들여다볼 수 있다.
      */
     private fun validateParticipant(
         contract: Contract,
         member: Member
     ) {
 
-        if (contract.partA.getId() != member.getId() &&
-            contract.partB.getId() != member.getId()) {
+        if (contract.client.getId() != member.getId() &&
+            contract.professional.getId() != member.getId()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
