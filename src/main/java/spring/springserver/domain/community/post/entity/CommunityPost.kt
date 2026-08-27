@@ -50,7 +50,13 @@ class CommunityPost(
     var postType: CommunityPostType = CommunityPostType.GENERAL,
 
     /**
-     * 구인/구직 글의 용역 카테고리. 일반 글에는 없다.
+     * 구인/구직 글의 용역 카테고리.
+     *
+     * 구인/구직 글에는 반드시 있어야 하지만, 이 테이블을 일반 커뮤니티 글과
+     * 함께 쓰기 때문에 컬럼 자체는 nullable이다. 일반 글에는 카테고리가 없다.
+     * 대신 필수 여부는 서비스 계층에서 지킨다.
+     * - 작성: CreateJobPostRequest.jobCategoryId 의 @NotNull
+     * - 수정: updateJobPost() 가 non-null JobCategory 만 받는다
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_category_id")
@@ -58,6 +64,7 @@ class CommunityPost(
 
     /**
      * 구인/구직 글이 걸린 시군구. 거리 기반 필터와 알림의 기준점이다.
+     * jobCategory 와 같은 이유로 nullable이며, 필수 여부는 서비스 계층에서 지킨다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sig_cd")

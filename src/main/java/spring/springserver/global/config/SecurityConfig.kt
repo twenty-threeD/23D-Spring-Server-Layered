@@ -196,6 +196,10 @@ class SecurityConfig(
                         "/api/community/job"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/community/job"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
                         HttpMethod.GET,
                         "/api/community/job"
                     ).hasAnyRole("USER", "PROFESSIONAL")

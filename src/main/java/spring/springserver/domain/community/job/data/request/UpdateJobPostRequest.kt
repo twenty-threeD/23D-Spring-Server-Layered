@@ -19,7 +19,7 @@ data class UpdateJobPostRequest(
     @field:Size(max = 2000, message = "내용은 2000자 이하로 입력해주세요.")
     val content: String?,
 
-    @field:Size(max = 500, message = "첨부 파일 경로는 500자 이하로 입력해주세요.")
+    @field:Size(max = 2000, message = "첨부 파일 경로는 2000자 이하로 입력해주세요.")
     val fileUrl: String?,
 
     @field:NotNull(message = "용역 카테고리는 필수입니다.")

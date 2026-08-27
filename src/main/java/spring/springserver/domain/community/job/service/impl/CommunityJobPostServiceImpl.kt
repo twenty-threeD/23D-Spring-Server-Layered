@@ -4,9 +4,11 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
+import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.CreateJobPostRequest
+import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobPostRequest
 import spring.springserver.domain.community.job.event.JobPostCreatedEvent
 import spring.springserver.domain.community.job.service.CommunityJobPostService
@@ -21,6 +23,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -78,17 +81,7 @@ class CommunityJobPostServiceImpl(
         updateJobPostRequest: UpdateJobPostRequest
     ): CommunityPostResponse {
 
-        val member = communityAuthorizationService.getCurrentMember()
-
-        val communityPost = communityAuthorizationService
-            .getActivePost(updateJobPostRequest.postId!!)
-
-        communityAuthorizationService.validateOwner(member, communityPost.member.getId())
-
-        if (!communityPost.isJobPost()) {
-
-            throw ApplicationException(CommunityStatusCode.NOT_JOB_POST)
-        }
+        val communityPost = getOwnedJobPost(updateJobPostRequest.postId!!)
 
         communityPost.updateJobPost(
             title = updateJobPostRequest.title!!.trim(),
@@ -102,24 +95,34 @@ class CommunityJobPostServiceImpl(
         return toResponse(communityPost)
     }
 
+    override fun deleteJobPost(
+        postId: Long
+    ): DeleteResponse {
+
+        getOwnedJobPost(postId).softDelete(LocalDateTime.now())
+
+        return DeleteResponse.of("삭제되었습니다.")
+    }
+
     @Transactional(readOnly = true)
     override fun getJobPosts(
-        postType: CommunityPostType?,
-        jobCategoryId: Long?,
-        sigCd: String?,
-        nearbyOnly: Boolean,
-        keyword: String?
+        searchJobPostRequest: SearchJobPostRequest
     ): List<CommunityPostResponse> {
 
-        val postTypes = postType?.let { listOf(validateJobPostType(it)) }
+        val postTypes = searchJobPostRequest.postType?.let { listOf(validateJobPostType(it)) }
             ?: CommunityPostType.jobPostTypes()
+
+        val jobCategoryId = searchJobPostRequest.jobCategoryId
 
         val jobCategoryIds = jobCategoryId
             ?.let { jobCategoryService.getCategoryIdsIncludingDescendants(it) }
             ?.ifEmpty { listOf(NO_FILTER_ID) }
             ?: listOf(NO_FILTER_ID)
 
-        val sigCds = resolveSigCds(sigCd, nearbyOnly)
+        val sigCds = resolveSigCds(
+            searchJobPostRequest.sigCd,
+            searchJobPostRequest.nearbyOnly
+        )
 
         return communityPostRepository.searchJobPosts(
             postTypes = postTypes,
@@ -127,7 +130,7 @@ class CommunityJobPostServiceImpl(
             jobCategoryIds = jobCategoryIds,
             sigCdFilter = sigCds?.firstOrNull(),
             sigCds = sigCds ?: listOf(NO_FILTER_SIG_CD),
-            keyword = keyword?.trim().orEmpty()
+            keyword = searchJobPostRequest.keyword?.trim().orEmpty()
         ).map { communityPost -> toResponse(communityPost) }
     }
 
@@ -152,6 +155,27 @@ class CommunityJobPostServiceImpl(
             baseSigCd,
             CommunityJobPostService.NEARBY_RADIUS_KM
         )
+    }
+
+    /**
+     * 구인/구직 API로는 구인/구직 글만, 그것도 작성자 본인만 손댈 수 있다.
+     */
+    private fun getOwnedJobPost(
+        postId: Long
+    ): CommunityPost {
+
+        val member = communityAuthorizationService.getCurrentMember()
+
+        val communityPost = communityAuthorizationService.getActivePost(postId)
+
+        communityAuthorizationService.validateOwner(member, communityPost.member.getId())
+
+        if (!communityPost.isJobPost()) {
+
+            throw ApplicationException(CommunityStatusCode.NOT_JOB_POST)
+        }
+
+        return communityPost
     }
 
     private fun currentMemberSigCd(): String {
