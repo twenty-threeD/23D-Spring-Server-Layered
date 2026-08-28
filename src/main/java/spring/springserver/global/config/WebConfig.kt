@@ -8,7 +8,7 @@ import java.nio.file.Path
 
 @Configuration
 class WebConfig(
-    @Value("\${app.upload.file-dir}")
+    @Value($$"${app.upload.file-dir}")
     private val fileDir: String
 ) : WebMvcConfigurer {
 
