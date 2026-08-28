@@ -1,9 +1,9 @@
 plugins {
-    id ("org.jetbrains.kotlin.jvm")
-    id ("org.springframework.boot") version "3.5.13"
-    id ("io.spring.dependency-management") version "1.1.7"
-    id ("org.jetbrains.kotlin.plugin.jpa") version "2.3.10"
-    id ("org.jetbrains.kotlin.plugin.spring") version "2.3.10"
+    kotlin("jvm")
+    kotlin("plugin.spring")
+    kotlin("plugin.jpa")
+    id("org.springframework.boot") version "3.5.13"
+    id("io.spring.dependency-management") version "1.1.7"
 }
 
 group = "spring"
