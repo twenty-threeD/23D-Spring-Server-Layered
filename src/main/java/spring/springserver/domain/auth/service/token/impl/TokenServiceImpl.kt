@@ -160,7 +160,7 @@ class TokenServiceImpl(
     override fun deleteTokens(httpServletRequest: HttpServletRequest,
                               httpServletResponse: HttpServletResponse) {
 
-        val accessToken = resolveAccessToken(httpServletRequest)
+        val accessToken = jwtProvider.resolveToken(httpServletRequest)
 
         if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
@@ -195,7 +195,7 @@ class TokenServiceImpl(
 
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {
 
-        val accessToken = resolveAccessToken(httpServletRequest)
+        val accessToken = jwtProvider.resolveToken(httpServletRequest)
 
         if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
 
@@ -203,17 +203,6 @@ class TokenServiceImpl(
         }
 
         return jwtProvider.getUsernameFromToken(accessToken)
-    }
-
-    /**
-     * accessToken은 쿠키를 우선으로 하고, 없으면 Authorization 헤더에서 읽는다.
-     */
-    private fun resolveAccessToken(
-        httpServletRequest: HttpServletRequest
-    ): String? {
-
-        return extractTokenFromCookie("accessToken", httpServletRequest)
-            ?: jwtProvider.resolveToken(httpServletRequest)
     }
 
     private fun extractTokenFromCookie(
@@ -239,8 +228,46 @@ class TokenServiceImpl(
          * 도메인을 지정하지 않으면 쿠키가 발급 호스트(api.idta.store)에만 심겨
          * 프론트 도메인에서는 전송되지 않는다. 상위 도메인(.idta.store)을 지정해야
          * 서브도메인 간에 함께 실린다. 로컬처럼 값이 비어 있으면 기존대로 호스트 전용으로 둔다.
+         *
+         * 도메인 쿠키와 호스트 전용 쿠키는 브라우저에 별개로 남아 같은 이름이 2개씩 보이고,
+         * 어느 쪽이 먼저 전송될지 보장되지 않는다. 그래서 도메인 쿠키를 심을 때는
+         * 같은 이름의 호스트 전용 쿠키를 먼저 만료시켜 항상 하나만 남게 한다.
          */
-        val responseCookie = ResponseCookie.from(name, value ?: "")
+        if (cookieDomain.isNotBlank()) {
+
+            httpServletResponse?.addHeader(
+                HttpHeaders.SET_COOKIE,
+                buildCookie(
+                    name,
+                    "",
+                    0,
+                    httpOnly,
+                    false
+                ).toString()
+            )
+        }
+
+        httpServletResponse?.addHeader(
+            HttpHeaders.SET_COOKIE,
+            buildCookie(
+                name,
+                value ?: "",
+                age,
+                httpOnly,
+                true
+            ).toString()
+        )
+    }
+
+    private fun buildCookie(
+        name: String,
+        value: String,
+        age: Int,
+        httpOnly: Boolean,
+        withDomain: Boolean
+    ): ResponseCookie {
+
+        return ResponseCookie.from(name, value)
             .path("/")
             .httpOnly(httpOnly)
             .secure(cookieSecure || cookieSameSite.equals("None", ignoreCase = true))
@@ -248,14 +275,9 @@ class TokenServiceImpl(
             .maxAge(age.toLong())
             .also { builder ->
 
-                if (cookieDomain.isNotBlank()) builder.domain(cookieDomain)
+                if (withDomain && cookieDomain.isNotBlank()) builder.domain(cookieDomain)
             }
             .build()
-
-        httpServletResponse?.addHeader(
-            HttpHeaders.SET_COOKIE,
-            responseCookie.toString()
-        )
     }
 
     private fun toCookieMaxAge(expirationMillis: Long): Int {

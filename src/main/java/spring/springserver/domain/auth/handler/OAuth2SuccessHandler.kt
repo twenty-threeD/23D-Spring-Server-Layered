@@ -12,7 +12,6 @@ import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.entity.Role
-import spring.springserver.global.exception.exception.ApplicationException
 
 /**
  * @author @gnlandkmg(개발)
@@ -21,7 +20,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 @Component
 class OAuth2SuccessHandler(
     private val tokenService: TokenService,
-    @param:Value($$"${app.oauth2.redirect-uri}") private val redirectUri: String
+    @param:Value($$"${app.oauth2.redirect-uri}") private val redirectUri: String,
+    @param:Value($$"${app.oauth2.failure-redirect-uri}") private val failureRedirectUri: String
 ): AuthenticationSuccessHandler {
 
     override fun onAuthenticationSuccess(
@@ -31,14 +31,28 @@ class OAuth2SuccessHandler(
     ) {
 
         val oAuth2User = authentication.principal as? OAuth2User
-            ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
+
+        if (oAuth2User == null) {
+
+            redirectToFailure(
+                AuthStatusCode.UNKNOWN_REGISTRATION_ID.getCode(),
+                httpServletResponse
+            )
+
+            return
+        }
 
         val generateTokenRequest = GenerateTokenRequest(
             oAuth2User.attributes["username"].toString(),
             Role.valueOf(oAuth2User.attributes["role"].toString())
         )
 
-        val accessToken = tokenService.generateAccessToken(
+        /**
+         * 토큰은 httpOnly 쿠키로만 내려보낸다.
+         * 쿼리파라미터로 넘기면 accessToken이 브라우저 히스토리, Referer 헤더,
+         * 프록시·서버 접근 로그에 평문으로 남는다.
+         */
+        tokenService.generateAccessToken(
             generateTokenRequest,
             httpServletResponse
         )
@@ -48,13 +62,21 @@ class OAuth2SuccessHandler(
             httpServletResponse
         )
 
-        val successRedirectUri = UriComponentsBuilder
-            .fromUriString(redirectUri)
-            .queryParam("accessToken", accessToken)
+        httpServletResponse.sendRedirect(redirectUri)
+    }
+
+    private fun redirectToFailure(
+        errorCode: String,
+        httpServletResponse: HttpServletResponse
+    ) {
+
+        val failureUri = UriComponentsBuilder
+            .fromUriString(failureRedirectUri)
+            .queryParam("code", errorCode)
             .build()
             .encode()
             .toUriString()
 
-        httpServletResponse.sendRedirect(successRedirectUri)
+        httpServletResponse.sendRedirect(failureUri)
     }
 }
