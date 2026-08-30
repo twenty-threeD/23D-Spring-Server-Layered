@@ -11,7 +11,6 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
-import spring.springserver.domain.community.post.entity.CommunityPostType
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import spring.springserver.domain.community.post.service.CommunityPostService
 import java.time.LocalDateTime
@@ -80,7 +79,7 @@ class CommunityPostServiceImpl(
     override fun getPosts(): List<CommunityPostResponse> {
 
         return communityPostRepository
-            .findAllByPostTypeAndDeletedAtIsNullOrderByUpdatedAtDesc(CommunityPostType.GENERAL)
+            .findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
             .map {
                 
                 communityPost ->
@@ -115,7 +114,7 @@ class CommunityPostServiceImpl(
 
         val normalizedKeyword = keyword.trim()
 
-        return communityPostRepository.searchPosts(normalizedKeyword, CommunityPostType.GENERAL)
+        return communityPostRepository.searchPosts(normalizedKeyword)
             .map {
 
                 communityPost ->

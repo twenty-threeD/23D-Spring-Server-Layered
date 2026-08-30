@@ -1,6 +1,6 @@
 package spring.springserver.domain.community.job.event
 
-import spring.springserver.domain.community.post.entity.CommunityPostType
+import spring.springserver.domain.community.job.entity.JobPostType
 
 /**
  * 알림 리스너가 커밋 이후에 동작하므로, 지연 로딩 대상을 넘기지 않고
@@ -9,7 +9,7 @@ import spring.springserver.domain.community.post.entity.CommunityPostType
 data class JobPostCreatedEvent(
     val postId: Long,
     val writerMemberId: Long,
-    val postType: CommunityPostType,
+    val postType: JobPostType,
     val title: String,
     val jobCategoryId: Long,
     val sigCd: String

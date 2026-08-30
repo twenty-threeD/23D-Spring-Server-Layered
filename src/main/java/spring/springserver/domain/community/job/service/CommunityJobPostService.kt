@@ -4,7 +4,7 @@ import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.job.data.request.CreateJobPostRequest
 import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobPostRequest
-import spring.springserver.domain.community.post.data.response.CommunityPostResponse
+import spring.springserver.domain.community.job.data.response.CommunityJobPostResponse
 
 interface CommunityJobPostService {
 
@@ -22,15 +22,15 @@ interface CommunityJobPostService {
      */
     fun createJobPost(
         createJobPostRequest: CreateJobPostRequest
-    ): CommunityPostResponse
+    ): CommunityJobPostResponse
 
     fun updateJobPost(
         updateJobPostRequest: UpdateJobPostRequest
-    ): CommunityPostResponse
+    ): CommunityJobPostResponse
 
     /**
-     * 작성자만 지울 수 있다. 기존 커뮤니티와 같은 소프트 삭제를 쓰므로
-     * 보관 기간이 지나면 CommunityRetentionService가 댓글·좋아요까지 함께 정리한다.
+     * 작성자만 지울 수 있다. 소프트 삭제이므로 보관 기간이 지나면
+     * CommunityRetentionService가 댓글·좋아요까지 함께 정리한다.
      */
     fun deleteJobPost(
         postId: Long
@@ -42,5 +42,12 @@ interface CommunityJobPostService {
      */
     fun getJobPosts(
         searchJobPostRequest: SearchJobPostRequest
-    ): List<CommunityPostResponse>
+    ): List<CommunityJobPostResponse>
+
+    /**
+     * 구인/구직 상세. 게시글 테이블이 갈렸으므로 일반 커뮤니티 상세로는 열리지 않는다.
+     */
+    fun getJobPost(
+        postId: Long
+    ): CommunityJobPostResponse
 }

@@ -1,7 +1,7 @@
 package spring.springserver.domain.community.job.data.request
 
 import jakarta.validation.constraints.Size
-import spring.springserver.domain.community.post.entity.CommunityPostType
+import spring.springserver.domain.community.job.entity.JobPostType
 
 /**
  * 구인/구직 목록 조회 조건. 넘기지 않은 값은 그 축의 필터를 걸지 않는다.
@@ -11,7 +11,7 @@ data class SearchJobPostRequest(
     /**
      * HIRING 또는 SEEKING. 비우면 구인·구직을 모두 본다.
      */
-    val postType: CommunityPostType? = null,
+    val postType: JobPostType? = null,
 
     /**
      * 지정한 카테고리와 그 하위 카테고리 글까지 함께 조회된다.

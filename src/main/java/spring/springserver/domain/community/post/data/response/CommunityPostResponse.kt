@@ -3,9 +3,12 @@ package spring.springserver.domain.community.post.data.response
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
 import spring.springserver.domain.community.post.entity.CommunityPost
-import spring.springserver.domain.community.post.entity.CommunityPostType
 import java.time.LocalDateTime
 
+/**
+ * 일반 커뮤니티 게시글 응답.
+ * 구인/구직 글은 카테고리·지역까지 담아야 해서 CommunityJobPostResponse를 따로 쓴다.
+ */
 data class CommunityPostResponse(
     val id: Long?,
 
@@ -24,22 +27,6 @@ data class CommunityPostResponse(
     val commentCount: Long,
 
     val likeCount: Long,
-
-    /**
-     * 일반 커뮤니티 글이면 GENERAL, 구인/구직 글이면 HIRING 또는 SEEKING.
-     */
-    val postType: CommunityPostType,
-
-    /**
-     * 아래 네 값은 구인/구직 글에만 채워진다.
-     */
-    val jobCategoryId: Long?,
-
-    val jobCategoryName: String?,
-
-    val sigCd: String?,
-
-    val sigKorNm: String?,
 
     val updatedAt: LocalDateTime?,
 ) {
@@ -69,9 +56,6 @@ data class CommunityPostResponse(
             likeCount: Long
         ): CommunityPostResponse {
 
-            val jobCategory = communityPost.jobCategory
-            val sig = communityPost.sig
-
             return CommunityPostResponse(
                 communityPost.getId(),
                 communityPost.username,
@@ -82,11 +66,6 @@ data class CommunityPostResponse(
                 communityPost.isEdited,
                 commentCount,
                 likeCount,
-                communityPost.postType,
-                jobCategory?.getId(),
-                jobCategory?.getFullName(),
-                sig?.getSigCd(),
-                sig?.sigKorNm,
                 communityPost.getUpdatedAt(),
             )
         }

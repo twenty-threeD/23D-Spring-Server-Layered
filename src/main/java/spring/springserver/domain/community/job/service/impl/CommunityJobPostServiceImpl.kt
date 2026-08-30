@@ -3,20 +3,21 @@ package spring.springserver.domain.community.job.service.impl
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.CreateJobPostRequest
 import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobPostRequest
+import spring.springserver.domain.community.job.data.response.CommunityJobPostResponse
+import spring.springserver.domain.community.job.entity.CommunityJobPost
+import spring.springserver.domain.community.job.entity.JobPostType
 import spring.springserver.domain.community.job.event.JobPostCreatedEvent
+import spring.springserver.domain.community.job.repository.CommunityJobCommentRepository
+import spring.springserver.domain.community.job.repository.CommunityJobPostLikeRepository
+import spring.springserver.domain.community.job.repository.CommunityJobPostRepository
+import spring.springserver.domain.community.job.service.CommunityJobAuthorizationService
 import spring.springserver.domain.community.job.service.CommunityJobPostService
-import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
-import spring.springserver.domain.community.post.data.response.CommunityPostResponse
-import spring.springserver.domain.community.post.entity.CommunityPost
-import spring.springserver.domain.community.post.entity.CommunityPostType
-import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import spring.springserver.domain.jobcategory.service.JobCategoryService
 import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
@@ -28,10 +29,11 @@ import java.time.LocalDateTime
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityJobPostServiceImpl(
-    private val communityPostRepository: CommunityPostRepository,
-    private val communityCommentRepository: CommunityCommentRepository,
-    private val communityPostLikeRepository: CommunityPostLikeRepository,
+    private val communityJobPostRepository: CommunityJobPostRepository,
+    private val communityJobCommentRepository: CommunityJobCommentRepository,
+    private val communityJobPostLikeRepository: CommunityJobPostLikeRepository,
     private val communityAuthorizationService: CommunityAuthorizationService,
+    private val communityJobAuthorizationService: CommunityJobAuthorizationService,
     private val jobCategoryService: JobCategoryService,
     private val locationService: LocationService,
     private val profileRepository: ProfileRepository,
@@ -40,24 +42,24 @@ class CommunityJobPostServiceImpl(
 
     override fun createJobPost(
         createJobPostRequest: CreateJobPostRequest
-    ): CommunityPostResponse {
+    ): CommunityJobPostResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
         validatePhoneVerified(member)
 
-        val postType = validateJobPostType(createJobPostRequest.postType!!)
+        val postType = createJobPostRequest.postType!!
         val jobCategory = jobCategoryService.getJobCategory(createJobPostRequest.jobCategoryId!!)
         val sig = locationService.getSig(createJobPostRequest.sigCd!!.trim())
 
-        val communityPost = communityPostRepository.save(
-            CommunityPost(
+        val communityJobPost = communityJobPostRepository.save(
+            CommunityJobPost(
                 member = member,
                 username = member.username,
+                postType = postType,
                 title = createJobPostRequest.title!!.trim(),
                 content = createJobPostRequest.content?.trim()?.takeIf { it.isNotBlank() },
                 fileUrl = createJobPostRequest.fileUrl?.trim()?.takeIf { it.isNotBlank() },
-                postType = postType,
                 jobCategory = jobCategory,
                 sig = sig
             )
@@ -65,34 +67,34 @@ class CommunityJobPostServiceImpl(
 
         applicationEventPublisher.publishEvent(
             JobPostCreatedEvent(
-                postId = communityPost.getId()!!,
+                postId = communityJobPost.getId()!!,
                 writerMemberId = member.getId()!!,
                 postType = postType,
-                title = communityPost.title,
+                title = communityJobPost.title,
                 jobCategoryId = jobCategory.getId()!!,
                 sigCd = sig.getSigCd()
             )
         )
 
-        return toResponse(communityPost)
+        return toResponse(communityJobPost)
     }
 
     override fun updateJobPost(
         updateJobPostRequest: UpdateJobPostRequest
-    ): CommunityPostResponse {
+    ): CommunityJobPostResponse {
 
-        val communityPost = getOwnedJobPost(updateJobPostRequest.postId!!)
+        val communityJobPost = getOwnedJobPost(updateJobPostRequest.postId!!)
 
-        communityPost.updateJobPost(
+        communityJobPost.update(
+            postType = updateJobPostRequest.postType!!,
             title = updateJobPostRequest.title!!.trim(),
             content = updateJobPostRequest.content?.trim()?.takeIf { it.isNotBlank() },
             fileUrl = updateJobPostRequest.fileUrl?.trim()?.takeIf { it.isNotBlank() },
-            postType = validateJobPostType(updateJobPostRequest.postType!!),
             jobCategory = jobCategoryService.getJobCategory(updateJobPostRequest.jobCategoryId!!),
             sig = locationService.getSig(updateJobPostRequest.sigCd!!.trim())
         )
 
-        return toResponse(communityPost)
+        return toResponse(communityJobPost)
     }
 
     override fun deleteJobPost(
@@ -107,10 +109,10 @@ class CommunityJobPostServiceImpl(
     @Transactional(readOnly = true)
     override fun getJobPosts(
         searchJobPostRequest: SearchJobPostRequest
-    ): List<CommunityPostResponse> {
+    ): List<CommunityJobPostResponse> {
 
-        val postTypes = searchJobPostRequest.postType?.let { listOf(validateJobPostType(it)) }
-            ?: CommunityPostType.jobPostTypes()
+        val postTypes = searchJobPostRequest.postType?.let { listOf(it) }
+            ?: JobPostType.entries
 
         val jobCategoryId = searchJobPostRequest.jobCategoryId
 
@@ -124,14 +126,29 @@ class CommunityJobPostServiceImpl(
             searchJobPostRequest.nearbyOnly
         )
 
-        return communityPostRepository.searchJobPosts(
+        return communityJobPostRepository.searchJobPosts(
             postTypes = postTypes,
             jobCategoryId = jobCategoryId,
             jobCategoryIds = jobCategoryIds,
             sigCdFilter = sigCds?.firstOrNull(),
             sigCds = sigCds ?: listOf(NO_FILTER_SIG_CD),
             keyword = searchJobPostRequest.keyword?.trim().orEmpty()
-        ).map { communityPost -> toResponse(communityPost) }
+        ).map { communityJobPost -> toResponse(communityJobPost) }
+    }
+
+    /**
+     * 조회수를 올려야 하므로 readOnly로 두지 않는다.
+     * readOnly면 flush가 일어나지 않아 증가분이 저장되지 않는다.
+     */
+    override fun getJobPost(
+        postId: Long
+    ): CommunityJobPostResponse {
+
+        val communityJobPost = communityJobAuthorizationService.getActiveJobPost(postId)
+
+        communityJobPost.increaseViewCount()
+
+        return toResponse(communityJobPost)
     }
 
     /**
@@ -158,24 +175,19 @@ class CommunityJobPostServiceImpl(
     }
 
     /**
-     * 구인/구직 API로는 구인/구직 글만, 그것도 작성자 본인만 손댈 수 있다.
+     * 구인/구직 글은 작성자 본인만 손댈 수 있다.
      */
     private fun getOwnedJobPost(
         postId: Long
-    ): CommunityPost {
+    ): CommunityJobPost {
 
         val member = communityAuthorizationService.getCurrentMember()
 
-        val communityPost = communityAuthorizationService.getActivePost(postId)
+        val communityJobPost = communityJobAuthorizationService.getActiveJobPost(postId)
 
-        communityAuthorizationService.validateOwner(member, communityPost.member.getId())
+        communityAuthorizationService.validateOwner(member, communityJobPost.member.getId())
 
-        if (!communityPost.isJobPost()) {
-
-            throw ApplicationException(CommunityStatusCode.NOT_JOB_POST)
-        }
-
-        return communityPost
+        return communityJobPost
     }
 
     private fun currentMemberSigCd(): String {
@@ -196,26 +208,14 @@ class CommunityJobPostServiceImpl(
         }
     }
 
-    private fun validateJobPostType(
-        postType: CommunityPostType
-    ): CommunityPostType {
-
-        if (!postType.isJobPost()) {
-
-            throw ApplicationException(CommunityStatusCode.NOT_JOB_POST)
-        }
-
-        return postType
-    }
-
     private fun toResponse(
-        communityPost: CommunityPost
-    ): CommunityPostResponse {
+        communityJobPost: CommunityJobPost
+    ): CommunityJobPostResponse {
 
-        return CommunityPostResponse.toPostResponse(
-            communityPost,
-            communityCommentRepository,
-            communityPostLikeRepository
+        return CommunityJobPostResponse.toJobPostResponse(
+            communityJobPost,
+            communityJobCommentRepository,
+            communityJobPostLikeRepository
         )
     }
 

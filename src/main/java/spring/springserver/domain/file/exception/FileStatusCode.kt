@@ -10,6 +10,7 @@ enum class FileStatusCode(
 ) : StatusCode {
 
     FILE_EMPTY("FILE_EMPTY", "업로드할 파일이 비어 있습니다.", HttpStatus.BAD_REQUEST),
+    FILE_NOT_FOUND("FILE_NOT_FOUND", "파일을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     override fun getCode(): String = code

@@ -189,19 +189,26 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/community/job"
+                        "/api/community/job",
+                        "/api/community/job/comment",
+                        "/api/community/job/like"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.PATCH,
-                        "/api/community/job"
+                        "/api/community/job",
+                        "/api/community/job/comment"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.DELETE,
-                        "/api/community/job"
+                        "/api/community/job",
+                        "/api/community/job/comment",
+                        "/api/community/job/like"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/community/job"
+                        "/api/community/job",
+                        "/api/community/job/comment",
+                        "/api/community/job/{postId}"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.POST,

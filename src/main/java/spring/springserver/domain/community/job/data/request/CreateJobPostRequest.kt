@@ -3,14 +3,14 @@ package spring.springserver.domain.community.job.data.request
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
-import spring.springserver.domain.community.post.entity.CommunityPostType
+import spring.springserver.domain.community.job.entity.JobPostType
 
 data class CreateJobPostRequest(
     /**
-     * HIRING(구인) 또는 SEEKING(구직). GENERAL은 받지 않는다.
+     * HIRING(구인) 또는 SEEKING(구직).
      */
     @field:NotNull(message = "구인/구직 구분은 필수입니다.")
-    val postType: CommunityPostType?,
+    val postType: JobPostType?,
 
     @field:NotBlank(message = "제목은 필수입니다.")
     @field:Size(max = 255, message = "제목은 255자 이하로 입력해주세요.")

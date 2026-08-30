@@ -34,9 +34,9 @@ class Notification(
     var roomId: Long? = null,
 
     /**
-     * 알림이 가리키는 커뮤니티 게시글. 채팅 알림에는 없다.
+     * 알림이 가리키는 구인/구직 게시글(community_job_post). 채팅 알림에는 없다.
      */
-    @Column(name = "community_post_id")
+    @Column(name = "community_job_post_id")
     var postId: Long? = null
 ) {
 
