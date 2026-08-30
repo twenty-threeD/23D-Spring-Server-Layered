@@ -115,12 +115,25 @@ class CustomOAuthUserService(
             else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
         }
 
-        val existingMember = memberRepository.findByEmail(email)?.apply { update(name) }
+        /**
+         * 같은 이메일로 이미 가입된 계정이 있으면 가입 경로가 같을 때만 그 계정으로 로그인시킨다.
+         * 이 검사가 없으면 자체 가입(AUTH) 계정이나 다른 소셜로 만든 계정을
+         * 같은 이메일을 가진 소셜 계정으로 그대로 열어버린다.
+         */
+        val existingMember = memberRepository.findByEmail(email)
+            ?.also { member ->
+
+                if (member.provider != provider) {
+
+                    throw ApplicationException(AuthStatusCode.OAUTH_PROVIDER_MISMATCH)
+                }
+            }
+            ?.apply { update(name) }
 
         val member = memberRepository.save(
             existingMember
                 ?: Member(
-                    username = email,
+                    username = resolveUsername(email),
                     name = name,
                     email = email,
                     phone = null,
@@ -148,6 +161,30 @@ class CustomOAuthUserService(
             customAttributes,
             nameAttributeKey
         )
+    }
+
+    /**
+     * 소셜 회원의 username은 이메일을 그대로 쓰지만, username에는 형식 제한이 없어
+     * 자체 가입자가 남의 이메일 문자열을 username으로 선점할 수 있다.
+     * 그 경우 unique 제약에 걸려 가입 자체가 실패하므로 뒤에 번호를 붙여 비켜간다.
+     */
+    private fun resolveUsername(
+        email: String
+    ): String {
+
+        if (!memberRepository.existsByUsername(email)) {
+
+            return email
+        }
+
+        var suffix = 1
+
+        while (memberRepository.existsByUsername("$email-$suffix")) {
+
+            suffix++
+        }
+
+        return "$email-$suffix"
     }
 
     private fun Map<*, *>.getRequiredEmail(): String {

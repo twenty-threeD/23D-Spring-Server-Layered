@@ -1,5 +1,6 @@
 package spring.springserver.global.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -23,7 +24,9 @@ import spring.springserver.global.jwt.JwtAuthFilter
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
+    @param:Value($$"${app.cors.allowed-origins}") private val corsAllowedOrigins: String,
     private val jwtAuthFilter: JwtAuthFilter,
+    private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository,
     private val apiAuthenticationEntryPoint: ApiAuthenticationEntryPoint,
     private val apiAccessDeniedHandler: ApiAccessDeniedHandler
 ) {
@@ -55,7 +58,7 @@ class SecurityConfig(
                     .accessDeniedHandler(apiAccessDeniedHandler)
             }
             .sessionManagement { session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .authorizeHttpRequests { auth ->
                 auth
@@ -65,10 +68,17 @@ class SecurityConfig(
                         "/api/auth/signin",
                         "/api/auth/signout",
                         "/api/auth/password/reset",
-                        "/oauth2",
-                        "/login",
-                        "/loginSuccess",
                         "/api/auth/verify/password"
+                    ).permitAll()
+                    /**
+                     * 소셜 로그인 시작(리다이렉트)과 provider 콜백은 로그인 전에 열려 있어야 한다.
+                     * 실제 경로는 /oauth2/authorization/{provider}, /login/oauth2/code/{provider}이며
+                     * 둘 다 GET이다.
+                     */
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/oauth2/authorization/**",
+                        "/login/oauth2/code/**"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.GET,
@@ -204,6 +214,10 @@ class SecurityConfig(
             }
             .oauth2Login {
                 oauth2 -> oauth2
+                    .authorizationEndpoint {
+                        authorization -> authorization
+                            .authorizationRequestRepository(cookieOAuth2AuthorizationRequestRepository)
+                    }
                     .userInfoEndpoint {
                         userInfo -> userInfo.userService(customOAuthUserService)
                     }
@@ -224,7 +238,13 @@ class SecurityConfig(
         val config = CorsConfiguration().apply {
 
             allowCredentials = true
-            addAllowedOriginPattern("*")
+
+            corsAllowedOrigins
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .forEach { origin -> addAllowedOriginPattern(origin) }
+
             addAllowedHeader("*")
             addAllowedMethod("*")
         }
