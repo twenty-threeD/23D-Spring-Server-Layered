@@ -109,13 +109,15 @@ class ChatServiceImpl(
         if (existingRoom != null) {
 
             ensureParticipantRows(existingRoom)
-            reactivateParticipant(existingRoom, requester)
+
+            val participant = reactivateParticipant(existingRoom, requester)
 
             return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
                 postId = existingRoom.post.getId(),
                 participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
-                existingRoom = true
+                existingRoom = true,
+                clearBefore = participant.deletedAt
             )
         }
 
@@ -134,9 +136,10 @@ class ChatServiceImpl(
         val rooms = chatRoomRepository.findAllByParticipantUsername(username)
         rooms.forEach(::ensureParticipantRows)
 
-        val visibleRoomIds = chatRoomParticipantRepository.findVisibleRoomIdsByUsername(username)
+        val participantsByRoomId = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
+            .associateBy { it.room.getId() }
 
-        val visibleRooms = rooms.filter { it.getId() in visibleRoomIds }
+        val visibleRooms = rooms.filter { it.getId() in participantsByRoomId }
 
         val others = visibleRooms.associateWith { getOtherParticipant(it, username) }
 
@@ -151,7 +154,8 @@ class ChatServiceImpl(
             ChatRoomResponse.of(
                 room = room,
                 participant = other,
-                participantImageUrl = other.getId()?.let { imageUrls[it] }
+                participantImageUrl = other.getId()?.let { imageUrls[it] },
+                clearBefore = participantsByRoomId[room.getId()]?.deletedAt
             )
         }
     }
@@ -292,7 +296,8 @@ class ChatServiceImpl(
             roomId = savedRoom.getId(),
             postId = savedRoom.post.getId(),
             participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
-            existingRoom = false
+            existingRoom = false,
+            clearBefore = null
         )
     }
 
@@ -316,13 +321,15 @@ class ChatServiceImpl(
             )
 
         ensureParticipantRows(room)
-        reactivateParticipant(room, requester)
+
+        val participant = reactivateParticipant(room, requester)
 
         return CreateChatRoomResponse.of(
             roomId = room.getId(),
             postId = room.post.getId(),
             participantUsername = getOtherParticipant(room, requesterUsername).username,
-            existingRoom = true
+            existingRoom = true,
+            clearBefore = participant.deletedAt
         )
     }
 
@@ -545,7 +552,7 @@ class ChatServiceImpl(
     private fun reactivateParticipant(
         room: ChatRoom,
         member: Member
-    ) {
+    ): ChatRoomParticipant {
 
         val participant = chatRoomParticipantRepository.findByRoomIdAndMemberId(
             roomId = room.getId(),
@@ -556,6 +563,8 @@ class ChatServiceImpl(
         )
 
         participant.reactivate()
+
+        return participant
     }
 
     private fun reactivateParticipantsOnNewMessage(
