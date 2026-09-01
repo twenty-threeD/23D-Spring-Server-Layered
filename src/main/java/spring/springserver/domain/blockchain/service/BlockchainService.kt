@@ -12,11 +12,15 @@ import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import org.springframework.web.client.HttpClientErrorException
 import spring.springserver.domain.blockchain.data.response.ChainPaymentRecordResponse
+import spring.springserver.domain.blockchain.data.response.ChainTxResponse
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.exception.BlockchainSequenceMismatchException
+import spring.springserver.domain.blockchain.exception.BlockchainStatusCode
 import spring.springserver.global.config.blockchain.CosmosProperties
+import spring.springserver.global.exception.exception.ApplicationException
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.MessageDigest
@@ -275,12 +279,32 @@ class BlockchainService(
 
         if (isRecordedOnChain(orderId)) {
 
-            log.warn("커밋 폴링은 시간을 초과했지만 원장에 기록이 확인되어 성공으로 처리합니다. orderId={}, txhash={}", orderId, txHash)
-
             return
         }
 
         throw BlockchainCommitTimeoutException("tx not committed within timeout (txhash=$txHash)")
+    }
+    
+    fun findTx(
+        txHash: String
+    ): ChainTxResponse? {
+
+        val url = "${cosmosProperties.nodeUrl}/cosmos/tx/v1beta1/txs/$txHash"
+
+        val txResponse = try {
+
+            restTemplate.getForObject(url, Map::class.java)
+                ?.get("tx_response") as? Map<*, *>
+                ?: return null
+        } catch (_: HttpClientErrorException.NotFound) {
+
+            return null
+        } catch (_: Exception) {
+
+            throw ApplicationException(BlockchainStatusCode.BLOCKCHAIN_NODE_UNAVAILABLE)
+        }
+
+        return ChainTxResponse.of(txResponse)
     }
 
     fun findRecord(
