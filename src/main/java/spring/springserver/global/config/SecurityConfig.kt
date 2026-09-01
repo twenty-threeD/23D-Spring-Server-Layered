@@ -167,6 +167,10 @@ class SecurityConfig(
                         "/api/payment/orders/*/verify",
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/blockchain/verify/*"
+                    ).permitAll()
+                    .requestMatchers(
                         HttpMethod.POST,
                         "/api/estimate"
                     ).hasRole("USER")

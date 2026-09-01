@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Kotlin + Spring Boot 3.5 / Java 21 툴체인 / Gradle(Groovy DSL) 기반 REST API 서버.
 
 ## 절대 규칙
-
+- 파일은 사용자의 승인 없이 수정/생성 하지 않는다. 단, 조회는 승인없이 진행해도 된다.
 - **모든 답변은 한국어로 한다.** 코드·식별자·주석은 영어를 써도 되지만 설명·요약·리뷰 결과는 한국어.
 - **코드를 쓰거나 고치기 전에 반드시 `.claude/convention.md`를 읽는다.** 이 파일이 컨벤션의 단일 출처다(루트 `CONVENTIONS.md`는 같은 내용의 리뷰용 프롬프트 사본이므로 충돌 시 `.claude/convention.md`를 따른다). 이 프로젝트의 컨벤션은 일반적인 Kotlin 스타일과 다른 부분이 많다(여는 중괄호 뒤 빈 줄, `return` 앞 빈 줄, 파라미터 줄바꿈 등). 컨벤션과 요청이 충돌하면 먼저 알리고, 사용자가 명시적으로 뒤집지 않는 한 컨벤션을 따른다.
 - `.env`는 실제 운영 비밀값이다. 읽지 말고, 값을 코드·로그·문서에 옮기지 않는다.

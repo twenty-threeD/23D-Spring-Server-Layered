@@ -78,6 +78,14 @@ class PaymentRecordServiceImpl(
             ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_FOUND)
     }
 
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
+    override fun findByOrderIdOrNull(
+        orderId: String
+    ): Payment? {
+
+        return paymentRepository.findByOrderId(orderId)
+    }
+
     override fun markDone(
         orderId: String,
         paymentKey: String
