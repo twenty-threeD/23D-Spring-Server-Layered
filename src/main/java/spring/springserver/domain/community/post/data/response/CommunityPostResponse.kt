@@ -2,6 +2,7 @@ package spring.springserver.domain.community.post.data.response
 
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
@@ -13,6 +14,8 @@ data class CommunityPostResponse(
     val title: String,
 
     val content: String?,
+
+    val category: Category,
 
     val fileUrl: String?,
 
@@ -57,6 +60,7 @@ data class CommunityPostResponse(
                 communityPost.username,
                 communityPost.title,
                 communityPost.content,
+                communityPost.category,
                 communityPost.fileUrl,
                 communityPost.viewCount,
                 communityPost.isEdited,

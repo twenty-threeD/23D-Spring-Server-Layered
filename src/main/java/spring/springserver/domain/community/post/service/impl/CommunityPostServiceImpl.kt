@@ -11,6 +11,7 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import spring.springserver.domain.community.post.service.CommunityPostService
 import java.time.LocalDateTime
@@ -50,6 +51,7 @@ class CommunityPostServiceImpl(
 
         communityPost.update(
             title = updatePostRequest.title.trim(),
+            category = updatePostRequest.category,
             content = updatePostRequest.content?.trim()?.takeIf { it.isNotBlank() },
             fileUrl = updatePostRequest.fileUrl?.trim()?.takeIf { it.isNotBlank() },
         )
@@ -114,6 +116,23 @@ class CommunityPostServiceImpl(
         val normalizedKeyword = keyword.trim()
 
         return communityPostRepository.searchPosts(normalizedKeyword)
+            .map {
+
+                communityPost ->
+                CommunityPostResponse.toPostResponse(
+                    communityPost,
+                    communityCommentRepository,
+                    communityPostLikeRepository
+                )
+            }
+    }
+
+    @Transactional(readOnly = true)
+    override fun searchPostsByCategory(
+        category: Category
+    ): List<CommunityPostResponse> {
+
+        return  communityPostRepository.searchPostsByCategory(category)
             .map {
 
                 communityPost ->
