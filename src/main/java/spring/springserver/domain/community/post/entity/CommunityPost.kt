@@ -22,7 +22,7 @@ class CommunityPost(
     @Column(length = 2000)
     var content: String?,
 
-    @Column(length = 500)
+    @Column(length = 2000)
     var fileUrl: String?,
 
     @Column(nullable = false)
