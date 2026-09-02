@@ -3,14 +3,17 @@ package spring.springserver.global.config
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.util.matcher.IpAddressMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.CorsFilter
@@ -35,6 +38,63 @@ class SecurityConfig(
     fun passwordEncoder(): PasswordEncoder {
 
         return BCryptPasswordEncoder()
+    }
+
+    /**
+     * Actuator 전용 체인. @Order가 없는 filterChain은 LOWEST_PRECEDENCE라
+     * 뒤로 밀리므로, 이 체인이 actuator 경로를 먼저 가져간다.
+     *
+     * 메인 체인에 규칙만 얹지 않고 체인을 분리한 이유:
+     *   1. anyRequest().authenticated()에 걸려 스크레이프가 401로 실패한다.
+     *   2. 스크레이프에는 JWT 필터도 OAuth2 로그인도 필요 없다.
+     *
+     * Prometheus는 컨테이너에서 host.docker.internal을 거쳐 오므로 remoteAddr이
+     * 루프백이 아니라 Docker 브리지 대역(172.16.0.0/12)이다.
+     * "localhost만 허용"으로 풀면 스크레이프가 막힌다.
+     *
+     * 주의: server.forward-headers-strategy=framework 때문에 X-Forwarded-For가
+     * remoteAddr에 반영된다. 이 IP 검사만으로는 헤더 스푸핑을 막지 못하므로
+     * nginx에서 /actuator를 차단하는 것이 1차 방어선이고 여기는 2차 방어선이다.
+     */
+    @Bean
+    @Order(1)
+    fun actuatorFilterChain(
+        httpSecurity: HttpSecurity
+    ): SecurityFilterChain {
+
+        val allowedMatchers = listOf(
+            IpAddressMatcher("127.0.0.0/8"),
+            IpAddressMatcher("::1/128"),
+            IpAddressMatcher("172.16.0.0/12")
+        )
+
+        httpSecurity
+            .securityMatcher("/actuator/**")
+            .httpBasic { httpBasic -> httpBasic.disable() }
+            .formLogin { formLogin -> formLogin.disable() }
+            .csrf { csrf -> csrf.disable() }
+            .sessionManagement { session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/actuator/health"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/actuator/prometheus"
+                    ).access { _, context ->
+                        AuthorizationDecision(
+                            allowedMatchers.any { matcher -> matcher.matches(context.request) }
+                        )
+                    }
+                    .anyRequest()
+                    .denyAll()
+            }
+
+        return httpSecurity.build()
     }
 
     @Bean
