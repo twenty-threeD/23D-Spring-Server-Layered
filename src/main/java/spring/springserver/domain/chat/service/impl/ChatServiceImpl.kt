@@ -3,6 +3,7 @@ package spring.springserver.domain.chat.service.impl
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
@@ -11,7 +12,9 @@ import org.springframework.transaction.support.TransactionTemplate
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
+import spring.springserver.domain.chat.data.response.ChatMessageType
 import spring.springserver.domain.chat.data.response.ChatParticipantResponse
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
 import spring.springserver.domain.chat.entity.ChatRoom
@@ -43,9 +46,11 @@ class ChatServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
+    private val messagingTemplate: SimpMessagingTemplate
 ) : ChatService {
 
     private val chatMessageCacheTtlMillis = TimeUnit.DAYS.toMillis(3)
+    private val paymentMessagePreview = "결제 완료"
 
     private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
 
@@ -270,6 +275,72 @@ class ChatServiceImpl(
 
         val participant = getVisibleParticipant(roomId, username)
         participant.leave(Instant.now())
+    }
+
+    override fun findDirectRoomId(
+        clientId: Long,
+        professionalId: Long,
+        postId: Long
+    ): Long? {
+
+        return chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = ChatRoom.generateDirectChatKey(clientId, professionalId),
+            postId = postId
+        )?.getId()
+    }
+
+    override fun sendPaymentMessage(
+        roomId: Long,
+        senderMemberId: Long,
+        payment: ChatPaymentResponse
+    ): ChatMessageResponse {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
+            ?: throw ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND)
+
+        ensureParticipantRows(room = room)
+
+        val sender = when (senderMemberId) {
+            room.client.getId() -> room.client
+            room.professional.getId() -> room.professional
+            else -> throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
+        }
+
+        val createdAt = Instant.now()
+
+        val response = ChatMessageResponse(
+            messageId = nextMessageId(roomId = roomId),
+            roomId = roomId,
+            senderUsername = sender.username,
+            senderName = sender.name,
+            message = paymentMessagePreview,
+            createdAt = createdAt,
+            attachedFileUrls = emptyList(),
+            type = ChatMessageType.PAYMENT,
+            payment = payment
+        )
+
+        room.updateLastMessageMeta(
+            at = createdAt,
+            preview = paymentMessagePreview
+        )
+
+        reactivateParticipantsOnNewMessage(
+            room = room,
+            senderId = sender.getId()
+        )
+
+        appendRoomMessage(
+            roomId = roomId,
+            message = response
+        )
+
+        messagingTemplate.convertAndSend(
+            "/topic/chat/rooms/$roomId",
+            response
+        )
+
+        return response
     }
 
     private fun createRoom(
