@@ -5,6 +5,7 @@ import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.data.request.VirtualAccountRequest
+import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
 
@@ -18,7 +19,7 @@ interface PaymentService {
     fun confirm(
         confirmPaymentRequest: ConfirmPaymentRequest,
         memberId: Long
-        ): PaymentResponse
+        ): ConfirmPaymentResponse
 
     fun findByPaymentKey(
         paymentKey: String
