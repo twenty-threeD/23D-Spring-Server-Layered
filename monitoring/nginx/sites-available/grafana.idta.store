@@ -1,0 +1,66 @@
+# Grafana 외부 접속용. /etc/nginx/sites-available/ 에 두고 sites-enabled 로 심볼릭 링크.
+#
+# 경로: 브라우저 → Cloudflare 엣지(Access 인증) → 오리진 443 → 127.0.0.1:3000
+#
+# TLS 는 api.idta.store 와 같은 Cloudflare Origin 인증서를 쓴다.
+# SAN 이 *.idta.store 와일드카드라 서브도메인이 그대로 커버된다(2041 만료).
+
+# 웹소켓 업그레이드 처리. Grafana Live(실시간 패널)가 이걸 쓴다.
+# 이름을 grafana_ 로 접두한 이유는 다른 사이트 설정과 map 이름이
+# 충돌하면 nginx 가 기동 자체를 거부하기 때문이다.
+map $http_upgrade $grafana_connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name grafana.idta.store;
+
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name grafana.idta.store;
+
+    ssl_certificate     /etc/ssl/cloudflare/idta.store.pem;
+    ssl_certificate_key /etc/ssl/cloudflare/idta.store.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # 진짜 클라이언트 IP 복원. 이게 없으면 Grafana 로그에 엣지 IP만 남는다.
+    include /etc/nginx/snippets/cloudflare-realip.conf;
+
+    # 오리진 우회 차단.
+    #
+    # 이게 없으면 오리진 IP 의 443 을 직접 때려서 Cloudflare Access 인증을
+    # 통째로 건너뛸 수 있다. 도메인이 아니라 IP 로 붙어도 SNI 만 맞추면 닿는다.
+    #
+    # 주의: allow/deny 를 쓰면 안 된다. 위 realip 가 이미 $remote_addr 를
+    # 실제 클라이언트 IP 로 치환한 뒤라 엣지 대역과 절대 안 맞는다.
+    # 치환 전 주소를 담은 $realip_remote_addr 로 판정한다.
+    # ($is_cloudflare 는 conf.d/cloudflare-geo.conf 에서 정의)
+    if ($is_cloudflare = 0) {
+        return 403;
+    }
+
+    # Grafana 자체 업로드는 크지 않다. 과도한 바디를 미리 끊는다.
+    client_max_body_size 10m;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $grafana_connection_upgrade;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Grafana Live 는 연결을 오래 붙잡는다. 기본 60s 면 계속 끊긴다.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+}

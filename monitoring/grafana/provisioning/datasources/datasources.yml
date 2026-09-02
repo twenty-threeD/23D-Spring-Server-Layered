@@ -1,0 +1,22 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    uid: prometheus
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s          # prometheus.yml 의 scrape_interval 과 일치시킬 것
+      httpMethod: POST
+
+  - name: Loki
+    type: loki
+    access: proxy
+    uid: loki
+    url: http://loki:3100
+    jsonData:
+      maxLines: 1000
+      # 로그에서 traceId 를 뽑아 Prometheus 쪽으로 이어보고 싶으면
+      # derivedFields 를 여기에 추가한다.

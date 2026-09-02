@@ -1,0 +1,60 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+  log_level: warn
+
+positions:
+  filename: /tmp/positions.yaml      # 재시작 시 읽던 위치 복구
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchwait: 1s
+    batchsize: 262144                # 256KB. 작게 잡아 메모리 스파이크를 막는다
+
+scrape_configs:
+  # ── Docker 컨테이너 로그 (Spring Boot app.jar 포함) ─────────────────
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 30s
+    relabel_configs:
+      # "/컨테이너명" 에서 앞의 슬래시를 벗긴다
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: compose_service
+      # 모니터링 스택 자신의 로그는 수집하지 않는다 (되먹임 방지)
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        regex: 'monitoring'
+        action: drop
+    pipeline_stages:
+      # Spring Boot 기본 로그 패턴에서 레벨을 뽑아 라벨로 만든다.
+      # 라벨은 반드시 저카디널리티 값만 — 레벨(5종)은 안전하다.
+      - regex:
+          expression: '(?P<level>TRACE|DEBUG|INFO|WARN|ERROR|FATAL)'
+      - labels:
+          level:
+
+  # ── systemd journald (nginx, docker, sshd 등 호스트 서비스) ─────────
+  - job_name: journal
+    journal:
+      path: /var/log/journal
+      max_age: 12h
+      labels:
+        job: systemd-journal
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: unit
+      - source_labels: ['__journal_priority_keyword']
+        target_label: level
+
+  # ── nginx 액세스/에러 로그 ──────────────────────────────────────────
+  - job_name: nginx
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx
+          __path__: /var/log/nginx/*.log

@@ -1,0 +1,24 @@
+# 알림 수신처.
+# ${SLACK_WEBHOOK_URL} 는 .env 의 값으로 치환된다.
+#
+# 주의: 웹훅 URL 이 틀려도 Grafana 는 조용히 실패한다.
+# 반드시 UI(Alerting → Contact points → Test)에서 테스트 발송할 것.
+#
+# Discord 를 쓴다면 type 을 discord 로, settings.url 에 디스코드 웹훅을 넣는다.
+# 이메일은 type: email + addresses, 단 SMTP 설정이 별도로 필요하다.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: default-notifier
+    receivers:
+      - uid: slack-primary
+        type: slack
+        settings:
+          url: ${SLACK_WEBHOOK_URL}
+          title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+          text: >-
+            {{ range .Alerts }}*{{ .Annotations.summary }}*
+            {{ .Annotations.description }}
+            {{ end }}
+        disableResolveMessage: false
