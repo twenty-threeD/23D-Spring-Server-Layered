@@ -11,6 +11,8 @@ data class CommunityPostResponse(
 
     val username: String,
 
+    val imageUrl: String?,
+
     val title: String,
 
     val content: String?,
@@ -35,7 +37,8 @@ data class CommunityPostResponse(
         fun toPostResponse(
             communityPost: CommunityPost,
             communityCommentRepository: CommunityCommentRepository,
-            communityPostLikeRepository: CommunityPostLikeRepository
+            communityPostLikeRepository: CommunityPostLikeRepository,
+            imageUrl: String?
         ): CommunityPostResponse {
 
             val postId = communityPost.getId()!!
@@ -45,19 +48,22 @@ data class CommunityPostResponse(
                 commentCount = communityCommentRepository
                     .countByCommunityPostIdAndDeletedAtIsNull(postId),
                 likeCount = communityPostLikeRepository
-                    .countByCommunityPostId(postId)
+                    .countByCommunityPostId(postId),
+                imageUrl = imageUrl
             )
         }
 
         fun of(
             communityPost: CommunityPost,
             commentCount: Long,
-            likeCount: Long
+            likeCount: Long,
+            imageUrl: String?
         ): CommunityPostResponse {
 
             return CommunityPostResponse(
                 communityPost.getId(),
                 communityPost.username,
+                imageUrl,
                 communityPost.title,
                 communityPost.content,
                 communityPost.category,
