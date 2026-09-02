@@ -6,6 +6,9 @@ import spring.springserver.domain.blockchain.data.response.PaymentVerificationRe
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.service.BlockchainService
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
+import spring.springserver.domain.chat.service.ChatService
+import spring.springserver.domain.estimate.data.response.EstimateResponse
 import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
@@ -28,7 +31,8 @@ class PaymentServiceImpl(
     private val keyService: KeyService,
     private val blockchainService: BlockchainService,
     private val estimateService: EstimateService,
-    private val paymentRecordService: PaymentRecordService
+    private val paymentRecordService: PaymentRecordService,
+    private val chatService: ChatService
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -103,8 +107,6 @@ class PaymentServiceImpl(
             )
         } catch (exception: Exception) {
 
-            log.error("블록체인 기록 실패. 결제를 보상 취소합니다. orderId={}", confirmPaymentRequest.orderId, exception)
-
             compensate(
                 paymentKey,
                 confirmPaymentRequest.orderId,
@@ -124,11 +126,16 @@ class PaymentServiceImpl(
          * 이후 해당 견적서는 조회만 가능하다.
          */
         confirmPaymentRequest.estimateId?.let { estimateId ->
-
-            estimateService.markAsPaid(
-                estimateId,
-                memberId,
-                response.totalAmount ?: confirmPaymentRequest.amount
+            notifyPaymentToChat(
+                estimate = estimateService.markAsPaid(
+                    estimateId,
+                    memberId,
+                    response.totalAmount ?: confirmPaymentRequest.amount
+                ),
+                memberId = memberId,
+                paymentResponse = response,
+                paymentHash = hash,
+                blockchainTxHash = blockchainTxHash
             )
         }
 
@@ -211,21 +218,15 @@ class PaymentServiceImpl(
                     hash,
                     buyerSignature
                 )
-            } catch (exception: BlockchainAlreadyRecordedException) {
-
-                log.info("이미 체인에 기록된 주문입니다. 성공으로 처리합니다. orderId={}", orderId)
+            } catch (_: BlockchainAlreadyRecordedException) {
 
                 return null
             } catch (exception: BlockchainCommitTimeoutException) {
-
-                log.error("커밋 대기가 시간을 초과했습니다. 재시도하지 않고 보상 취소로 넘깁니다. orderId={}", orderId, exception)
 
                 throw exception
             } catch (exception: Exception) {
 
                 lastException = exception
-
-                log.warn("블록체인 기록 시도 실패 ({}/{}). orderId={}", attempt + 1, CHAIN_RECORD_MAX_ATTEMPTS, orderId, exception)
 
                 if (attempt < CHAIN_RECORD_MAX_ATTEMPTS - 1) Thread.sleep(CHAIN_RECORD_RETRY_DELAY_MILLIS)
             }
@@ -248,9 +249,7 @@ class PaymentServiceImpl(
                 CancelPaymentRequest(CHAIN_FAILURE_CANCEL_REASON),
                 cancelIdempotencyKey(orderId)
             )
-        } catch (exception: Exception) {
-
-            log.error("보상 취소 실패. 스케줄러 재시도 대상으로 남깁니다. orderId={}, paymentKey={}", orderId, paymentKey, exception)
+        } catch (_: Exception) {
 
             paymentRecordService.markCancelPending(
                 orderId,
@@ -303,9 +302,41 @@ class PaymentServiceImpl(
         return tossPaymentsClient.issueVirtualAccount(virtualAccountRequest)
     }
 
+    private fun notifyPaymentToChat(
+        estimate: EstimateResponse,
+        memberId: Long,
+        paymentResponse: PaymentResponse,
+        paymentHash: String,
+        blockchainTxHash: String?
+    ) {
+
+        try {
+
+            chatService.sendPaymentMessage(
+                roomId = chatService.findDirectRoomId(
+                    clientId = estimate.clientId ?: return,
+                    professionalId = estimate.professionalId ?: return,
+                    postId = estimate.postId ?: return
+                ) ?: return,
+                senderMemberId = memberId,
+                payment = ChatPaymentResponse.of(
+                    orderId = paymentResponse.orderId ?: return,
+                    orderName = paymentResponse.orderName ?: DEFAULT_ORDER_NAME,
+                    amount = paymentResponse.totalAmount ?: estimate.totalPay,
+                    paymentHash = paymentHash,
+                    blockchainTxHash = blockchainTxHash
+                )
+            )
+        } catch (exception: Exception) {
+
+            log.error("결제 채팅 메시지 전송 실패. orderId={}", paymentResponse.orderId, exception)
+        }
+    }
+
     companion object {
 
         const val CHAIN_FAILURE_CANCEL_REASON = "블록체인 기록 실패로 인한 자동 취소"
+        const val DEFAULT_ORDER_NAME = "결제"
 
         private const val CHAIN_RECORD_MAX_ATTEMPTS = 3
         private const val CHAIN_RECORD_RETRY_DELAY_MILLIS = 500L
