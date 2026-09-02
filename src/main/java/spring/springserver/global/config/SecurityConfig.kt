@@ -199,7 +199,8 @@ class SecurityConfig(
                         HttpMethod.GET,
                         "/api/community/post/",
                         "/api/community/post/{postId}",
-                        "/api/community/post/search"
+                        "/api/community/post/search",
+                        "/api/community/post/category"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
