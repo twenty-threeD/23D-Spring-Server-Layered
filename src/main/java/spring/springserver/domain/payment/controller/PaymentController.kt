@@ -8,6 +8,7 @@ import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.data.request.VirtualAccountRequest
+import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
 import spring.springserver.domain.payment.service.PaymentService
@@ -38,7 +39,7 @@ class PaymentController(
     fun confirm(
         @Valid @RequestBody confirmPaymentRequest: ConfirmPaymentRequest,
         @AuthenticationPrincipal memberDetails: MemberDetails
-    ): BaseResponse<PaymentResponse> {
+    ): BaseResponse<ConfirmPaymentResponse> {
 
         return BaseResponse.ok(
             paymentService.confirm(
