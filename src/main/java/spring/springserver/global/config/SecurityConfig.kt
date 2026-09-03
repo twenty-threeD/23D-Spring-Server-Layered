@@ -1,15 +1,19 @@
 package spring.springserver.global.config
 
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.core.annotation.Order
 import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
+import org.springframework.security.authorization.AuthorizationDecision
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.security.web.util.matcher.IpAddressMatcher
 import org.springframework.web.cors.CorsConfiguration
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 import org.springframework.web.filter.CorsFilter
@@ -23,7 +27,9 @@ import spring.springserver.global.jwt.JwtAuthFilter
 @Configuration
 @EnableWebSecurity
 class SecurityConfig(
+    @param:Value($$"${app.cors.allowed-origins}") private val corsAllowedOrigins: String,
     private val jwtAuthFilter: JwtAuthFilter,
+    private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository,
     private val apiAuthenticationEntryPoint: ApiAuthenticationEntryPoint,
     private val apiAccessDeniedHandler: ApiAccessDeniedHandler
 ) {
@@ -32,6 +38,47 @@ class SecurityConfig(
     fun passwordEncoder(): PasswordEncoder {
 
         return BCryptPasswordEncoder()
+    }
+
+    @Bean
+    @Order(1)
+    fun actuatorFilterChain(
+        httpSecurity: HttpSecurity
+    ): SecurityFilterChain {
+
+        val allowedMatchers = listOf(
+            IpAddressMatcher("127.0.0.0/8"),
+            IpAddressMatcher("::1/128"),
+            IpAddressMatcher("172.16.0.0/12")
+        )
+
+        httpSecurity
+            .securityMatcher("/actuator/**")
+            .httpBasic { httpBasic -> httpBasic.disable() }
+            .formLogin { formLogin -> formLogin.disable() }
+            .csrf { csrf -> csrf.disable() }
+            .sessionManagement { session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            }
+            .authorizeHttpRequests { auth ->
+                auth
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/actuator/health"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/actuator/prometheus"
+                    ).access { _, context ->
+                        AuthorizationDecision(
+                            allowedMatchers.any { matcher -> matcher.matches(context.request) }
+                        )
+                    }
+                    .anyRequest()
+                    .denyAll()
+            }
+
+        return httpSecurity.build()
     }
 
     @Bean
@@ -55,7 +102,7 @@ class SecurityConfig(
                     .accessDeniedHandler(apiAccessDeniedHandler)
             }
             .sessionManagement { session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             }
             .authorizeHttpRequests { auth ->
                 auth
@@ -65,10 +112,17 @@ class SecurityConfig(
                         "/api/auth/signin",
                         "/api/auth/signout",
                         "/api/auth/password/reset",
-                        "/oauth2",
-                        "/login",
-                        "/loginSuccess",
                         "/api/auth/verify/password"
+                    ).permitAll()
+                    /**
+                     * 소셜 로그인 시작(리다이렉트)과 provider 콜백은 로그인 전에 열려 있어야 한다.
+                     * 실제 경로는 /oauth2/authorization/{provider}, /login/oauth2/code/{provider}이며
+                     * 둘 다 GET이다.
+                     */
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/oauth2/authorization/**",
+                        "/login/oauth2/code/**"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.GET,
@@ -157,6 +211,10 @@ class SecurityConfig(
                         "/api/payment/orders/*/verify",
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/blockchain/verify/*"
+                    ).permitAll()
+                    .requestMatchers(
                         HttpMethod.POST,
                         "/api/estimate"
                     ).hasRole("USER")
@@ -185,7 +243,8 @@ class SecurityConfig(
                         HttpMethod.GET,
                         "/api/community/post/",
                         "/api/community/post/{postId}",
-                        "/api/community/post/search"
+                        "/api/community/post/search",
+                        "/api/community/post/category"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
@@ -227,6 +286,10 @@ class SecurityConfig(
             }
             .oauth2Login {
                 oauth2 -> oauth2
+                    .authorizationEndpoint {
+                        authorization -> authorization
+                            .authorizationRequestRepository(cookieOAuth2AuthorizationRequestRepository)
+                    }
                     .userInfoEndpoint {
                         userInfo -> userInfo.userService(customOAuthUserService)
                     }
@@ -247,7 +310,13 @@ class SecurityConfig(
         val config = CorsConfiguration().apply {
 
             allowCredentials = true
-            addAllowedOriginPattern("*")
+
+            corsAllowedOrigins
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .forEach { origin -> addAllowedOriginPattern(origin) }
+
             addAllowedHeader("*")
             addAllowedMethod("*")
         }

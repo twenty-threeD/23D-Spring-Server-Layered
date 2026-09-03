@@ -11,8 +11,11 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
+import spring.springserver.domain.community.post.entity.Category
+import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import spring.springserver.domain.community.post.service.CommunityPostService
+import spring.springserver.domain.profile.service.ProfileService
 import java.time.LocalDateTime
 
 @Service
@@ -22,6 +25,7 @@ class CommunityPostServiceImpl(
     private val communityCommentRepository: CommunityCommentRepository,
     private val communityPostLikeRepository: CommunityPostLikeRepository,
     private val communityAuthorizationService: CommunityAuthorizationService,
+    private val profileService: ProfileService,
 ): CommunityPostService {
 
     override fun createPost(
@@ -50,6 +54,7 @@ class CommunityPostServiceImpl(
 
         communityPost.update(
             title = updatePostRequest.title.trim(),
+            category = updatePostRequest.category,
             content = updatePostRequest.content?.trim()?.takeIf { it.isNotBlank() },
             fileUrl = updatePostRequest.fileUrl?.trim()?.takeIf { it.isNotBlank() },
         )
@@ -103,7 +108,8 @@ class CommunityPostServiceImpl(
         return CommunityPostResponse.toPostResponse(
             communityPost,
             communityCommentRepository,
-            communityPostLikeRepository
+            communityPostLikeRepository,
+            getImageUrl(communityPost)
         )
     }
 
@@ -114,15 +120,44 @@ class CommunityPostServiceImpl(
 
         val normalizedKeyword = keyword.trim()
 
-        return communityPostRepository.searchPosts(normalizedKeyword)
-            .map {
+        return toResponses(communityPostRepository.searchPosts(normalizedKeyword))
+    }
 
-                communityPost ->
-                CommunityPostResponse.toPostResponse(
-                    communityPost,
-                    communityCommentRepository,
-                    communityPostLikeRepository
-                )
-            }
+    @Transactional(readOnly = true)
+    override fun searchPostsByCategory(
+        category: Category
+    ): List<CommunityPostResponse> {
+
+        return toResponses(communityPostRepository.searchPostsByCategory(category))
+    }
+
+    /**
+     * 목록은 회원별 프로필 이미지를 한 번에 조회해 게시글마다 조회하지 않도록 한다.
+     */
+    private fun toResponses(
+        communityPosts: List<CommunityPost>
+    ): List<CommunityPostResponse> {
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            communityPosts.mapNotNull { communityPost -> communityPost.member.getId() }
+        )
+
+        return communityPosts.map { communityPost ->
+
+            CommunityPostResponse.toPostResponse(
+                communityPost,
+                communityCommentRepository,
+                communityPostLikeRepository,
+                imageUrls[communityPost.member.getId()]
+            )
+        }
+    }
+
+    private fun getImageUrl(
+        communityPost: CommunityPost
+    ): String? {
+
+        return communityPost.member.getId()
+            ?.let { memberId -> profileService.getImageUrlsByMemberIds(listOf(memberId))[memberId] }
     }
 }

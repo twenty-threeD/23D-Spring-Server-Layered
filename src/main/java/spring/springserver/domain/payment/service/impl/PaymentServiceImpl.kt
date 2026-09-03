@@ -6,6 +6,8 @@ import spring.springserver.domain.blockchain.data.response.PaymentVerificationRe
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.service.BlockchainService
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
@@ -13,8 +15,10 @@ import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.data.request.VirtualAccountRequest
+import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
+import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
 import spring.springserver.domain.payment.service.PaymentRecordService
@@ -28,7 +32,8 @@ class PaymentServiceImpl(
     private val keyService: KeyService,
     private val blockchainService: BlockchainService,
     private val estimateService: EstimateService,
-    private val paymentRecordService: PaymentRecordService
+    private val paymentRecordService: PaymentRecordService,
+    private val chatService: ChatService
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -38,6 +43,23 @@ class PaymentServiceImpl(
         memberId: Long
     ): PreparePaymentResponse {
 
+        /**
+         * 방 번호는 요청 본문으로 들어오므로 그대로 믿으면 남의 채팅방에 결제 메시지를 밀어 넣을 수 있다.
+         * 결제를 만들기 전에 요청자가 그 방의 당사자인지 확인한다.
+         */
+        preparePaymentRequest.roomId?.let { roomId ->
+
+            val participant = chatService.isRoomParticipant(
+                roomId,
+                memberId
+            )
+
+            if (!participant) {
+
+                throw ApplicationException(PaymentStatusCode.PAYMENT_CHAT_ROOM_FORBIDDEN)
+            }
+        }
+
         return PreparePaymentResponse.of(
             paymentRecordService.create(
                 preparePaymentRequest,
@@ -46,27 +68,23 @@ class PaymentServiceImpl(
         )
     }
 
-    /**
-     * 승인 → 블록체인 기록 순서로 진행하고, 기록에 실패하면 승인을 보상 취소한다.
-     * 외부 호출 사이사이의 상태 변경이 유실되지 않도록 트랜잭션은 PaymentRecordService가 개별로 관리한다.
-     */
     override fun confirm(
         confirmPaymentRequest: ConfirmPaymentRequest,
         memberId: Long
-    ): PaymentResponse {
+    ): ConfirmPaymentResponse {
 
         val stored = paymentRecordService.findByOrderId(confirmPaymentRequest.orderId)
 
         if (stored.getStatus() == PaymentStatus.CHAIN_RECORDED) {
 
-            return tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId)
+            return ConfirmPaymentResponse.of(
+                payment = tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId),
+                paymentHash = stored.getPaymentHash()
+                    ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN),
+                blockchainTxHash = stored.getBlockchainTxHash()
+            )
         }
 
-        /**
-         * 견적서 결제라면 승인을 요청하기 전에 금액부터 대조한다.
-         * 조작된 금액으로 실제 결제가 일어나는 것을 막는다.
-         * 결제 건을 선점하기 전에 확인해야 실패한 요청이 IN_PROGRESS로 남지 않는다.
-         */
         confirmPaymentRequest.estimateId?.let { estimateId ->
 
             estimateService.validatePayable(
@@ -81,7 +99,6 @@ class PaymentServiceImpl(
             confirmPaymentRequest.amount,
             memberId
         )
-
         val response = confirmOnToss(confirmPaymentRequest)
         val paymentKey = response.paymentKey
             ?: throw ApplicationException(PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED)
@@ -103,8 +120,6 @@ class PaymentServiceImpl(
             )
         } catch (exception: Exception) {
 
-            log.error("블록체인 기록 실패. 결제를 보상 취소합니다. orderId={}", confirmPaymentRequest.orderId, exception)
-
             compensate(
                 paymentKey,
                 confirmPaymentRequest.orderId,
@@ -112,17 +127,17 @@ class PaymentServiceImpl(
             )
         }
 
+        /**
+         * 이미 체인에 기록된 주문이면 새 트랜잭션이 없으므로, 앞선 시도에서 확보해 둔 해시를 그대로 쓴다.
+         */
+        val resolvedTxHash = blockchainTxHash ?: payment.getBlockchainTxHash()
+
         paymentRecordService.markChainRecorded(
             confirmPaymentRequest.orderId,
             hash,
-            blockchainTxHash
+            resolvedTxHash
         )
 
-        /**
-         * 승인된 실제 금액으로 한 번 더 대조한 뒤 결제 완료 처리한다.
-         * 체인 기록까지 끝난 뒤에 호출해야 보상 취소된 결제가 완료로 남지 않는다.
-         * 이후 해당 견적서는 조회만 가능하다.
-         */
         confirmPaymentRequest.estimateId?.let { estimateId ->
 
             estimateService.markAsPaid(
@@ -132,7 +147,53 @@ class PaymentServiceImpl(
             )
         }
 
-        return response
+        sendPaymentMessage(
+            payment,
+            response,
+            memberId,
+            hash,
+            resolvedTxHash
+        )
+
+        return ConfirmPaymentResponse.of(
+            payment = response,
+            paymentHash = hash,
+            blockchainTxHash = resolvedTxHash
+        )
+    }
+
+    /**
+     * 결제가 시작된 채팅방에 결제 완료 메시지를 남긴다.
+     * 결제와 체인 기록은 이미 끝난 뒤이므로, 메시지 전송이 실패해도 결제를 되돌리지 않고 기록만 남긴다.
+     */
+    private fun sendPaymentMessage(
+        payment: Payment,
+        paymentResponse: PaymentResponse,
+        memberId: Long,
+        paymentHash: String,
+        blockchainTxHash: String?
+    ) {
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.sendPaymentMessage(
+                roomId,
+                memberId,
+                ChatPaymentResponse.of(
+                    payment.getOrderId(),
+                    payment.getOrderName().orEmpty(),
+                    paymentResponse.totalAmount ?: payment.getAmount(),
+                    paymentHash,
+                    blockchainTxHash
+                )
+            )
+        } catch (exception: Exception) {
+
+            log.warn("결제 완료 메시지를 보내지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
+        }
     }
 
     override fun verify(
@@ -211,21 +272,15 @@ class PaymentServiceImpl(
                     hash,
                     buyerSignature
                 )
-            } catch (exception: BlockchainAlreadyRecordedException) {
-
-                log.info("이미 체인에 기록된 주문입니다. 성공으로 처리합니다. orderId={}", orderId)
+            } catch (_: BlockchainAlreadyRecordedException) {
 
                 return null
             } catch (exception: BlockchainCommitTimeoutException) {
-
-                log.error("커밋 대기가 시간을 초과했습니다. 재시도하지 않고 보상 취소로 넘깁니다. orderId={}", orderId, exception)
 
                 throw exception
             } catch (exception: Exception) {
 
                 lastException = exception
-
-                log.warn("블록체인 기록 시도 실패 ({}/{}). orderId={}", attempt + 1, CHAIN_RECORD_MAX_ATTEMPTS, orderId, exception)
 
                 if (attempt < CHAIN_RECORD_MAX_ATTEMPTS - 1) Thread.sleep(CHAIN_RECORD_RETRY_DELAY_MILLIS)
             }
@@ -248,9 +303,7 @@ class PaymentServiceImpl(
                 CancelPaymentRequest(CHAIN_FAILURE_CANCEL_REASON),
                 cancelIdempotencyKey(orderId)
             )
-        } catch (exception: Exception) {
-
-            log.error("보상 취소 실패. 스케줄러 재시도 대상으로 남깁니다. orderId={}, paymentKey={}", orderId, paymentKey, exception)
+        } catch (_: Exception) {
 
             paymentRecordService.markCancelPending(
                 orderId,
@@ -272,7 +325,10 @@ class PaymentServiceImpl(
         input: String
     ): String {
 
-        return MessageDigest.getInstance("SHA-256").digest(input.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+        return MessageDigest
+            .getInstance("SHA-256")
+            .digest(input.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
     }
 
     override fun findByPaymentKey(paymentKey: String): PaymentResponse {

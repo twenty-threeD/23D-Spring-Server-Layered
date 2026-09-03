@@ -4,6 +4,7 @@ import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatParticipantResponse
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
 
@@ -42,4 +43,21 @@ interface ChatService {
         username: String,
         roomId: Long
     )
+
+    fun findDirectRoomId(
+        clientId: Long,
+        professionalId: Long,
+        postId: Long
+    ): Long?
+
+    fun isRoomParticipant(
+        roomId: Long,
+        memberId: Long
+    ): Boolean
+
+    fun sendPaymentMessage(
+        roomId: Long,
+        senderMemberId: Long,
+        payment: ChatPaymentResponse
+    ): ChatMessageResponse
 }

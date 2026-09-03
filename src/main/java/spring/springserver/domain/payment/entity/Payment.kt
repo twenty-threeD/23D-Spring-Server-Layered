@@ -23,7 +23,13 @@ class Payment(
     private val contractUrl: String,
 
     @Column(length = 100)
-    private val orderName: String? = null
+    private val orderName: String? = null,
+
+    /**
+     * 결제를 시작한 채팅방이다. 승인 후 결제 완료 메시지를 보낼 대상이며 없을 수 있다.
+     */
+    @Column(name = "room_id")
+    private val roomId: Long? = null
 ) {
 
     @Id
@@ -64,6 +70,7 @@ class Payment(
     fun getMemberId() = memberId
     fun getContractUrl() = contractUrl
     fun getOrderName() = orderName
+    fun getRoomId() = roomId
     fun getPaymentKey() = paymentKey
     fun getPaymentHash() = paymentHash
     fun getBlockchainTxHash() = blockchainTxHash
@@ -93,7 +100,12 @@ class Payment(
     ) {
 
         this.paymentHash = paymentHash
-        this.blockchainTxHash = blockchainTxHash
+
+        /**
+         * 이미 체인에 기록된 주문을 다시 처리하면 새 트랜잭션이 없어 null이 넘어온다.
+         * 먼저 확보해 둔 해시를 지우지 않도록 값이 있을 때만 덮어쓴다.
+         */
+        if (blockchainTxHash != null) this.blockchainTxHash = blockchainTxHash
 
         transitTo(PaymentStatus.CHAIN_RECORDED)
     }

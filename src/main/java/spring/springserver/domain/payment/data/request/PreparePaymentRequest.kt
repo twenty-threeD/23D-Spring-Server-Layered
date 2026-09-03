@@ -17,5 +17,11 @@ data class PreparePaymentRequest(
     val contractUrl: String,
 
     @field:Size(max = 100, message = "orderName은 100자 이하여야 합니다.")
-    val orderName: String? = null
+    val orderName: String? = null,
+
+    /**
+     * 결제를 시작한 채팅방이다. 승인이 끝나면 이 방으로 결제 완료 메시지를 보낸다.
+     * 채팅방 밖에서 일어나는 결제도 있으므로 필수가 아니다.
+     */
+    val roomId: Long? = null
 )

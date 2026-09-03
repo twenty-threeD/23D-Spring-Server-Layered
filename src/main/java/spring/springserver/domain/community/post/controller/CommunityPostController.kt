@@ -8,6 +8,7 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.service.CommunityPostService
 import spring.springserver.global.data.BaseResponse
 
@@ -61,5 +62,13 @@ class CommunityPostController(
     ): BaseResponse<List<CommunityPostResponse>> {
 
         return BaseResponse.ok(communityPostService.searchPosts(keyword))
+    }
+
+    @GetMapping("/category")
+    fun searchCategories(
+        @RequestParam category: Category
+    ): BaseResponse<List<CommunityPostResponse>> {
+
+        return BaseResponse.ok(communityPostService.searchPostsByCategory(category))
     }
 }

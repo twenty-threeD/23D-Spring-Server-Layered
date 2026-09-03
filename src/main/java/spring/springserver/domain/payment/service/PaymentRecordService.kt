@@ -20,6 +20,14 @@ interface PaymentRecordService {
         orderId: String
     ): Payment
 
+    /**
+     * 결제 건이 없어도 예외로 보지 않는 조회다.
+     * 체인 기록만 있고 로컬 결제 건을 특정할 수 없는 경우를 검증 결과로 표현해야 하는 쪽에서 쓴다.
+     */
+    fun findByOrderIdOrNull(
+        orderId: String
+    ): Payment?
+
     fun markDone(
         orderId: String,
         paymentKey: String

@@ -31,7 +31,8 @@ class PaymentRecordServiceImpl(
                     preparePaymentRequest.amount,
                     memberId,
                     preparePaymentRequest.contractUrl,
-                    preparePaymentRequest.orderName
+                    preparePaymentRequest.orderName,
+                    preparePaymentRequest.roomId
                 )
             )
         } catch (exception: DataIntegrityViolationException) {
@@ -76,6 +77,14 @@ class PaymentRecordServiceImpl(
 
         return paymentRepository.findByOrderId(orderId)
             ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_FOUND)
+    }
+
+    @Transactional(readOnly = true, propagation = Propagation.SUPPORTS)
+    override fun findByOrderIdOrNull(
+        orderId: String
+    ): Payment? {
+
+        return paymentRepository.findByOrderId(orderId)
     }
 
     override fun markDone(

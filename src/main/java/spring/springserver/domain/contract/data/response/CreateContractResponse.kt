@@ -12,11 +12,20 @@ data class CreateContractResponse(
      */
     val contractUrl: String,
 
-    val partA: Long?,
+    /**
+     * 갑(의뢰인)의 회원 아이디. 대금을 지급하는 쪽이다.
+     */
+    val clientId: Long?,
 
-    val partB: Long?,
+    /**
+     * 을(전문가)의 회원 아이디. 용역을 제공하고 대금을 받는 쪽이다.
+     */
+    val professionalId: Long?,
 
-    val amount: Long,
+    /**
+     * 계약 금액(원). 의뢰인(갑)이 전문가(을)에게 지급하기로 한 용역 대금이다.
+     */
+    val price: Long,
 
     /**
      * 계약서를 등록한 당사자의 회원 아이디.
@@ -33,13 +42,13 @@ data class CreateContractResponse(
      */
     val signed: Boolean,
 
-    val partASigned: Boolean,
+    val clientSigned: Boolean,
 
-    val partBSigned: Boolean,
+    val professionalSigned: Boolean,
 
-    val partASignedAt: LocalDateTime?,
+    val clientSignedAt: LocalDateTime?,
 
-    val partBSignedAt: LocalDateTime?,
+    val professionalSignedAt: LocalDateTime?,
 
     val createdAt: LocalDateTime?,
 
@@ -55,16 +64,16 @@ data class CreateContractResponse(
             return CreateContractResponse(
                 contract.getId(),
                 contract.contractUrl,
-                contract.partA.getId(),
-                contract.partB.getId(),
-                contract.amount,
+                contract.client.getId(),
+                contract.professional.getId(),
+                contract.price,
                 contract.writer.getId(),
                 contract.getStatus(),
                 contract.isSigned(),
-                contract.isPartASigned(),
-                contract.isPartBSigned(),
-                contract.getPartASignedAt(),
-                contract.getPartBSignedAt(),
+                contract.isClientSigned(),
+                contract.isProfessionalSigned(),
+                contract.getClientSignedAt(),
+                contract.getProfessionalSignedAt(),
                 contract.getCreatedAt(),
                 contract.getUpdatedAt()
             )

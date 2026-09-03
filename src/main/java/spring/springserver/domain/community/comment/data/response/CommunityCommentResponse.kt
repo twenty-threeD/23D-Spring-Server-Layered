@@ -10,6 +10,8 @@ data class CommunityCommentResponse(
 
     val username: String,
 
+    val imageUrl: String?,
+
     val content: String,
 
     val isEdited: Boolean,
@@ -25,13 +27,15 @@ data class CommunityCommentResponse(
 
         fun of(
             communityComment: CommunityComment,
-            likeCount: Long
+            likeCount: Long,
+            imageUrl: String?
         ): CommunityCommentResponse {
 
             return CommunityCommentResponse(
                 communityComment.getId(),
                 communityComment.communityPost.getId(),
                 communityComment.member.username,
+                imageUrl,
                 communityComment.content,
                 communityComment.isEdited,
                 likeCount,

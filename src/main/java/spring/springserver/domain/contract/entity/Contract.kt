@@ -10,21 +10,21 @@ import java.time.LocalDateTime
 class Contract(
 
     /**
-     * 계약 당사자 갑. 용역을 의뢰하고 대금을 지급하는 쪽이다.
+     * 계약 당사자 갑(의뢰인). 용역을 의뢰하고 대금을 지급하는 쪽이다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_a_id", nullable = false)
-    var partA: Member,
+    @JoinColumn(name = "client_id", nullable = false)
+    var client: Member,
 
     /**
-     * 계약 당사자 을. 용역을 제공하고 대금을 받는 쪽이다.
+     * 계약 당사자 을(전문가). 용역을 제공하고 대금을 받는 쪽이다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "part_b_id", nullable = false)
-    var partB: Member,
+    @JoinColumn(name = "professional_id", nullable = false)
+    var professional: Member,
 
     /**
-     * 계약서를 등록한 당사자다. 갑·을 중 한쪽이며 서명이 붙기 전까지 계약서를 고칠 수 있다.
+     * 계약서를 등록한 당사자다. 의뢰인·전문가 중 한쪽이며 서명이 붙기 전까지 계약서를 고칠 수 있다.
      * 요청 본문으로 받지 않고 로그인 정보에서 채운다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
@@ -37,8 +37,11 @@ class Contract(
     @Column(name = "contract_url", nullable = false, length = 2048)
     var contractUrl: String,
 
+    /**
+     * 계약 금액(원). 의뢰인(갑)이 전문가(을)에게 지급하기로 한 용역 대금이다.
+     */
     @Column(nullable = false)
-    var amount: Long
+    var price: Long
 ) {
 
     @Id
@@ -49,11 +52,11 @@ class Contract(
     @Column(nullable = false, length = 32)
     private var status: ContractStatus = ContractStatus.DRAFT
 
-    @Column(name = "part_a_signed_at")
-    private var partASignedAt: LocalDateTime? = null
+    @Column(name = "client_signed_at")
+    private var clientSignedAt: LocalDateTime? = null
 
-    @Column(name = "part_b_signed_at")
-    private var partBSignedAt: LocalDateTime? = null
+    @Column(name = "professional_signed_at")
+    private var professionalSignedAt: LocalDateTime? = null
 
     private var createdAt: LocalDateTime? = null
 
@@ -70,37 +73,37 @@ class Contract(
     fun getCreatedAt(): LocalDateTime? = createdAt
     fun getUpdatedAt(): LocalDateTime? = updatedAt
     fun getStatus() = status
-    fun getPartASignedAt(): LocalDateTime? = partASignedAt
-    fun getPartBSignedAt(): LocalDateTime? = partBSignedAt
+    fun getClientSignedAt(): LocalDateTime? = clientSignedAt
+    fun getProfessionalSignedAt(): LocalDateTime? = professionalSignedAt
 
     fun isSigned() = status == ContractStatus.SIGNED
-    fun isPartASigned() = partASignedAt != null
-    fun isPartBSigned() = partBSignedAt != null
+    fun isClientSigned() = clientSignedAt != null
+    fun isProfessionalSigned() = professionalSignedAt != null
 
     /**
      * 한쪽이라도 서명했으면 계약 내용이 고정되어야 한다.
      */
-    fun hasAnySignature() = isPartASigned() || isPartBSigned()
+    fun hasAnySignature() = isClientSigned() || isProfessionalSigned()
 
     fun update(
         contractUrl: String,
-        amount: Long
+        price: Long
     ) {
 
         this.contractUrl = contractUrl
-        this.amount = amount
+        this.price = price
     }
 
-    fun signAsPartA() {
+    fun signAsClient() {
 
-        partASignedAt = LocalDateTime.now()
+        clientSignedAt = LocalDateTime.now()
 
         markSignedIfCompleted()
     }
 
-    fun signAsPartB() {
+    fun signAsProfessional() {
 
-        partBSignedAt = LocalDateTime.now()
+        professionalSignedAt = LocalDateTime.now()
 
         markSignedIfCompleted()
     }
@@ -110,7 +113,7 @@ class Contract(
      */
     private fun markSignedIfCompleted() {
 
-        if (isPartASigned() && isPartBSigned()) {
+        if (isClientSigned() && isProfessionalSigned()) {
 
             status = ContractStatus.SIGNED
         }
