@@ -6,6 +6,10 @@ import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
+/**
+ * 일반 커뮤니티 게시글 응답.
+ * 구인/구직 글은 카테고리·지역까지 담아야 해서 CommunityJobPostResponse를 따로 쓴다.
+ */
 data class CommunityPostResponse(
     val id: Long?,
 

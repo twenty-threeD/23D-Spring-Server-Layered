@@ -23,6 +23,16 @@ interface NotificationService {
         sendNoticeNotificationRequest: SendNoticeNotificationRequest
     ): NotificationResponse
 
+    /**
+     * 구인/구직 글이 올라왔을 때 조건에 맞는 회원들에게 한 번에 알린다.
+     * 받는 사람이 여러 명이므로 개별 발송이 실패해도 나머지는 계속 보낸다.
+     */
+    fun sendJobPostNotification(
+        receiverUsernames: Collection<String>,
+        message: String,
+        postId: Long
+    ): List<NotificationResponse>
+
     fun getNotifications(
         username: String
     ): List<NotificationResponse>
