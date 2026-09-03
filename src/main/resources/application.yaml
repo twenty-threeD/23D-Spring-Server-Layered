@@ -118,15 +118,10 @@ springdoc:
     enabled: true # 배포할 때 false로 변경
 
 
-# Prometheus가 /actuator/prometheus를 스크레이프해 메트릭을 가져간다.
-# 접근 제어는 SecurityConfig의 actuatorFilterChain이 담당한다.
 management:
   endpoints:
     web:
       exposure:
-        # health와 prometheus만 노출한다.
-        # env/heapdump/threaddump는 환경변수와 자격증명을 그대로 흘리므로
-        # 절대 추가하지 않는다.
         include: health,prometheus
   endpoint:
     health:
@@ -140,8 +135,6 @@ management:
       application: ${spring.application.name}
     web:
       server:
-        # path variable이 uri 라벨에 그대로 박히면 요청마다 새 시계열이 생겨
-        # Prometheus 메모리가 터진다. 상한을 안전핀으로 둔다.
         max-uri-tags: 100
 
 app:
