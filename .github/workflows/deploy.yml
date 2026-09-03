@@ -173,6 +173,17 @@ jobs:
             server {
                 listen 80;
 
+                location /actuator {
+                    allow 127.0.0.0/8;
+                    allow 172.16.0.0/12;
+                    deny all;
+
+                    proxy_pass http://spring_server;
+                    proxy_set_header Host \$forwarded_host;
+                    proxy_set_header X-Forwarded-For \$remote_addr;
+                    proxy_set_header X-Forwarded-Proto \$forwarded_proto;
+                }
+
                 location / {
                     proxy_pass http://spring_server;
                     proxy_set_header Host \$forwarded_host;
