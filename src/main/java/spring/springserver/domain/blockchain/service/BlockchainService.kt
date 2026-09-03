@@ -35,17 +35,12 @@ class BlockchainService(
 ) {
 
     private val log = LoggerFactory.getLogger(BlockchainService::class.java)
-
     private val restTemplate = RestTemplate()
-
     private val sequenceLock = ReentrantLock()
-
     @Volatile
     private var cachedAccountNumber: Long? = null
-
     @Volatile
     private var cachedSequence: Long? = null
-
     private val submitterPubKeyBytes: ByteArray by lazy {
 
         ECNamedCurveTable.getParameterSpec("secp256k1").g

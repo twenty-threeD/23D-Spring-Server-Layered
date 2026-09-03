@@ -63,6 +63,11 @@ enum class PaymentStatusCode(
         "PAYMENT_NOT_RECORDED_ON_CHAIN",
         "블록체인에 기록되지 않은 결제입니다.",
         HttpStatus.NOT_FOUND
+    ),
+    PAYMENT_CHAT_ROOM_FORBIDDEN(
+        "PAYMENT_CHAT_ROOM_FORBIDDEN",
+        "참여하지 않은 채팅입니다.",
+        HttpStatus.FORBIDDEN
     );
 
     override fun getCode(): String = code

@@ -50,6 +50,11 @@ interface ChatService {
         postId: Long
     ): Long?
 
+    fun isRoomParticipant(
+        roomId: Long,
+        memberId: Long
+    ): Boolean
+
     fun sendPaymentMessage(
         roomId: Long,
         senderMemberId: Long,
