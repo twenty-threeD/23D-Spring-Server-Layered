@@ -31,7 +31,8 @@ class PaymentRecordServiceImpl(
                     preparePaymentRequest.amount,
                     memberId,
                     preparePaymentRequest.contractUrl,
-                    preparePaymentRequest.orderName
+                    preparePaymentRequest.orderName,
+                    preparePaymentRequest.roomId
                 )
             )
         } catch (exception: DataIntegrityViolationException) {

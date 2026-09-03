@@ -289,6 +289,17 @@ class ChatServiceImpl(
         )?.getId()
     }
 
+    override fun isRoomParticipant(
+        roomId: Long,
+        memberId: Long
+    ): Boolean {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
+            ?: return false
+
+        return room.client.getId() == memberId || room.professional.getId() == memberId
+    }
+
     override fun sendPaymentMessage(
         roomId: Long,
         senderMemberId: Long,
