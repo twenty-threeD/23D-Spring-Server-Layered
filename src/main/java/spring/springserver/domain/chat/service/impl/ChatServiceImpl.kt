@@ -1,16 +1,20 @@
 package spring.springserver.domain.chat.service.impl
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
-import com.fasterxml.jackson.databind.ObjectMapper
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
+import spring.springserver.domain.chat.data.response.ChatMessageType
+import spring.springserver.domain.chat.data.response.ChatParticipantResponse
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
 import spring.springserver.domain.chat.entity.ChatRoom
@@ -20,11 +24,15 @@ import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.service.MemberService
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.exception.PostStatusCode
+import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-import kotlin.collections.forEach
 
 @Service
 @Transactional
@@ -32,12 +40,17 @@ class ChatServiceImpl(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val memberRepository: MemberRepository,
+    private val postRepository: PostRepository,
+    private val profileService: ProfileService,
+    private val memberService: MemberService,
     private val redisTemplate: RedisTemplate<String, String>,
     private val objectMapper: ObjectMapper,
     transactionManager: PlatformTransactionManager,
+    private val messagingTemplate: SimpMessagingTemplate
 ) : ChatService {
 
     private val chatMessageCacheTtlMillis = TimeUnit.DAYS.toMillis(3)
+    private val paymentMessagePreview = "결제 완료"
 
     private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
 
@@ -48,6 +61,8 @@ class ChatServiceImpl(
         requesterUsername: String,
         createChatRoomRequest: CreateChatRoomRequest
     ): CreateChatRoomResponse {
+
+        memberService.ensurePhoneVerified(username = requesterUsername)
 
         if (requesterUsername == createChatRoomRequest.username) {
 
@@ -63,7 +78,8 @@ class ChatServiceImpl(
 
                 createOrGetDirectRoomInTransaction(
                     requesterUsername = requesterUsername,
-                    targetUsername = createChatRoomRequest.username
+                    targetUsername = createChatRoomRequest.username,
+                    postId = createChatRoomRequest.postId
                 )
             }!!
         } catch (_: DataIntegrityViolationException) {
@@ -72,7 +88,8 @@ class ChatServiceImpl(
 
                 getExistingDirectRoomResponse(
                     requesterUsername = requesterUsername,
-                    targetUsername = createChatRoomRequest.username
+                    targetUsername = createChatRoomRequest.username,
+                    postId = createChatRoomRequest.postId
                 )
             }!!
         }
@@ -80,31 +97,40 @@ class ChatServiceImpl(
 
     private fun createOrGetDirectRoomInTransaction(
         requesterUsername: String,
-        targetUsername: String
+        targetUsername: String,
+        postId: Long?
     ): CreateChatRoomResponse {
 
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
+        val post = resolvePost(postId)
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
 
-        val existingRoom = chatRoomRepository.findByDirectChatKey(directChatKey)
+        val existingRoom = chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = directChatKey,
+            postId = post.getId()!!
+        )
 
         if (existingRoom != null) {
 
             ensureParticipantRows(existingRoom)
-            reactivateParticipant(existingRoom, requester)
+
+            val participant = reactivateParticipant(existingRoom, requester)
 
             return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
+                postId = existingRoom.post.getId(),
                 participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
-                existingRoom = true
+                existingRoom = true,
+                clearBefore = participant.deletedAt
             )
         }
 
         return createRoom(
             requester = requester,
             target = target,
-            requesterUsername = requesterUsername
+            requesterUsername = requesterUsername,
+            post = post
         )
     }
 
@@ -115,18 +141,28 @@ class ChatServiceImpl(
         val rooms = chatRoomRepository.findAllByParticipantUsername(username)
         rooms.forEach(::ensureParticipantRows)
 
-        val visibleRoomIds = chatRoomParticipantRepository.findVisibleRoomIdsByUsername(username)
+        val participantsByRoomId = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
+            .associateBy { it.room.getId() }
 
-        return rooms.filter { it.getId() in visibleRoomIds }
-            .map { room ->
+        val visibleRooms = rooms.filter { it.getId() in participantsByRoomId }
 
-                val other = getOtherParticipant(room, username)
+        val others = visibleRooms.associateWith { getOtherParticipant(it, username) }
 
-                ChatRoomResponse.of(
-                    room = room,
-                    participant = other
-                )
-            }
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            others.values.mapNotNull { it.getId() }
+        )
+
+        return visibleRooms.map { room ->
+
+            val other = others.getValue(room)
+
+            ChatRoomResponse.of(
+                room = room,
+                participant = other,
+                participantImageUrl = other.getId()?.let { imageUrls[it] },
+                clearBefore = participantsByRoomId[room.getId()]?.deletedAt
+            )
+        }
     }
 
     override fun getRoomMessages(
@@ -158,6 +194,8 @@ class ChatServiceImpl(
         senderUsername: String,
         sendChatMessageRequest: SendChatMessageRequest
     ): ChatMessageResponse {
+
+        memberService.ensurePhoneVerified(username = senderUsername)
 
         val senderParticipant = getVisibleParticipant(
             roomId = sendChatMessageRequest.roomId,
@@ -204,6 +242,16 @@ class ChatServiceImpl(
         return response
     }
 
+    override fun getOtherParticipantUsername(
+        roomId: Long,
+        username: String
+    ): ChatParticipantResponse {
+
+        val participant = getVisibleParticipant(roomId, username)
+        
+        return ChatParticipantResponse(getOtherParticipant(participant.room, username).username)
+    }
+
     override fun canAccessRoom(
         username: String,
         roomId: Long
@@ -229,18 +277,96 @@ class ChatServiceImpl(
         participant.leave(Instant.now())
     }
 
+    override fun findDirectRoomId(
+        clientId: Long,
+        professionalId: Long,
+        postId: Long
+    ): Long? {
+
+        return chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = ChatRoom.generateDirectChatKey(clientId, professionalId),
+            postId = postId
+        )?.getId()
+    }
+
+    override fun isRoomParticipant(
+        roomId: Long,
+        memberId: Long
+    ): Boolean {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
+            ?: return false
+
+        return room.client.getId() == memberId || room.professional.getId() == memberId
+    }
+
+    override fun sendPaymentMessage(
+        roomId: Long,
+        senderMemberId: Long,
+        payment: ChatPaymentResponse
+    ): ChatMessageResponse {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
+            ?: throw ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND)
+
+        ensureParticipantRows(room = room)
+
+        val sender = when (senderMemberId) {
+            room.client.getId() -> room.client
+            room.professional.getId() -> room.professional
+            else -> throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
+        }
+
+        val createdAt = Instant.now()
+
+        val response = ChatMessageResponse(
+            messageId = nextMessageId(roomId = roomId),
+            roomId = roomId,
+            senderUsername = sender.username,
+            senderName = sender.name,
+            message = paymentMessagePreview,
+            createdAt = createdAt,
+            attachedFileUrls = emptyList(),
+            type = ChatMessageType.PAYMENT,
+            payment = payment
+        )
+
+        room.updateLastMessageMeta(
+            at = createdAt,
+            preview = paymentMessagePreview
+        )
+
+        reactivateParticipantsOnNewMessage(
+            room = room,
+            senderId = sender.getId()
+        )
+
+        appendRoomMessage(
+            roomId = roomId,
+            message = response
+        )
+
+        messagingTemplate.convertAndSend(
+            "/topic/chat/rooms/$roomId",
+            response
+        )
+
+        return response
+    }
+
     private fun createRoom(
         requester: Member,
         target: Member,
-        requesterUsername: String
+        requesterUsername: String,
+        post: Post
     ): CreateChatRoomResponse {
 
         val room = if (isProfessional(requester)) {
 
-            ChatRoom(client = target, professional = requester)
+            ChatRoom(client = target, professional = requester, post = post)
         } else {
 
-            ChatRoom(client = requester, professional = target)
+            ChatRoom(client = requester, professional = target, post = post)
         }
 
         val savedRoom = chatRoomRepository.saveAndFlush(room)
@@ -250,32 +376,42 @@ class ChatServiceImpl(
 
         return CreateChatRoomResponse.of(
             roomId = savedRoom.getId(),
+            postId = savedRoom.post.getId(),
             participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
-            existingRoom = false
+            existingRoom = false,
+            clearBefore = null
         )
     }
 
     private fun getExistingDirectRoomResponse(
         requesterUsername: String,
-        targetUsername: String
+        targetUsername: String,
+        postId: Long?
     ): CreateChatRoomResponse {
 
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
+        val post = resolvePost(postId)
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
-        val room = chatRoomRepository.findByDirectChatKey(directChatKey)
+        val room = chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = directChatKey,
+            postId = post.getId()!!
+        )
             ?: throw ApplicationException.of(
                 CommonStatusCode.ENDPOINT_NOT_FOUND,
                 "채팅방 생성 중 충돌이 발생했습니다."
             )
 
         ensureParticipantRows(room)
-        reactivateParticipant(room, requester)
+
+        val participant = reactivateParticipant(room, requester)
 
         return CreateChatRoomResponse.of(
             roomId = room.getId(),
+            postId = room.post.getId(),
             participantUsername = getOtherParticipant(room, requesterUsername).username,
-            existingRoom = true
+            existingRoom = true,
+            clearBefore = participant.deletedAt
         )
     }
 
@@ -317,6 +453,30 @@ class ChatServiceImpl(
                 CommonStatusCode.INVALID_ARGUMENT,
                 "존재하지 않는 사용자입니다: $username"
             )
+
+    /**
+     * 게시글 없이는 채팅방을 만들 수 없다.
+     * postId는 검증에서 이미 걸러지지만, 서비스로 직접 들어오는 경로를 위해 여기서도 막는다.
+     */
+    private fun resolvePost(
+        postId: Long?
+    ): Post {
+
+        if (postId == null) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        return post
+    }
 
     private fun getOtherParticipant(
         room: ChatRoom,
@@ -370,11 +530,11 @@ class ChatServiceImpl(
         attachmentUrls: List<String>
     ): List<String> {
 
-        if (attachmentUrls.size > 4) {
+        if (attachmentUrls.size > 10) {
 
             throw ApplicationException.of(
                 CommonStatusCode.INVALID_ARGUMENT,
-                "파일은 최대 4개까지 첨부할 수 있습니다."
+                "파일은 최대 10개까지 첨부할 수 있습니다."
             )
         }
 
@@ -474,7 +634,7 @@ class ChatServiceImpl(
     private fun reactivateParticipant(
         room: ChatRoom,
         member: Member
-    ) {
+    ): ChatRoomParticipant {
 
         val participant = chatRoomParticipantRepository.findByRoomIdAndMemberId(
             roomId = room.getId(),
@@ -485,6 +645,8 @@ class ChatServiceImpl(
         )
 
         participant.reactivate()
+
+        return participant
     }
 
     private fun reactivateParticipantsOnNewMessage(

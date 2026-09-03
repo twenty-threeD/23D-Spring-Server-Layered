@@ -2,6 +2,7 @@ package spring.springserver.domain.community.post.data.response
 
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
@@ -10,9 +11,13 @@ data class CommunityPostResponse(
 
     val username: String,
 
+    val imageUrl: String?,
+
     val title: String,
 
     val content: String?,
+
+    val category: Category,
 
     val fileUrl: String?,
 
@@ -32,7 +37,8 @@ data class CommunityPostResponse(
         fun toPostResponse(
             communityPost: CommunityPost,
             communityCommentRepository: CommunityCommentRepository,
-            communityPostLikeRepository: CommunityPostLikeRepository
+            communityPostLikeRepository: CommunityPostLikeRepository,
+            imageUrl: String?
         ): CommunityPostResponse {
 
             val postId = communityPost.getId()!!
@@ -42,21 +48,25 @@ data class CommunityPostResponse(
                 commentCount = communityCommentRepository
                     .countByCommunityPostIdAndDeletedAtIsNull(postId),
                 likeCount = communityPostLikeRepository
-                    .countByCommunityPostId(postId)
+                    .countByCommunityPostId(postId),
+                imageUrl = imageUrl
             )
         }
 
         fun of(
             communityPost: CommunityPost,
             commentCount: Long,
-            likeCount: Long
+            likeCount: Long,
+            imageUrl: String?
         ): CommunityPostResponse {
 
             return CommunityPostResponse(
                 communityPost.getId(),
                 communityPost.username,
+                imageUrl,
                 communityPost.title,
                 communityPost.content,
+                communityPost.category,
                 communityPost.fileUrl,
                 communityPost.viewCount,
                 communityPost.isEdited,

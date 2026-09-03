@@ -9,5 +9,7 @@ data class ChatMessageResponse(
     val senderName: String,
     val message: String,
     val createdAt: Instant,
-    val attachedFileUrls: List<String>
+    val attachedFileUrls: List<String>,
+    val type: ChatMessageType = ChatMessageType.TEXT,
+    val payment: ChatPaymentResponse? = null
 )

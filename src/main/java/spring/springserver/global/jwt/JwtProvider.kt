@@ -68,11 +68,19 @@ class JwtProvider(
         return role?.let { Role.valueOf(role) }
     }
 
+    /**
+     * accessToken은 Authorization 헤더를 우선으로 하고, 없으면 httpOnly 쿠키에서 읽는다.
+     * 쿠키로만 로그인한 클라이언트도 인증 필터를 통과해야 하므로 두 경로를 모두 지원한다.
+     */
     override fun resolveToken(httpServletRequest: HttpServletRequest?): String? {
 
-        val token = httpServletRequest?.getHeader("Authorization")
+        val header = httpServletRequest?.getHeader("Authorization")
 
-        return token?.takeIf { it.startsWith("Bearer ") }?.substring(7)
+        return header?.takeIf { it.startsWith("Bearer ") }?.substring(7)
+            ?: httpServletRequest?.cookies
+                ?.firstOrNull { it.name == "accessToken" }
+                ?.value
+                ?.takeIf { it.isNotBlank() }
     }
 
     override fun isNotValidToken(token: String): Boolean {
@@ -83,6 +91,10 @@ class JwtProvider(
         }.isFailure
     }
 
+    override fun isNotAccessToken(token: String): Boolean {
+
+        return getClaims(token = token)?.get("tokenType", String::class.java) != "accessToken"
+    }
 
     private fun getClaims(token: String): Claims? {
 

@@ -17,4 +17,6 @@ interface TokenProvider {
     fun resolveToken(httpServletRequest: HttpServletRequest?): String?
 
     fun isNotValidToken(token: String): Boolean
+
+    fun isNotAccessToken(token: String): Boolean
 }

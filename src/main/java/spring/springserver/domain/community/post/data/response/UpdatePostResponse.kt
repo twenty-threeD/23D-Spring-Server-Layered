@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.post.data.response
 
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
 import java.time.LocalDateTime
 
@@ -9,6 +10,8 @@ data class UpdatePostResponse(
     val title: String,
 
     val content: String?,
+
+    val category: Category,
 
     val fileUrl: String?,
 
@@ -27,6 +30,7 @@ data class UpdatePostResponse(
                 communityPost.getId(),
                 communityPost.title,
                 communityPost.content,
+                communityPost.category,
                 communityPost.fileUrl,
                 communityPost.isEdited,
                 communityPost.getUpdatedAt(),

@@ -1,14 +1,13 @@
 package spring.springserver.domain.post.favorite.service
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
-import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
-import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.entity.Post
@@ -17,6 +16,7 @@ import spring.springserver.domain.post.favorite.data.response.PostFavoriteRespon
 import spring.springserver.domain.post.favorite.entity.PostFavorite
 import spring.springserver.domain.post.favorite.repository.PostFavoriteRepository
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 
@@ -25,7 +25,8 @@ import spring.springserver.global.exception.status_code.CommonStatusCode
 class PostFavoriteServiceImpl(
     private val postFavoriteRepository: PostFavoriteRepository,
     private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val profileService: ProfileService
 ): PostFavoriteService {
 
     override fun favoritePost(
@@ -92,10 +93,22 @@ class PostFavoriteServiceImpl(
 
         val member = getCurrentMember()
 
-        return postFavoriteRepository.findFavoritePostsByMember(
+        val posts = postFavoriteRepository.findFavoritePostsByMember(
             member,
             pageable.withoutSort()
-        ).map { post -> PostResponse.of(post) }
+        )
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            posts.content.mapNotNull { post -> post.member.getId() }
+        )
+
+        return posts.map {
+            post ->
+            PostResponse.of(
+                post,
+                imageUrls[post.member.getId()]
+            )
+        }
     }
 
     private fun getCurrentMember() = SecurityContextHolder.getContext().authentication?.name

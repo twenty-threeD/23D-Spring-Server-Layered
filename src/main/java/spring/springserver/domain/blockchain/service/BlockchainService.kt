@@ -6,25 +6,41 @@ import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
+import org.springframework.web.client.HttpClientErrorException
+import spring.springserver.domain.blockchain.data.response.ChainPaymentRecordResponse
+import spring.springserver.domain.blockchain.data.response.ChainTxResponse
+import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
+import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
+import spring.springserver.domain.blockchain.exception.BlockchainSequenceMismatchException
+import spring.springserver.domain.blockchain.exception.BlockchainStatusCode
 import spring.springserver.global.config.blockchain.CosmosProperties
+import spring.springserver.global.exception.exception.ApplicationException
 import java.math.BigInteger
 import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
-import java.util.Base64
+import java.util.*
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 @Service
 class BlockchainService(
     private val cosmosProperties: CosmosProperties
 ) {
 
+    private val log = LoggerFactory.getLogger(BlockchainService::class.java)
     private val restTemplate = RestTemplate()
-
+    private val sequenceLock = ReentrantLock()
+    @Volatile
+    private var cachedAccountNumber: Long? = null
+    @Volatile
+    private var cachedSequence: Long? = null
     private val submitterPubKeyBytes: ByteArray by lazy {
 
         ECNamedCurveTable.getParameterSpec("secp256k1").g
@@ -38,27 +54,33 @@ class BlockchainService(
         deriveCosmosAddress(submitterPubKeyBytes)
     }
 
+    /**
+     * itda.payment.v1.MsgRecordPayment 를 브로드캐스트하고 체인에 포함된 트랜잭션 해시를 돌려준다.
+     * authority 는 제네시스에 설정된 주소여야 하며, submitter 개인키가 그 주소를 가리켜야 한다.
+     */
     fun recordPayment(
         buyerAddress: String,
-        buyerPubKeyBase64: String,
-        submissionId: String,
-        hash: String,
+        orderId: String,
+        amount: Long,
+        paidAt: String,
+        contractUrl: String,
+        paymentHash: String,
         buyerSignature: String
-    ) {
-
-        val (accountNumber, sequence) = getAccountInfo(submitterAddress)
+    ): String {
 
         val msgBytes = buildProto {
             string(1, submitterAddress)
-            string(2, buyerAddress)
-            string(3, buyerPubKeyBase64)
-            string(4, submissionId)
-            string(5, hash)
-            string(6, buyerSignature)
+            string(2, orderId)
+            string(3, buyerAddress)
+            uint64(4, amount)
+            string(5, paidAt)
+            string(6, contractUrl)
+            string(7, paymentHash)
+            string(8, buyerSignature)
         }
 
         val anyBytes = buildProto {
-            string(1, "/cosmos.staking.v1beta1.MsgRecordPayment")
+            string(1, "/itda.payment.v1.MsgRecordPayment")
             bytes(2, msgBytes)
         }
 
@@ -66,6 +88,51 @@ class BlockchainService(
             embedded(1, anyBytes)
             string(2, "")
         }
+
+        val txHash = broadcastInOrder(txBodyBytes)
+
+        awaitCommit(
+            txHash,
+            orderId
+        )
+
+        return txHash
+    }
+
+    /**
+     * submitter 계정의 시퀀스는 하나뿐이므로 조립·서명·브로드캐스트를 직렬화한다.
+     * 커밋 대기는 락 밖에서 해야 처리량이 블록 생성 시간에 묶이지 않는다.
+     */
+    private fun broadcastInOrder(
+        txBodyBytes: ByteArray
+    ): String {
+
+        return sequenceLock.withLock {
+
+            try {
+
+                signAndBroadcast(
+                    txBodyBytes,
+                    nextSequence()
+                )
+            } catch (exception: BlockchainSequenceMismatchException) {
+
+                log.warn("시퀀스가 어긋나 노드에서 재동기화 후 재시도합니다.", exception)
+
+                resetSequenceCache()
+
+                signAndBroadcast(
+                    txBodyBytes,
+                    nextSequence()
+                )
+            }
+        }
+    }
+
+    private fun signAndBroadcast(
+        txBodyBytes: ByteArray,
+        sequence: Long
+    ): String {
 
         val pubKeyAnyBytes = buildProto {
             string(1, "/cosmos.crypto.secp256k1.PubKey")
@@ -87,7 +154,7 @@ class BlockchainService(
             bytes(1, txBodyBytes)
             bytes(2, authInfoBytes)
             string(3, cosmosProperties.chainId)
-            uint64(4, accountNumber)
+            uint64(4, accountNumber())
             // Sequence intentionally omitted: this fork's GetSignBytes excludes it
         }
 
@@ -99,7 +166,47 @@ class BlockchainService(
             bytes(3, signature)
         }
 
-        broadcast(Base64.getEncoder().encodeToString(txRawBytes))
+        val txHash = broadcast(Base64.getEncoder().encodeToString(txRawBytes))
+
+        cachedSequence = sequence + 1
+
+        return txHash
+    }
+
+    /**
+     * account_number 는 계정이 만들어진 뒤 바뀌지 않으므로 한 번만 조회한다.
+     */
+    private fun accountNumber(): Long {
+
+        cachedAccountNumber?.let { return it }
+
+        syncFromNode()
+
+        return cachedAccountNumber
+            ?: error("account number를 조회하지 못했습니다.")
+    }
+
+    private fun nextSequence(): Long {
+
+        cachedSequence?.let { return it }
+
+        syncFromNode()
+
+        return cachedSequence
+            ?: error("sequence를 조회하지 못했습니다.")
+    }
+
+    private fun syncFromNode() {
+
+        val (accountNumber, sequence) = getAccountInfo(submitterAddress)
+
+        cachedAccountNumber = accountNumber
+        cachedSequence = sequence
+    }
+
+    private fun resetSequenceCache() {
+
+        cachedSequence = null
     }
 
     private fun getAccountInfo(address: String): Pair<Long, Long> {
@@ -114,7 +221,7 @@ class BlockchainService(
         return Pair(accountNumber, sequence)
     }
 
-    private fun broadcast(txBase64: String) {
+    private fun broadcast(txBase64: String): String {
 
         val url = "${cosmosProperties.nodeUrl}/cosmos/tx/v1beta1/txs"
         val body = mapOf(
@@ -128,9 +235,130 @@ class BlockchainService(
             Map::class.java
         )
         val txResponse = response?.get("tx_response") as? Map<*, *>
-        val code = txResponse?.get("code")?.toString()?.toInt() ?: -1
+            ?: error("broadcast response is empty")
 
-        if (code != 0) error("chain rejected tx (code=$code): ${txResponse?.get("raw_log")}")
+        verifyResult(txResponse)
+
+        return txResponse["txhash"]?.toString()
+            ?: error("txhash not found")
+    }
+
+    /**
+     * BROADCAST_MODE_SYNC 는 CheckTx 결과만 돌려주므로, 메시지 실행 성공 여부는 조회로 확인해야 한다.
+     * 폴링이 시간 안에 끝나지 않으면 원장 조회로 기록 여부를 확정한다.
+     * 기록됐는데 실패로 판정하면 결제만 취소되고 체인에는 기록이 남아 되돌릴 수 없기 때문이다.
+     */
+    private fun awaitCommit(
+        txHash: String,
+        orderId: String
+    ) {
+
+        val url = "${cosmosProperties.nodeUrl}/cosmos/tx/v1beta1/txs/$txHash"
+
+        repeat(COMMIT_POLL_MAX_ATTEMPTS) {
+
+            val txResponse = runCatching {
+
+                (restTemplate.getForObject(url, Map::class.java))?.get("tx_response") as? Map<*, *>
+            }.getOrNull()
+
+            if (txResponse != null) {
+
+                verifyResult(txResponse)
+
+                return
+            }
+
+            Thread.sleep(COMMIT_POLL_INTERVAL_MILLIS)
+        }
+
+        if (isRecordedOnChain(orderId)) {
+
+            return
+        }
+
+        throw BlockchainCommitTimeoutException("tx not committed within timeout (txhash=$txHash)")
+    }
+    
+    fun findTx(
+        txHash: String
+    ): ChainTxResponse? {
+
+        val url = "${cosmosProperties.nodeUrl}/cosmos/tx/v1beta1/txs/$txHash"
+
+        val txResponse = try {
+
+            restTemplate.getForObject(url, Map::class.java)
+                ?.get("tx_response") as? Map<*, *>
+                ?: return null
+        } catch (_: HttpClientErrorException.NotFound) {
+
+            return null
+        } catch (_: Exception) {
+
+            throw ApplicationException(BlockchainStatusCode.BLOCKCHAIN_NODE_UNAVAILABLE)
+        }
+
+        return ChainTxResponse.of(txResponse)
+    }
+
+    fun findRecord(
+        orderId: String
+    ): ChainPaymentRecordResponse? {
+
+        val url = "${cosmosProperties.nodeUrl}/itda/payment/v1/payments/$orderId"
+
+        return runCatching {
+            (restTemplate.getForObject(url, Map::class.java)?.get("record") as? Map<*, *>)
+                ?.let { ChainPaymentRecordResponse.of(it) }
+        }.getOrElse {
+
+            log.warn("기록을 조회할 수 없습니다. orderId = {}", orderId, it)
+
+            null
+        }
+    }
+
+    /**
+     * 주문이 원장에 실제로 기록됐는지 확인한다. 조회 자체가 실패하면 알 수 없으므로 false 로 본다.
+     */
+    private fun isRecordedOnChain(
+        orderId: String
+    ): Boolean {
+
+        val url = "${cosmosProperties.nodeUrl}/itda/payment/v1/payments/$orderId"
+
+        return runCatching {
+
+            (restTemplate.getForObject(url, Map::class.java))?.get("record") != null
+        }.getOrElse {
+
+            log.warn("원장 기록 조회에 실패했습니다. orderId={}", orderId, it)
+
+            false
+        }
+    }
+
+    private fun verifyResult(txResponse: Map<*, *>) {
+
+        val code = txResponse["code"]?.toString()?.toInt() ?: -1
+
+        if (code == 0) return
+
+        val codespace = txResponse["codespace"]?.toString()
+        val rawLog = txResponse["raw_log"]
+
+        if (codespace == PAYMENT_CODESPACE && code == DUPLICATE_ORDER_ID_CODE) {
+
+            throw BlockchainAlreadyRecordedException("이미 기록된 주문입니다: $rawLog")
+        }
+
+        if (codespace == SDK_CODESPACE && code == WRONG_SEQUENCE_CODE) {
+
+            throw BlockchainSequenceMismatchException("시퀀스가 일치하지 않습니다: $rawLog")
+        }
+
+        error("chain rejected tx (codespace=$codespace, code=$code): $rawLog")
     }
 
     private fun signBytes(data: ByteArray): ByteArray {
@@ -243,6 +471,16 @@ class BlockchainService(
     }
 
     private val BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+
+    companion object {
+
+        private const val PAYMENT_CODESPACE = "payment"
+        private const val DUPLICATE_ORDER_ID_CODE = 2
+        private const val SDK_CODESPACE = "sdk"
+        private const val WRONG_SEQUENCE_CODE = 32
+        private const val COMMIT_POLL_MAX_ATTEMPTS = 60
+        private const val COMMIT_POLL_INTERVAL_MILLIS = 1000L
+    }
 
     private fun convertBits(
         data: ByteArray,

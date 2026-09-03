@@ -159,3 +159,9 @@ build/
 .gradle/
 gradle/
 .claude/
+### Claude Code ###
+.mcp.json
+
+### Gradle Wrapper ###
+gradlew
+gradlew.bat

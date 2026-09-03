@@ -1,5 +1,6 @@
 package spring.springserver.global.config.websocket
 
+import org.springframework.context.annotation.Lazy
 import org.springframework.messaging.Message
 import org.springframework.messaging.MessageChannel
 import org.springframework.messaging.simp.stomp.StompCommand
@@ -13,7 +14,7 @@ import spring.springserver.global.jwt.TokenProvider
 @Component
 class WebSocketChannelInterceptor(
     private val tokenProvider: TokenProvider,
-    private val chatService: ChatService,
+    @Lazy private val chatService: ChatService,
 ) : ChannelInterceptor {
 
     override fun preSend(

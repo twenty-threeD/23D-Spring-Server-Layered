@@ -22,6 +22,9 @@ enum class AuthStatusCode (
     PHONE_ALREADY_EXIST("PHONE_ALREADY_EXIST", "해당 전화번호로 이미 가입된 계정이 존재합니다.", HttpStatus.BAD_REQUEST),
     COMPANY_ALREADY_EXIST("COMPANY_ALREADY_EXIST", "중복된 사업자 입니다.", HttpStatus.BAD_REQUEST),
     UNKNOWN_REGISTRATION_ID("UNKNOWN_REGISTRATION_ID", "잘못된 소셜로그인 시도입니다.", HttpStatus.BAD_REQUEST),
+    OAUTH_LOGIN_FAILED("OAUTH_LOGIN_FAILED", "소셜로그인에 실패했습니다.", HttpStatus.UNAUTHORIZED),
+    OAUTH_EMAIL_NOT_PROVIDED("OAUTH_EMAIL_NOT_PROVIDED", "소셜 계정의 이메일 제공에 동의해야 합니다.", HttpStatus.BAD_REQUEST),
+    OAUTH_PROVIDER_MISMATCH("OAUTH_PROVIDER_MISMATCH", "해당 이메일은 다른 방식으로 가입된 계정입니다. 기존 가입 수단으로 로그인해 주세요.", HttpStatus.CONFLICT),
     PASSWORD_IS_WEAK("PASSWORD_IS_WEAK", "비밀번호는 8자 이상이며, 영어 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", HttpStatus.BAD_REQUEST),
 
     CANNOT_SEND_EMAIL("CANNOT_SEND_EMAIL", "이메일을 전송할 수 없습니다.", HttpStatus.INTERNAL_SERVER_ERROR),

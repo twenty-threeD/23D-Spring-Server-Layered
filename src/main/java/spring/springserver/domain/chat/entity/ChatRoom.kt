@@ -1,17 +1,8 @@
 package spring.springserver.domain.chat.entity
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.Index
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.Table
-import jakarta.persistence.UniqueConstraint
+import jakarta.persistence.*
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.post.entity.Post
 import java.time.Instant
 import kotlin.math.max
 import kotlin.math.min
@@ -20,12 +11,16 @@ import kotlin.math.min
 @Table(
     name = "chat_room",
     uniqueConstraints = [
-        UniqueConstraint(name = "uk_chat_room_direct_key", columnNames = ["direct_chat_key"])
+        UniqueConstraint(
+            name = "uk_chat_room_direct_key_post",
+            columnNames = ["direct_chat_key", "post_id"]
+        )
     ],
     indexes = [
         Index(name = "idx_chat_room_client", columnList = "client_id"),
         Index(name = "idx_chat_room_professional", columnList = "professional_id"),
-        Index(name = "idx_chat_room_direct_key", columnList = "direct_chat_key")
+        Index(name = "idx_chat_room_direct_key", columnList = "direct_chat_key"),
+        Index(name = "idx_chat_room_post", columnList = "post_id")
     ]
 )
 class ChatRoom(
@@ -36,6 +31,10 @@ class ChatRoom(
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "professional_id", nullable = false)
     var professional: Member,
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id", nullable = false)
+    var post: Post,
 ) {
 
     @Id
@@ -51,7 +50,18 @@ class ChatRoom(
     @Column(name = "last_message_preview", length = 200)
     var lastMessagePreview: String? = null
 
+    @Column(name = "created_at", updatable = false)
+    private var createdAt: Instant? = null
+
+    @PrePersist
+    fun prePersistDate() {
+
+        createdAt = Instant.now()
+    }
+
     fun getId(): Long? = id
+
+    fun getCreatedAt(): Instant? = createdAt
 
     fun updateLastMessageMeta(
         at: Instant,

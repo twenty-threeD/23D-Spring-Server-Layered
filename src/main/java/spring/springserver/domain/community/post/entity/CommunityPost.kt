@@ -1,15 +1,6 @@
 package spring.springserver.domain.community.post.entity
 
-import jakarta.persistence.Column
-import jakarta.persistence.Entity
-import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
-import jakarta.persistence.Table
-import org.hibernate.annotations.CreationTimestamp
+import jakarta.persistence.*
 import org.hibernate.annotations.UpdateTimestamp
 import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
@@ -31,7 +22,7 @@ class CommunityPost(
     @Column(length = 2000)
     var content: String?,
 
-    @Column(length = 500)
+    @Column(length = 2000)
     var fileUrl: String?,
 
     @Column(nullable = false)
@@ -42,6 +33,10 @@ class CommunityPost(
 
     @Column(name = "deleted_at")
     var deletedAt: LocalDateTime? = null,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    var category: Category
 ) {
 
     @Id
@@ -58,11 +53,13 @@ class CommunityPost(
     fun update(
         title: String,
         content: String?,
+        category: Category,
         fileUrl: String?
     ) {
 
         this.title = title
         this.content = content
+        this.category = category
         this.fileUrl = fileUrl
         this.isEdited = true
     }

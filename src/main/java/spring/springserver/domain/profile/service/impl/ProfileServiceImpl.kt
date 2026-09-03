@@ -13,6 +13,8 @@ import spring.springserver.domain.location.entity.Sig
 import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.data.response.PostResponse
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
@@ -29,7 +31,8 @@ class ProfileServiceImpl(
     private val memberRepository: MemberRepository,
     private val locationService: LocationService,
     private val jobCategoryService: JobCategoryService,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val postRepository: PostRepository
 ): ProfileService {
 
     override fun createDefaultProfile(
@@ -94,6 +97,20 @@ class ProfileServiceImpl(
         return UpdateProfileResponse.of("프로필이 수정되었습니다.")
     }
 
+    @Transactional(readOnly = true)
+    override fun getImageUrlsByMemberIds(
+        memberIds: Collection<Long>
+    ): Map<Long, String?> {
+
+        if (memberIds.isEmpty()) {
+
+            return emptyMap()
+        }
+
+        return profileRepository.findMemberImageUrls(memberIds.distinct())
+            .associate { row -> (row[0] as Long) to (row[1] as String?) }
+    }
+
     private fun applyUsername(
         member: Member,
         username: String?
@@ -147,9 +164,14 @@ class ProfileServiceImpl(
 
         return ProfileResponse.of(
             profile = profile,
+            memberId = member.getId(),
             username = member.username,
+            email = member.email,
+            phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
-            jobCategoryName = profile.jobCategory?.getFullName()
+            jobCategoryName = profile.jobCategory?.getFullName(),
+            phoneVerified = member.isPhoneVerified(),
+            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl)
         )
     }
 
@@ -173,4 +195,14 @@ class ProfileServiceImpl(
         return memberRepository.findByUsername(username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
+
+    /**
+     * 본인 프로필에 붙는 목록이므로 작성자 프로필 이미지는 이미 들고 있는 값을 그대로 쓴다.
+     */
+    private fun getPostsByUsername(
+        username: String,
+        imageUrl: String?
+    ): List<PostResponse> =
+        postRepository.findAllWithDetailsByMemberUsername(username = username)
+            .map { post -> PostResponse.of(post, imageUrl) }
 }

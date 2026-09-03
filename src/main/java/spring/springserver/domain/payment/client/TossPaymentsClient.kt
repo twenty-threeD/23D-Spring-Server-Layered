@@ -35,7 +35,17 @@ class TossPaymentsClient(
         confirmPaymentRequest: ConfirmPaymentRequest
     ): PaymentResponse {
 
-        return post("/v1/payments/confirm", confirmPaymentRequest)
+        /**
+         * estimateId는 우리 서버 내부에서만 쓰는 값이라 토스로는 보내지 않는다.
+         */
+        return post(
+            "/v1/payments/confirm",
+            mapOf(
+                "paymentKey" to confirmPaymentRequest.paymentKey,
+                "orderId" to confirmPaymentRequest.orderId,
+                "amount" to confirmPaymentRequest.amount
+            )
+        )
     }
 
     fun findByPaymentKey(
@@ -146,10 +156,10 @@ class TossPaymentsClient(
 
                 ?: if (exception.statusCode.is4xxClientError) {
 
-                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID.message
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_INVALID.getMessage()
                 } else {
 
-                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                    PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.getMessage()
                 }
 
             val statusCode = if (exception.statusCode.is4xxClientError) {
@@ -166,7 +176,7 @@ class TossPaymentsClient(
 
             throw ApplicationException(
                 PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED,
-                exception.message ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.message
+                exception.message ?: PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED.getMessage()
             )
         }
     }

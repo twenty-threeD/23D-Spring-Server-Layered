@@ -1,12 +1,15 @@
 package spring.springserver.domain.key.service.impl
 
+import org.bouncycastle.asn1.ASN1EncodableVector
 import org.bouncycastle.asn1.ASN1Integer
 import org.bouncycastle.asn1.ASN1Sequence
+import org.bouncycastle.asn1.DERSequence
 import org.bouncycastle.crypto.digests.RIPEMD160Digest
 import org.bouncycastle.jcajce.provider.asymmetric.ec.BCECPublicKey
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.jce.spec.ECPrivateKeySpec
+import org.bouncycastle.jce.spec.ECPublicKeySpec
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.key.entity.MemberKey
@@ -16,15 +19,10 @@ import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import java.math.BigInteger
-import java.security.KeyFactory
-import java.security.KeyPairGenerator
-import java.security.MessageDigest
-import java.security.PrivateKey
-import java.security.SecureRandom
-import java.security.Signature
+import java.security.*
 import java.security.interfaces.ECPrivateKey
 import java.security.spec.ECGenParameterSpec
-import java.util.Base64
+import java.util.*
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -143,6 +141,32 @@ class KeyServiceImpl(
         )
     }
 
+    override fun verifySignature(
+        memberId: Long,
+        hash: String,
+        signature: String
+    ): Boolean {
+
+        val memberKey = keyRepository.findByMemberId(memberId = memberId)
+            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+
+        val signatureBytes = runCatching { Base64.getDecoder().decode(signature) }
+            .getOrElse { return false }
+
+        if (signatureBytes.size != SIGNATURE_LENGTH) return false
+
+        val verifier = Signature.getInstance(
+            "SHA256withECDSA",
+            BouncyCastleProvider()
+        )
+
+        verifier.initVerify(restorePublicKey(memberKey.getPublicKey()))
+        verifier.update(hash.toByteArray(Charsets.UTF_8))
+
+        return runCatching { verifier.verify(toDerSignature(signatureBytes)) }
+            .getOrElse { false }
+    }
+
     private val BECH32_CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
     private fun convertBits(
@@ -206,7 +230,9 @@ class KeyServiceImpl(
         return (0..5).map { BECH32_CHARSET[(polymod shr (5 * (5 - it))) and 31] }.joinToString("")
     }
 
-    private fun restorePrivateKey(privateKeyHex: String): PrivateKey {
+    private fun restorePrivateKey(
+        privateKeyHex: String
+    ): PrivateKey {
 
         return KeyFactory.getInstance(
             "EC",
@@ -220,5 +246,49 @@ class KeyServiceImpl(
                 ECNamedCurveTable.getParameterSpec("secp256k1")
             )
         )
+    }
+
+    private fun restorePublicKey(
+        publicKeyHex: String
+    ): PublicKey {
+
+        val spec = ECNamedCurveTable.getParameterSpec("secp256k1")
+        val point = spec.curve.decodePoint(
+            publicKeyHex.chunked(2)
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+        )
+
+        return KeyFactory.getInstance(
+            "EC",
+            BouncyCastleProvider()
+        ).generatePublic(
+            ECPublicKeySpec(
+                point,
+                spec
+            )
+        )
+    }
+
+    /**
+     * signHash 가 R||S 64바이트로 잘라낸 서명을 검증에 필요한 DER 시퀀스로 되돌린다.
+     */
+    private fun toDerSignature(
+        signatureBytes: ByteArray
+    ): ByteArray {
+
+        val r = BigInteger(1, signatureBytes.copyOfRange(0, 32))
+        val s = BigInteger(1, signatureBytes.copyOfRange(32, 64))
+        val vector = ASN1EncodableVector()
+
+        vector.add(ASN1Integer(r))
+        vector.add(ASN1Integer(s))
+
+        return DERSequence(vector).encoded
+    }
+
+    companion object {
+
+        private const val SIGNATURE_LENGTH = 64
     }
 }

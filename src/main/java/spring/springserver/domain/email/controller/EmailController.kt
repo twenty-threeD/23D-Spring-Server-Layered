@@ -1,20 +1,25 @@
 package spring.springserver.domain.email.controller
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.email.data.request.CheckVerifyCodeRequest
-import spring.springserver.domain.email.service.EmailService
 import spring.springserver.domain.email.data.request.SendVerifyCodeRequest
 import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
 import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
+import spring.springserver.domain.email.service.EmailService
+import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/email")
-class EmailController(private val emailService: EmailService) {
+class EmailController(
+    private val emailService: EmailService,
+    private val memberService: MemberService
+) {
 
     @PostMapping("/code/send")
     fun sendVerifyCode(@Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest): BaseResponse<SendVerifyCodeResponse> {
@@ -29,5 +34,19 @@ class EmailController(private val emailService: EmailService) {
             checkVerifyCodeRequest.email,
             checkVerifyCodeRequest.verifyCode
         ))
+    }
+
+    @PostMapping("/change/code/send")
+    fun sendChangeEmailCode(
+        @Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest,
+        httpServletRequest: HttpServletRequest
+    ): BaseResponse<SendVerifyCodeResponse> {
+
+        memberService.assertEmailAvailableForChange(
+            sendVerifyCodeRequest.email,
+            httpServletRequest
+        )
+
+        return BaseResponse.ok(emailService.sendChangeEmailCode(sendVerifyCodeRequest.email))
     }
 }

@@ -1,5 +1,6 @@
 package spring.springserver.domain.post.data.response
 
+import spring.springserver.domain.jobcategory.data.response.JobCategoryResponse
 import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
@@ -16,13 +17,16 @@ data class PostResponse(
 
     val fileUrls: List<String>,
 
-    val member: PostMemberResponse
+    val member: PostMemberResponse,
+
+    val category: JobCategoryResponse?
 ) {
 
     companion object {
 
         fun of(
-            post: Post
+            post: Post,
+            memberImageUrl: String?
         ): PostResponse {
 
             return PostResponse(
@@ -32,7 +36,11 @@ data class PostResponse(
                 post.viewCount,
                 post.updatedAt,
                 post.attachments.mapNotNull { it.fileUrl },
-                PostMemberResponse.of(post.member)
+                PostMemberResponse.of(
+                    post.member,
+                    memberImageUrl
+                ),
+                post.category?.let { JobCategoryResponse.of(it) }
             )
         }
     }

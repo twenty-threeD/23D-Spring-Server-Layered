@@ -3,23 +3,20 @@ package spring.springserver.domain.member.controller
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
-import org.springframework.web.bind.annotation.DeleteMapping
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import jakarta.validation.constraints.Email
+import jakarta.validation.constraints.NotBlank
+import org.springframework.validation.annotation.Validated
+import org.springframework.web.bind.annotation.*
+import spring.springserver.domain.member.data.request.ChangeEmailRequest
+import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
-import spring.springserver.domain.member.data.response.CheckResponse
-import spring.springserver.domain.member.data.response.DeleteAccountResponse
-import spring.springserver.domain.member.data.response.FindUsernameResponse
-import spring.springserver.domain.member.data.response.PasswordResetResponse
-import spring.springserver.domain.member.data.response.UsernameCheckResponse
+import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
+@Validated
 @RequestMapping("/api/member")
 class MemberController(
     private val memberService: MemberService
@@ -71,27 +68,59 @@ class MemberController(
         )
     }
 
-    @PostMapping("/check-email")
+    @GetMapping("/check-email")
     fun checkEmail(
-        @RequestBody email: String
+        @RequestParam @Email @NotBlank email: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkEmail(email))
     }
 
-    @PostMapping("/check-phone")
+    @GetMapping("/check-phone")
     fun checkPhone(
-        @RequestBody phone: String
+        @RequestParam @NotBlank phone: String
     ): BaseResponse<CheckResponse> {
 
         return BaseResponse.ok(memberService.checkPhone(phone))
     }
 
-    @PostMapping("/check-username")
+    @GetMapping("/check-username")
     fun checkUsername(
-        @RequestBody username: String
+        @RequestParam @NotBlank username: String
     ): BaseResponse<UsernameCheckResponse> {
 
         return BaseResponse.ok(memberService.checkUsername(username))
+    }
+
+    @PatchMapping("/email")
+    fun changeEmail(
+        @Valid @RequestBody changeEmailRequest: ChangeEmailRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ChangeEmailResponse> {
+
+        return BaseResponse.ok(
+            memberService.changeEmail(
+                changeEmailRequest,
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
+    }
+
+    @PatchMapping("/phone")
+    fun changePhone(
+        @Valid @RequestBody changePhoneRequest: ChangePhoneRequest,
+        httpServletRequest: HttpServletRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<ChangePhoneResponse> {
+
+        return BaseResponse.ok(
+            memberService.changePhone(
+                changePhoneRequest,
+                httpServletRequest,
+                httpServletResponse
+            )
+        )
     }
 }

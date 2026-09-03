@@ -6,6 +6,7 @@ import spring.springserver.domain.community.post.data.request.UpdatePostRequest
 import spring.springserver.domain.community.post.data.response.CommunityPostResponse
 import spring.springserver.domain.community.post.data.response.CreatePostResponse
 import spring.springserver.domain.community.post.data.response.UpdatePostResponse
+import spring.springserver.domain.community.post.entity.Category
 
 interface CommunityPostService {
 
@@ -29,5 +30,9 @@ interface CommunityPostService {
 
     fun searchPosts(
         keyword: String
+    ): List<CommunityPostResponse>
+
+    fun searchPostsByCategory(
+        category: Category
     ): List<CommunityPostResponse>
 }

@@ -10,13 +10,15 @@ import spring.springserver.domain.community.comment.repository.CommunityCommentR
 import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
+import spring.springserver.domain.profile.service.ProfileService
 import java.time.LocalDateTime
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
 class CommunityCommentServiceImpl(
     private val communityCommentRepository: CommunityCommentRepository,
-    private val communityAuthorizationService: CommunityAuthorizationService
+    private val communityAuthorizationService: CommunityAuthorizationService,
+    private val profileService: ProfileService
 ): CommunityCommentService {
 
     override fun createComment(
@@ -39,6 +41,7 @@ class CommunityCommentServiceImpl(
         return CommunityCommentResponse.of(
             communityComment = communityComment,
             likeCount = 0L,
+            imageUrl = getImageUrl(communityComment)
         )
     }
 
@@ -49,13 +52,19 @@ class CommunityCommentServiceImpl(
 
         communityAuthorizationService.getActivePost(postId)
 
-        return communityCommentRepository
+        val communityComments = communityCommentRepository
             .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(postId)
-            .map {
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            communityComments.mapNotNull { communityComment -> communityComment.member.getId() }
+        )
+
+        return communityComments.map {
                 communityComment ->
                 CommunityCommentResponse.of(
                     communityComment = communityComment,
                     likeCount = 0L,
+                    imageUrl = imageUrls[communityComment.member.getId()]
                 )
             }
     }
@@ -78,6 +87,7 @@ class CommunityCommentServiceImpl(
         return CommunityCommentResponse.of(
             communityComment = communityComment,
             likeCount = 0L,
+            imageUrl = getImageUrl(communityComment)
         )
     }
 
@@ -97,5 +107,13 @@ class CommunityCommentServiceImpl(
         communityComment.softDelete(LocalDateTime.now())
 
         return DeleteResponse.of("삭제되었습니다.")
+    }
+
+    private fun getImageUrl(
+        communityComment: CommunityComment
+    ): String? {
+
+        return communityComment.member.getId()
+            ?.let { memberId -> profileService.getImageUrlsByMemberIds(listOf(memberId))[memberId] }
     }
 }

@@ -16,4 +16,10 @@ interface KeyService {
     fun getPublicKeyBase64(
         memberId: Long
     ): String
+
+    fun verifySignature(
+        memberId: Long,
+        hash: String,
+        signature: String
+    ): Boolean
 }

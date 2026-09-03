@@ -2,17 +2,15 @@ package spring.springserver.domain.payment.controller
 
 import jakarta.validation.Valid
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestHeader
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
+import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
+import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.data.request.VirtualAccountRequest
+import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
+import spring.springserver.domain.payment.data.response.PreparePaymentResponse
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.data.BaseResponse
 import spring.springserver.global.jwt.MemberDetails
@@ -23,11 +21,25 @@ class PaymentController(
     private val paymentService: PaymentService
 ) {
 
+    @PostMapping("/prepare")
+    fun prepare(
+        @Valid @RequestBody preparePaymentRequest: PreparePaymentRequest,
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<PreparePaymentResponse> {
+
+        return BaseResponse.ok(
+            paymentService.prepare(
+                preparePaymentRequest,
+                memberDetails.getId()!!
+            )
+        )
+    }
+
     @PostMapping("/confirm")
     fun confirm(
         @Valid @RequestBody confirmPaymentRequest: ConfirmPaymentRequest,
         @AuthenticationPrincipal memberDetails: MemberDetails
-    ): BaseResponse<PaymentResponse> {
+    ): BaseResponse<ConfirmPaymentResponse> {
 
         return BaseResponse.ok(
             paymentService.confirm(
@@ -75,5 +87,19 @@ class PaymentController(
     ): BaseResponse<PaymentResponse> {
 
         return BaseResponse.ok(paymentService.issueVirtualAccount(virtualAccountRequest))
+    }
+
+    @GetMapping("/orders/{orderId}/verify")
+    fun verify(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<PaymentVerificationResponse> {
+
+        return BaseResponse.ok(
+            paymentService.verify(
+                orderId = orderId,
+                memberId = memberDetails.getId()!!
+            )
+        )
     }
 }

@@ -1,6 +1,7 @@
 package spring.springserver.domain.community.post.data.request
 
 import jakarta.validation.constraints.NotBlank
+import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.member.entity.Member
 
@@ -11,6 +12,8 @@ data class CreatePostRequest(
     val content: String?,
 
     val fileUrl: String?,
+
+    val category: Category,
 ) {
     fun toEntity(
         member: Member
@@ -23,6 +26,7 @@ data class CreatePostRequest(
             content = content?.trim()?.takeIf { it.isNotBlank() },
             fileUrl = fileUrl?.trim()?.takeIf { it.isNotBlank() },
             viewCount = 0,
+            category = category,
             isEdited = false,
         )
     }

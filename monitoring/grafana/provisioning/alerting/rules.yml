@@ -1,0 +1,176 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: server-health
+    folder: Alerts
+    interval: 1m
+    rules:
+
+      - uid: host-mem-high
+        title: 메모리 사용률 90% 초과
+        condition: C
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: 서버 메모리 사용률이 90%를 넘었습니다
+          description: >-
+            t3.small(2GiB)에서 여유 메모리가 고갈되면 OOM killer 가 app.jar 을
+            죽일 수 있습니다. 인스턴스 타입 상향을 검토하십시오.
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              expr: 100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [90] }
+
+      - uid: host-swap-high
+        title: 스왑 사용률 50% 초과
+        condition: C
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 스왑을 과도하게 쓰고 있습니다
+          description: >-
+            스왑은 루트 EBS 볼륨 위의 파일입니다. 스왑 I/O 가 늘면 EBS IOPS 를
+            잠식해 앱과 PostgreSQL 디스크 성능까지 함께 떨어집니다.
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              expr: 100 * (1 - node_memory_SwapFree_bytes / node_memory_SwapTotal_bytes)
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [50] }
+
+      - uid: host-disk-high
+        title: 루트 디스크 사용률 85% 초과
+        condition: C
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 루트 디스크가 85% 이상 찼습니다
+          description: >-
+            Loki/Prometheus 보존기간 축소 또는 docker image prune 을 검토하십시오.
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              expr: 100 * (1 - node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"})
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [85] }
+
+      - uid: host-cpu-high
+        title: CPU 사용률 85% 초과
+        condition: C
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: CPU 사용률이 지속적으로 높습니다
+          description: >-
+            t3 는 버스트 크레딧 방식입니다. 고부하가 지속되면 크레딧 소진 후
+            스로틀이 걸려 앱 전체가 느려집니다.
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              expr: 100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])))
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [85] }
+
+      - uid: target-down
+        title: 스크레이프 대상 다운
+        condition: C
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: '{{ $labels.job }} 대상이 응답하지 않습니다'
+          description: >-
+            스크레이프 실패. 서비스 중단 또는 Actuator 인증 오류(401)를 확인하십시오.
+        noDataState: NoData
+        execErrState: Error
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              expr: up
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: lt, params: [1] }

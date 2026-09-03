@@ -7,23 +7,9 @@ import spring.springserver.domain.chat.entity.ChatRoom
 
 interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
 
-    @Query(
-        """
-            select cr
-            from ChatRoom cr
-            join fetch cr.client c
-            join fetch cr.professional p
-            where (c.username = :username1 and p.username = :username2)
-               or (c.username = :username2 and p.username = :username1)
-            """
-    )
-    fun findDirectRoomByUsernames(
-        @Param("username1") username1: String,
-        @Param("username2") username2: String
-    ): ChatRoom?
-
-    fun findByDirectChatKey(
-        directChatKey: String
+    fun findByDirectChatKeyAndPostId(
+        directChatKey: String,
+        postId: Long
     ): ChatRoom?
 
     @Query(
@@ -32,6 +18,7 @@ interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
             from ChatRoom cr
             join fetch cr.client c
             join fetch cr.professional p
+            join fetch cr.post
             where c.username = :username
                or p.username = :username
             order by
@@ -56,19 +43,4 @@ interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
     fun findByIdWithParticipants(
         @Param("roomId") roomId: Long
     ): ChatRoom?
-
-    @Query(
-        """
-            select count(cr) > 0
-            from ChatRoom cr
-            join cr.client c
-            join cr.professional p
-            where cr.id = :roomId
-              and (c.username = :username or p.username = :username)
-            """
-    )
-    fun existsAuthorizedRoom(
-        @Param("roomId") roomId: Long,
-        @Param("username") username: String
-    ): Boolean
 }
