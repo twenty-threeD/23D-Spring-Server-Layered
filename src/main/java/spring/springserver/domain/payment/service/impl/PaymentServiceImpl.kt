@@ -23,8 +23,8 @@ import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentService
-import spring.springserver.global.config.blockchain.CosmosProperties
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.util.ContractUrlHasher
 import java.security.MessageDigest
 
 @Service
@@ -35,7 +35,7 @@ class PaymentServiceImpl(
     private val estimateService: EstimateService,
     private val paymentRecordService: PaymentRecordService,
     private val chatService: ChatService,
-    private val cosmosProperties: CosmosProperties
+    private val contractUrlHasher: ContractUrlHasher
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -258,8 +258,8 @@ class PaymentServiceImpl(
         val amount = paymentResponse.totalAmount
             ?: throw ApplicationException(PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED)
         val buyerSignature = keyService.signHash(memberId, hash)
-        val buyerAddress = keyService.deriveCosmosAddress(memberId)
-        val contractUrlHash = hashContractUrl(contractUrl)
+        val buyerAddress = keyService.deriveCosmosAddress(memberId = memberId)
+        val contractUrlHash = contractUrlHasher.hash(contractUrl = contractUrl)
         var lastException: Exception? = null
 
         repeat(CHAIN_RECORD_MAX_ATTEMPTS) { attempt ->
@@ -332,13 +332,6 @@ class PaymentServiceImpl(
             .getInstance("SHA-256")
             .digest(input.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
-    }
-
-    private fun hashContractUrl(
-        contractUrl: String
-    ): String {
-
-        return sha256("${cosmosProperties.contractUrlSalt} | $contractUrl")
     }
 
     override fun findByPaymentKey(paymentKey: String): PaymentResponse {
