@@ -103,7 +103,6 @@ class TxVerificationServiceImpl(
             signatureValid,
             detailOf(
                 payment,
-                record.contractUrl,
                 memberId
             )
         )
@@ -111,7 +110,6 @@ class TxVerificationServiceImpl(
 
     private fun detailOf(
         payment: Payment,
-        contractUrl: String,
         memberId: Long?
     ): TxVerificationDetailResponse? {
 
@@ -124,7 +122,7 @@ class TxVerificationServiceImpl(
 
         return TxVerificationDetailResponse.of(
             payment.getOrderName(),
-            contractUrl,
+            payment.getContractUrl(),
             paymentVerificationResponse.hashMatched,
             paymentVerificationResponse.recalculatedHash
         )

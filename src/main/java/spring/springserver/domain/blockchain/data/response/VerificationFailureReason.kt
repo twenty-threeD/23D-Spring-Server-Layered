@@ -6,12 +6,12 @@ package spring.springserver.domain.blockchain.data.response
  */
 enum class VerificationFailureReason {
 
-    INVALID_TX_HASH,
-    TX_NOT_FOUND,
-    TX_FAILED,
-    NOT_PAYMENT_RECORD,
-    NOT_ON_LEDGER,
-    LEDGER_MISMATCH,
-    SIGNATURE_INVALID,
-    SIGNATURE_UNVERIFIABLE
+    INVALID_TX_HASH, // 잘못된 트랜잭션 해시
+    TX_NOT_FOUND, // 트랜잭션 해시를 찾을 수 없음
+    TX_FAILED, // 실패한 트랜잭션
+    NOT_PAYMENT_RECORD, // 기록되지 않은 결제
+    NOT_ON_LEDGER, // 결제 누락
+    LEDGER_MISMATCH, // 결제 불일치
+    SIGNATURE_INVALID, // 잘못된 서명
+    SIGNATURE_UNVERIFIABLE // 확인할 수 없는 서명
 }

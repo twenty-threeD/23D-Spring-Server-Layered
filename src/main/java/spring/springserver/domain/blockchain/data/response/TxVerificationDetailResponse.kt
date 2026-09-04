@@ -6,11 +6,8 @@ package spring.springserver.domain.blockchain.data.response
  */
 data class TxVerificationDetailResponse(
     val orderName: String?,
-
     val contractUrl: String,
-
     val hashMatched: Boolean,
-
     val recalculatedHash: String
 ) {
 

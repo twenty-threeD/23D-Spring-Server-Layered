@@ -166,6 +166,7 @@ cosmos:
   submitter-private-key: ${COSMOS_SUBMITTER_PRIVATE_KEY}
   node-url: ${COSMOS_NODE_URL}
   chain-id: ${COSMOS_CHAIN_ID}
+  contrat-url-salt: ${COSMOS_CONTRACT_URL_SALT}
 
 solapi:
   api-key: ${SOLAPI_API_KEY}

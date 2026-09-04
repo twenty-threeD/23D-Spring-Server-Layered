@@ -6,29 +6,17 @@ package spring.springserver.domain.blockchain.data.response
  */
 data class TxVerificationResponse(
     val txHash: String,
-
     val verified: Boolean,
-
     val reason: VerificationFailureReason?,
-
     val height: Long?,
-
     val orderId: String?,
-
     val buyerAddress: String?,
-
     val amount: Long?,
-
     val paidAt: String?,
-
     val paymentHash: String?,
-
     val buyerSignature: String?,
-
     val ledgerMatched: Boolean,
-
     val signatureValid: Boolean?,
-
     val detail: TxVerificationDetailResponse?
 ) {
 
