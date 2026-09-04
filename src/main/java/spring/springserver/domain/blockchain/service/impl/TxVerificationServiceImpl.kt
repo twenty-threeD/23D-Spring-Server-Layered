@@ -2,6 +2,7 @@ package spring.springserver.domain.blockchain.service.impl
 
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import spring.springserver.domain.blockchain.data.response.ChainPaymentRecordResponse
 import spring.springserver.domain.blockchain.data.response.ChainTxResponse
 import spring.springserver.domain.blockchain.data.response.TxVerificationDetailResponse
 import spring.springserver.domain.blockchain.data.response.TxVerificationResponse
@@ -11,7 +12,7 @@ import spring.springserver.domain.blockchain.service.TxVerificationService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.service.PaymentRecordService
-import spring.springserver.domain.payment.service.PaymentService
+import spring.springserver.global.util.ContractUrlHasher
 
 @Service
 @Transactional(readOnly = true)
@@ -19,7 +20,7 @@ class TxVerificationServiceImpl(
     private val blockchainService: BlockchainService,
     private val keyService: KeyService,
     private val paymentRecordService: PaymentRecordService,
-    private val paymentService: PaymentService
+    private val contractUrlHasher: ContractUrlHasher
 ): TxVerificationService {
 
     override fun verifyByTxHash(
@@ -100,31 +101,29 @@ class TxVerificationServiceImpl(
         return TxVerificationResponse.of(
             record,
             normalizedTxHash,
-            signatureValid,
+            signatureValid = signatureValid,
             detailOf(
-                payment,
-                memberId
+                payment = payment,
+                record,
+                memberId = memberId
             )
         )
     }
 
     private fun detailOf(
         payment: Payment,
+        chainPaymentRecordResponse: ChainPaymentRecordResponse,
         memberId: Long?
     ): TxVerificationDetailResponse? {
 
         if (memberId == null || payment.getMemberId() != memberId) return null
 
-        val paymentVerificationResponse = paymentService.verify(
-            payment.getOrderId(),
-            memberId
-        )
-
         return TxVerificationDetailResponse.of(
-            payment.getOrderName(),
-            payment.getContractUrl(),
-            paymentVerificationResponse.hashMatched,
-            paymentVerificationResponse.recalculatedHash
+            contractUrl = payment.getContractUrl(),
+            contractUrlMatched = contractUrlHasher.matches(
+                contractUrl = payment.getContractUrl(),
+                chainPaymentRecordResponse.contractUrlHash
+            )
         )
     }
 
