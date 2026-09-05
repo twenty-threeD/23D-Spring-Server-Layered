@@ -75,6 +75,18 @@ class ContractServiceImpl(
         return ViewContractResponse.of(contract)
     }
 
+    @Transactional(readOnly = true)
+    override fun isParty(
+        contractUrl: String,
+        memberId: Long
+    ): Boolean {
+
+        val contract = contractRepository.findContractByContractUrl(contractUrl.trim())
+            ?: return false
+
+        return contract.client.getId() == memberId || contract.professional.getId() == memberId
+    }
+
     private fun getContractEntity(
         contractId: Long
     ): Contract {

@@ -51,4 +51,9 @@ interface EstimateService {
         memberId: Long,
         paidAmount: Long
     ): EstimateResponse
+
+    fun isProfessional(
+        estimateId: Long,
+        memberId: Long
+    ): Boolean
 }

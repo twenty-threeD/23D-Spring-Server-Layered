@@ -57,4 +57,9 @@ interface PaymentRecordService {
         orderId: String,
         failureReason: String?
     )
+
+    fun linkEstimate(
+        orderId: String,
+        estimateId: Long
+    )
 }

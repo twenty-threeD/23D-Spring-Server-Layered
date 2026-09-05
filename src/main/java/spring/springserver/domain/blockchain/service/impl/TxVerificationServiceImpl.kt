@@ -9,6 +9,8 @@ import spring.springserver.domain.blockchain.data.response.TxVerificationRespons
 import spring.springserver.domain.blockchain.data.response.VerificationFailureReason
 import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.blockchain.service.TxVerificationService
+import spring.springserver.domain.contract.service.ContractService
+import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.service.PaymentRecordService
@@ -20,7 +22,9 @@ class TxVerificationServiceImpl(
     private val blockchainService: BlockchainService,
     private val keyService: KeyService,
     private val paymentRecordService: PaymentRecordService,
-    private val contractUrlHasher: ContractUrlHasher
+    private val contractUrlHasher: ContractUrlHasher,
+    private val estimateService: EstimateService,
+    private val contractService: ContractService
 ): TxVerificationService {
 
     override fun verifyByTxHash(
@@ -122,7 +126,38 @@ class TxVerificationServiceImpl(
         memberId: Long?
     ): Boolean {
 
-        return memberId != null && payment.getMemberId() == memberId
+        if (memberId == null) return false
+
+        if (payment.getMemberId() == memberId) return true
+
+        if (isContractParty(
+                contractUrl = payment.getContractUrl(),
+                memberId = memberId
+            )
+        ) return true
+
+        val estimateId = payment.getEstimateId()
+            ?: return false
+
+        return estimateService.isProfessional(
+            estimateId = estimateId,
+            memberId = memberId
+        )
+    }
+
+    /**
+     * 계약서에는 의뢰인과 전문가가 모두 기록돼 있어 판매자까지 가려낼 수 있다.
+     * 결제 건은 계약서 URL만 들고 있으므로 그 경로로 계약서를 찾는다.
+     */
+    private fun isContractParty(
+        contractUrl: String,
+        memberId: Long
+    ): Boolean {
+
+        return contractService.isParty(
+            contractUrl = contractUrl,
+            memberId = memberId
+        )
     }
 
     private fun detailOf(

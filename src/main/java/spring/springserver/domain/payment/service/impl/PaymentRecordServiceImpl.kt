@@ -107,6 +107,14 @@ class PaymentRecordServiceImpl(
         )
     }
 
+    override fun linkEstimate(
+        orderId: String,
+        estimateId: Long
+    ) {
+
+        findByOrderId(orderId = orderId).linkEstimate(estimateId = estimateId)
+    }
+
     override fun markCanceledByChainFailure(
         orderId: String,
         failureReason: String?

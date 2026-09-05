@@ -142,6 +142,11 @@ class PaymentServiceImpl(
 
         confirmPaymentRequest.estimateId?.let { estimateId ->
 
+            paymentRecordService.linkEstimate(
+                confirmPaymentRequest.orderId,
+                estimateId = estimateId
+            )
+
             estimateService.markAsPaid(
                 estimateId,
                 memberId,
