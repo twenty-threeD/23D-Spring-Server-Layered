@@ -9,6 +9,7 @@ import spring.springserver.domain.blockchain.data.response.TxVerificationRespons
 import spring.springserver.domain.blockchain.data.response.VerificationFailureReason
 import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.blockchain.service.TxVerificationService
+import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.service.ContractService
 import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
@@ -102,14 +103,20 @@ class TxVerificationServiceImpl(
             )
         }
 
+        val contractPartyResponse = contractService.findParty(
+            contractUrl = payment.getContractUrl()
+        )
+
         val party = isParty(
             payment = payment,
+            contractPartyResponse = contractPartyResponse,
             memberId = memberId
         )
 
         val txVerificationDetailResponse = if (party) detailOf(
             payment = payment,
-            chainPaymentRecordResponse = record
+            chainPaymentRecordResponse = record,
+            contractPartyResponse = contractPartyResponse
         ) else null
 
         return TxVerificationResponse.of(
@@ -123,6 +130,7 @@ class TxVerificationServiceImpl(
 
     private fun isParty(
         payment: Payment,
+        contractPartyResponse: ContractPartyResponse?,
         memberId: Long?
     ): Boolean {
 
@@ -130,10 +138,8 @@ class TxVerificationServiceImpl(
 
         if (payment.getMemberId() == memberId) return true
 
-        if (isContractParty(
-                contractUrl = payment.getContractUrl(),
-                memberId = memberId
-            )
+        if (contractPartyResponse != null
+            && (contractPartyResponse.clientId == memberId || contractPartyResponse.professionalId == memberId)
         ) return true
 
         val estimateId = payment.getEstimateId()
@@ -145,24 +151,10 @@ class TxVerificationServiceImpl(
         )
     }
 
-    /**
-     * 계약서에는 의뢰인과 전문가가 모두 기록돼 있어 판매자까지 가려낼 수 있다.
-     * 결제 건은 계약서 URL만 들고 있으므로 그 경로로 계약서를 찾는다.
-     */
-    private fun isContractParty(
-        contractUrl: String,
-        memberId: Long
-    ): Boolean {
-
-        return contractService.isParty(
-            contractUrl = contractUrl,
-            memberId = memberId
-        )
-    }
-
     private fun detailOf(
         payment: Payment,
-        chainPaymentRecordResponse: ChainPaymentRecordResponse
+        chainPaymentRecordResponse: ChainPaymentRecordResponse,
+        contractPartyResponse: ContractPartyResponse?
     ): TxVerificationDetailResponse {
 
         return TxVerificationDetailResponse.of(
@@ -170,7 +162,9 @@ class TxVerificationServiceImpl(
             contractUrlMatched = contractUrlHasher.matches(
                 contractUrl = payment.getContractUrl(),
                 chainPaymentRecordResponse.contractUrlHash
-            )
+            ),
+            sellerName = contractPartyResponse?.professionalName,
+            buyerName = contractPartyResponse?.clientName
         )
     }
 

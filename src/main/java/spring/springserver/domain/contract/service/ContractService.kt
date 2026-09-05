@@ -2,6 +2,7 @@ package spring.springserver.domain.contract.service
 
 import jakarta.servlet.http.HttpServletRequest
 import spring.springserver.domain.contract.data.request.CreateContractRequest
+import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
 import spring.springserver.domain.contract.data.response.ViewContractResponse
 
@@ -28,8 +29,7 @@ interface ContractService {
      * 결제 건은 계약서 URL만 들고 있어 온체인 검증에서 판매자를 가려낼 때 호출한다.
      * 계약서를 찾지 못하면 당사자가 아닌 것으로 본다.
      */
-    fun isParty(
-        contractUrl: String,
-        memberId: Long
-    ): Boolean
+    fun findParty(
+        contractUrl: String
+    ): ContractPartyResponse?
 }

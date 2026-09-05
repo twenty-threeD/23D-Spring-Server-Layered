@@ -6,19 +6,25 @@ package spring.springserver.domain.blockchain.data.response
  */
 data class TxVerificationDetailResponse(
     val contractUrl: String,
-    val contractUrlMatched: Boolean
+    val contractUrlMatched: Boolean,
+    val sellerName: String?,
+    val buyerName: String?
 ) {
 
     companion object {
 
         fun of(
             contractUrl: String,
-            contractUrlMatched: Boolean
+            contractUrlMatched: Boolean,
+            sellerName: String?,
+            buyerName: String?
         ): TxVerificationDetailResponse {
 
             return TxVerificationDetailResponse(
                 contractUrl = contractUrl,
-                contractUrlMatched = contractUrlMatched
+                contractUrlMatched = contractUrlMatched,
+                sellerName = sellerName,
+                buyerName = buyerName
             )
         }
     }

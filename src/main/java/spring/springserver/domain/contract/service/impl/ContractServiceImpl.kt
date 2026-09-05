@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.contract.data.request.CreateContractRequest
+import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
 import spring.springserver.domain.contract.data.response.ViewContractResponse
 import spring.springserver.domain.contract.entity.Contract
@@ -23,7 +24,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 class ContractServiceImpl(
     private val contractRepository: ContractRepository,
     private val memberRepository: MemberRepository,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val contractService: ContractService
 ): ContractService {
 
     override fun createContract(
@@ -76,15 +78,14 @@ class ContractServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun isParty(
-        contractUrl: String,
-        memberId: Long
-    ): Boolean {
+    override fun findParty(
+        contractUrl: String
+    ): ContractPartyResponse? {
 
-        val contract = contractRepository.findContractByContractUrl(contractUrl.trim())
-            ?: return false
+        val contract = contractRepository.findContractByContractUrl(contractUrl = contractUrl.trim())
+            ?: return null
 
-        return contract.client.getId() == memberId || contract.professional.getId() == memberId
+        return ContractPartyResponse.of(contract = contract)
     }
 
     private fun getContractEntity(
