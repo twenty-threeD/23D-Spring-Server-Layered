@@ -6,7 +6,7 @@ package spring.springserver.domain.blockchain.data.response
  */
 data class TxVerificationDetailResponse(
     val contractUrl: String,
-    val contractUrlMatched: Boolean,
+    val contractUrlMatched: Boolean
 ) {
 
     companion object {

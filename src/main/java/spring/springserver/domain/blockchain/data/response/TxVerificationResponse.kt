@@ -3,18 +3,21 @@ package spring.springserver.domain.blockchain.data.response
 /**
  * 트랜잭션 해시 하나로 온체인 결제 기록을 검증한 결과다.
  * 실패도 정상 응답(200)으로 내려가며 reason 으로 원인을 구분한다.
+ * party 는 조회자가 결제 당사자인지를 나타내며, detail 이 null 인 이유를
+ * "당사자가 아님"과 "검증 실패"로 구분하기 위한 값이다.
  */
 data class TxVerificationResponse(
     val txHash: String,
     val verified: Boolean,
     val reason: VerificationFailureReason?,
+    val reasonMessage: String?,
     val height: Long?,
     val orderId: String?,
     val amount: Long?,
     val paidAt: String?,
-    val paymentHash: String?,
     val ledgerMatched: Boolean,
     val signatureValid: Boolean?,
+    val party: Boolean,
     val detail: TxVerificationDetailResponse?
 ) {
 
@@ -29,13 +32,14 @@ data class TxVerificationResponse(
                 txHash = txHash,
                 verified = false,
                 reason = reason,
+                reasonMessage = reason.message,
                 height = null,
                 orderId = null,
                 amount = null,
                 paidAt = null,
-                paymentHash = null,
                 ledgerMatched = false,
                 signatureValid = null,
+                party = false,
                 detail = null
             )
         }
@@ -55,13 +59,14 @@ data class TxVerificationResponse(
                 txHash = chainTxResponse.txHash,
                 verified = false,
                 reason = reason,
+                reasonMessage = reason.message,
                 height = chainTxResponse.height,
                 orderId = chainTxResponse.orderId,
                 amount = chainTxResponse.amount,
                 paidAt = chainTxResponse.paidAt,
-                paymentHash = chainTxResponse.paymentHash,
                 ledgerMatched = ledgerMatched,
                 signatureValid = signatureValid,
+                party = false,
                 detail = null
             )
         }
@@ -70,6 +75,7 @@ data class TxVerificationResponse(
             chainPaymentRecordResponse: ChainPaymentRecordResponse,
             txHash: String,
             signatureValid: Boolean,
+            party: Boolean,
             txVerificationDetailResponse: TxVerificationDetailResponse?
         ): TxVerificationResponse {
 
@@ -77,13 +83,14 @@ data class TxVerificationResponse(
                 txHash = txHash,
                 verified = true,
                 reason = null,
+                reasonMessage = null,
                 height = chainPaymentRecordResponse.recordedHeight,
                 orderId = chainPaymentRecordResponse.orderId,
                 amount = chainPaymentRecordResponse.amount,
                 paidAt = chainPaymentRecordResponse.paidAt,
-                paymentHash = chainPaymentRecordResponse.paymentHash,
                 ledgerMatched = true,
                 signatureValid = signatureValid,
+                party = party,
                 detail = txVerificationDetailResponse
             )
         }

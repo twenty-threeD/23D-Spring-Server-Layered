@@ -98,25 +98,37 @@ class TxVerificationServiceImpl(
             )
         }
 
-        return TxVerificationResponse.of(
-            record,
-            normalizedTxHash,
-            signatureValid = signatureValid,
-            detailOf(
-                payment = payment,
-                record,
-                memberId = memberId
-            )
+        val party = isParty(
+            payment = payment,
+            memberId = memberId
         )
+
+        val txVerificationDetailResponse = if (party) detailOf(
+            payment = payment,
+            chainPaymentRecordResponse = record
+        ) else null
+
+        return TxVerificationResponse.of(
+            chainPaymentRecordResponse = record,
+            txHash = normalizedTxHash,
+            signatureValid = signatureValid,
+            party = party,
+            txVerificationDetailResponse = txVerificationDetailResponse
+        )
+    }
+
+    private fun isParty(
+        payment: Payment,
+        memberId: Long?
+    ): Boolean {
+
+        return memberId != null && payment.getMemberId() == memberId
     }
 
     private fun detailOf(
         payment: Payment,
-        chainPaymentRecordResponse: ChainPaymentRecordResponse,
-        memberId: Long?
-    ): TxVerificationDetailResponse? {
-
-        if (memberId == null || payment.getMemberId() != memberId) return null
+        chainPaymentRecordResponse: ChainPaymentRecordResponse
+    ): TxVerificationDetailResponse {
 
         return TxVerificationDetailResponse.of(
             contractUrl = payment.getContractUrl(),
