@@ -24,8 +24,7 @@ import spring.springserver.global.exception.exception.ApplicationException
 class ContractServiceImpl(
     private val contractRepository: ContractRepository,
     private val memberRepository: MemberRepository,
-    private val tokenService: TokenService,
-    private val contractService: ContractService
+    private val tokenService: TokenService
 ): ContractService {
 
     override fun createContract(
