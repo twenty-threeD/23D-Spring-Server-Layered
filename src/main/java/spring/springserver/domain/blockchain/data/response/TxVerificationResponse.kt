@@ -44,15 +44,14 @@ data class TxVerificationResponse(
             )
         }
 
-        /**
-         * tx 를 찾았지만 검증에 실패한 경우다.
-         * 무엇이 어긋났는지 보여줘야 하므로 체인에서 읽은 값은 그대로 내려준다.
-         */
+        // 트랜잭션이 존재하지만 검증이 실패한 경우
         fun failWith(
             chainTxResponse: ChainTxResponse,
             reason: VerificationFailureReason,
             ledgerMatched: Boolean,
-            signatureValid: Boolean?
+            signatureValid: Boolean?,
+            party: Boolean,
+            txVerificationDetailResponse: TxVerificationDetailResponse?
         ): TxVerificationResponse {
 
             return TxVerificationResponse(
@@ -66,8 +65,8 @@ data class TxVerificationResponse(
                 paidAt = chainTxResponse.paidAt,
                 ledgerMatched = ledgerMatched,
                 signatureValid = signatureValid,
-                party = false,
-                detail = null
+                party = party,
+                detail = txVerificationDetailResponse
             )
         }
 
