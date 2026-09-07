@@ -82,7 +82,7 @@ class ContractServiceImpl(
         contractUrl: String
     ): ContractPartyResponse? {
 
-        val contract = contractRepository.findContractByContractUrl(contractUrl = contractUrl.trim())
+        val contract = contractRepository.findFirstByContractUrlOrderByIdDesc(contractUrl = contractUrl.trim())
             ?: return null
 
         return ContractPartyResponse.of(contract = contract)

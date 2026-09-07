@@ -5,7 +5,7 @@ import spring.springserver.domain.contract.entity.Contract
 
 interface ContractRepository: JpaRepository<Contract, Long> {
 
-    fun findContractByContractUrl(
+    fun findFirstByContractUrlOrderByIdDesc(
         contractUrl: String
     ): Contract?
 }
