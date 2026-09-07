@@ -311,7 +311,7 @@ class BlockchainService(
             restTemplate.getForObject(url, Map::class.java)
                 ?.get("record") as? Map<*, *>
                 ?: return null
-        } catch (_: HttpClientErrorException) {
+        } catch (_: HttpClientErrorException.NotFound) {
 
             return null
         } catch (_: Exception) {
