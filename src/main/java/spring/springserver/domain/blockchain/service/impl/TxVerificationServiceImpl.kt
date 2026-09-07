@@ -38,7 +38,7 @@ class TxVerificationServiceImpl(
         if (!TX_HASH_PATTERN.matches(normalizedTxHash)) {
 
             return TxVerificationResponse.fail(
-                normalizedTxHash,
+                normalizedTxHash.take(MAX_TX_HASH_LENGTH_ECHO),
                 VerificationFailureReason.INVALID_TX_HASH
             )
         }
@@ -246,6 +246,7 @@ class TxVerificationServiceImpl(
 
     companion object {
 
-        private val TX_HASH_PATTERN = Regex("^[0-9A-F]{64}$")
+        private const val MAX_TX_HASH_LENGTH_ECHO = 64
+        private val TX_HASH_PATTERN = Regex("^[0-9A-F]{$MAX_TX_HASH_LENGTH_ECHO}$")
     }
 }
