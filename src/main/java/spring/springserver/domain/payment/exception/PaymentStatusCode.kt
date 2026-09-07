@@ -68,6 +68,11 @@ enum class PaymentStatusCode(
         "PAYMENT_CHAT_ROOM_FORBIDDEN",
         "참여하지 않은 채팅입니다.",
         HttpStatus.FORBIDDEN
+    ),
+    PAYMENT_CONTRACT_FORBIDDEN(
+        "PAYMENT_CONTRACT_FORBIDDEN",
+        "계약 당사자가 아닙니다.",
+        HttpStatus.FORBIDDEN
     );
 
     override fun getCode(): String = code

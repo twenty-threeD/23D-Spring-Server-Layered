@@ -20,22 +20,24 @@ class PaymentRecordServiceImpl(
 
     override fun create(
         preparePaymentRequest: PreparePaymentRequest,
-        memberId: Long
+        memberId: Long,
+        contractUrl: String
     ): Payment {
 
         try {
 
             return paymentRepository.saveAndFlush(
                 Payment(
-                    preparePaymentRequest.orderId,
-                    preparePaymentRequest.amount,
-                    memberId,
-                    preparePaymentRequest.contractUrl,
-                    preparePaymentRequest.orderName,
-                    preparePaymentRequest.roomId
+                    orderId = preparePaymentRequest.orderId,
+                    amount = preparePaymentRequest.amount,
+                    memberId = memberId,
+                    contractUrl = contractUrl,
+                    orderName = preparePaymentRequest.orderName,
+                    roomId = preparePaymentRequest.roomId,
+                    contractId = preparePaymentRequest.contractId
                 )
             )
-        } catch (exception: DataIntegrityViolationException) {
+        } catch (_: DataIntegrityViolationException) {
 
             throw ApplicationException(PaymentStatusCode.PAYMENT_ORDER_ID_DUPLICATED)
         }

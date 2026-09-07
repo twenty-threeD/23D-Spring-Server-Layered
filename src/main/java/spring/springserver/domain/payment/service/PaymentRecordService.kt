@@ -7,7 +7,8 @@ interface PaymentRecordService {
 
     fun create(
         preparePaymentRequest: PreparePaymentRequest,
-        memberId: Long
+        memberId: Long,
+        contractUrl: String
     ): Payment
 
     fun startConfirm(

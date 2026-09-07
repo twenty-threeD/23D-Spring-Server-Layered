@@ -77,15 +77,14 @@ class ContractServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun findParty(
-        contractUrl: String
+    override fun findPartyById(
+        contractId: Long
     ): ContractPartyResponse? {
 
-        val contracts = contractRepository.findAllByContractUrl(contractUrl = contractUrl.trim())
+        val contract = contractRepository.findContractById(contractId)
+            ?: return null
 
-        if (contracts.size != 1) return null
-
-        return ContractPartyResponse.of(contract = contracts.first())
+        return ContractPartyResponse.of(contract = contract)
     }
 
     private fun getContractEntity(

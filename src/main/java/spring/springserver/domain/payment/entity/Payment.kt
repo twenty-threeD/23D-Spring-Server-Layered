@@ -20,7 +20,9 @@ class Payment(
     @Column(length = 100)
     private val orderName: String? = null,
     @Column(name = "room_id")
-    private val roomId: Long? = null
+    private val roomId: Long? = null,
+    @Column(name = "contract_id")
+    private val contractId: Long? = null
 ) {
 
     @Id
@@ -63,6 +65,7 @@ class Payment(
     fun getAmount() = amount
     fun getMemberId() = memberId
     fun getContractUrl() = contractUrl
+    fun getContractId() = contractId
     fun getOrderName() = orderName
     fun getRoomId() = roomId
     fun getPaymentKey() = paymentKey

@@ -6,7 +6,8 @@ data class ContractPartyResponse(
     val clientId: Long?,
     val clientName: String,
     val professionalId: Long?,
-    val professionalName: String
+    val professionalName: String,
+    val contractUrl: String
 ) {
 
     companion object {
@@ -19,7 +20,8 @@ data class ContractPartyResponse(
                 clientId = contract.client.getId(),
                 clientName = contract.client.name,
                 professionalId = contract.professional.getId(),
-                professionalName = contract.professional.name
+                professionalName = contract.professional.name,
+                contractUrl = contract.contractUrl
             )
         }
     }

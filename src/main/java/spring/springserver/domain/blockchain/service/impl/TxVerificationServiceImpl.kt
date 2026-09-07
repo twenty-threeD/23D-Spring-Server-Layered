@@ -63,10 +63,9 @@ class TxVerificationServiceImpl(
          * payment 조회와 party 판정을 검증 단계보다 먼저 끝낸다.
          */
         val payment = paymentRecordService.findByOrderIdOrNull(orderId = chainTxResponse.orderId)
+        val contractPartyResponse = payment?.getContractId()?.let {
 
-        val contractPartyResponse = payment?.let {
-
-            contractService.findParty(contractUrl = it.getContractUrl())
+            contractService.findPartyById(contractId = it)
         }
 
         val party = payment != null && isParty(

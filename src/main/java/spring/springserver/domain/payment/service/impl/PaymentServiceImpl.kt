@@ -8,6 +8,8 @@ import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutEx
 import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.service.ChatService
+import spring.springserver.domain.contract.exception.ContractStatusCode
+import spring.springserver.domain.contract.service.ContractService
 import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
@@ -35,7 +37,8 @@ class PaymentServiceImpl(
     private val estimateService: EstimateService,
     private val paymentRecordService: PaymentRecordService,
     private val chatService: ChatService,
-    private val contractUrlHasher: ContractUrlHasher
+    private val contractUrlHasher: ContractUrlHasher,
+    private val contractService: ContractService
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -62,10 +65,26 @@ class PaymentServiceImpl(
             }
         }
 
+        val contractUrl = preparePaymentRequest.contractId?.let { contractId ->
+
+            val contractPartyResponse = contractService.findPartyById(contractId = contractId)
+                ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+            if (contractPartyResponse.clientId != memberId
+                && contractPartyResponse.professionalId != memberId) {
+
+                throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
+            }
+
+            contractPartyResponse.contractUrl
+        }
+            ?: preparePaymentRequest.contractUrl
+
         return PreparePaymentResponse.of(
             paymentRecordService.create(
                 preparePaymentRequest,
-                memberId
+                memberId,
+                contractUrl
             )
         )
     }
