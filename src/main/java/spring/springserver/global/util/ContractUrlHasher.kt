@@ -13,7 +13,7 @@ class ContractUrlHasher(private val cosmosProperties: CosmosProperties) {
 
         return MessageDigest
             .getInstance("SHA-256")
-            .digest("${cosmosProperties.contractUrlSalt} | $contractUrl".toByteArray(Charsets.UTF_8))
+            .digest("${cosmosProperties.contractUrlSalt.trim()} | ${contractUrl.trim()}".toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
     }
 
