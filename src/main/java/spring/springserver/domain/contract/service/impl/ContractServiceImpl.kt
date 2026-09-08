@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.contract.data.request.CreateContractRequest
+import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
 import spring.springserver.domain.contract.data.response.ViewContractResponse
 import spring.springserver.domain.contract.entity.Contract
@@ -73,6 +74,17 @@ class ContractServiceImpl(
         )
 
         return ViewContractResponse.of(contract)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findPartyById(
+        contractId: Long
+    ): ContractPartyResponse? {
+
+        val contract = contractRepository.findContractById(contractId)
+            ?: return null
+
+        return ContractPartyResponse.of(contract = contract)
     }
 
     private fun getContractEntity(

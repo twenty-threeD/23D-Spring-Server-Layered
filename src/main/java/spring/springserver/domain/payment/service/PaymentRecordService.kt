@@ -7,7 +7,8 @@ interface PaymentRecordService {
 
     fun create(
         preparePaymentRequest: PreparePaymentRequest,
-        memberId: Long
+        memberId: Long,
+        contractUrl: String
     ): Payment
 
     fun startConfirm(
@@ -56,5 +57,10 @@ interface PaymentRecordService {
     fun markAbandoned(
         orderId: String,
         failureReason: String?
+    )
+
+    fun linkEstimate(
+        orderId: String,
+        estimateId: Long
     )
 }

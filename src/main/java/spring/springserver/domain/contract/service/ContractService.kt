@@ -2,6 +2,7 @@ package spring.springserver.domain.contract.service
 
 import jakarta.servlet.http.HttpServletRequest
 import spring.springserver.domain.contract.data.request.CreateContractRequest
+import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
 import spring.springserver.domain.contract.data.response.ViewContractResponse
 
@@ -22,4 +23,8 @@ interface ContractService {
         contractId: Long,
         httpServletRequest: HttpServletRequest
     ): ViewContractResponse
+
+    fun findPartyById(
+        contractId: Long
+    ): ContractPartyResponse?
 }

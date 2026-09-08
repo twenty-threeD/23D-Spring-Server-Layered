@@ -10,4 +10,5 @@ class CosmosProperties {
     lateinit var submitterPrivateKey: String
     lateinit var nodeUrl: String
     lateinit var chainId: String
+    lateinit var contractUrlSalt: String
 }

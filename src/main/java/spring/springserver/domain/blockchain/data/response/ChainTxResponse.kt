@@ -14,7 +14,7 @@ data class ChainTxResponse(
     val buyerAddress: String,
     val amount: Long,
     val paidAt: String,
-    val contractUrl: String,
+    val contractUrlHash: String,
     val paymentHash: String,
     val buyerSignature: String
 ) {
@@ -34,7 +34,7 @@ data class ChainTxResponse(
                 buyerAddress == chainPaymentRecordResponse.buyerAddress &&
                 amount == chainPaymentRecordResponse.amount &&
                 paidAt == chainPaymentRecordResponse.paidAt &&
-                contractUrl == chainPaymentRecordResponse.contractUrl &&
+                contractUrlHash == chainPaymentRecordResponse.contractUrlHash &&
                 paymentHash == chainPaymentRecordResponse.paymentHash &&
                 buyerSignature == chainPaymentRecordResponse.buyerSignature
     }
@@ -62,7 +62,7 @@ data class ChainTxResponse(
                 buyerAddress = message["buyer_address"]?.toString().orEmpty(),
                 amount = message["amount"]?.toString()?.toLongOrNull() ?: 0L,
                 paidAt = message["paid_at"]?.toString().orEmpty(),
-                contractUrl = message["contract_url"]?.toString().orEmpty(),
+                contractUrlHash = message["contract_url"]?.toString().orEmpty(),
                 paymentHash = message["payment_hash"]?.toString().orEmpty(),
                 buyerSignature = message["buyer_signature"]?.toString().orEmpty()
             )
