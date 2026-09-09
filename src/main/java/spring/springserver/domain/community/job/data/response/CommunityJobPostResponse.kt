@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.job.data.response
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import spring.springserver.domain.community.job.entity.CommunityJobPost
 import spring.springserver.domain.community.job.entity.JobPostType
 import spring.springserver.domain.community.job.repository.CommunityJobCommentRepository
@@ -12,6 +13,11 @@ import java.time.LocalDateTime
  */
 data class CommunityJobPostResponse(
     val id: Long?,
+
+    /**
+     * id와 같은 값이다. 프론트가 생성 응답에서 data.postId를 읽으므로 함께 내려준다.
+     */
+    val postId: Long?,
 
     val username: String,
 
@@ -36,7 +42,12 @@ data class CommunityJobPostResponse(
 
     /**
      * 요청한 회원이 이 글에 좋아요를 눌렀는지. 비로그인 조회에서는 false다.
+     *
+     * jackson-module-kotlin이 없어 getter가 isLiked()로 컴파일되면 JSON 키가 liked가 된다.
+     * 프론트가 isLiked를 읽으므로 키를 명시해 고정한다.
+     * 반면 isEdited는 프론트가 edited로 읽고 있어 기본 동작 그대로 둔다.
      */
+    @get:JsonProperty("isLiked")
     val isLiked: Boolean,
 
     val jobCategoryId: Long?,
@@ -86,6 +97,7 @@ data class CommunityJobPostResponse(
             val sig = communityJobPost.sig
 
             return CommunityJobPostResponse(
+                communityJobPost.getId(),
                 communityJobPost.getId(),
                 communityJobPost.username,
                 communityJobPost.postType,

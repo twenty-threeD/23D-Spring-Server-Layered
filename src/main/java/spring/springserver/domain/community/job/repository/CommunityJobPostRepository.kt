@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.job.repository
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -19,15 +21,13 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
      * "전국 조회"로 뒤집히기 때문이다.
      */
     @Query(
-        """
-        select p
+        value = """
+        select p.id
         from CommunityJobPost p
-        join fetch p.jobCategory jobCategory
-        join fetch p.sig sig
         where p.deletedAt is null
           and p.postType in :postTypes
-          and (:applyCategoryFilter = false or jobCategory.id in :jobCategoryIds)
-          and (:applySigFilter = false or sig.sigCd in :sigCds)
+          and (:applyCategoryFilter = false or p.jobCategory.id in :jobCategoryIds)
+          and (:applySigFilter = false or p.sig.sigCd in :sigCds)
           and (
               :keyword = ''
               or coalesce(lower(p.title), '') like lower(concat('%', :keyword, '%'))
@@ -35,15 +35,49 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
               or coalesce(lower(p.username), '') like lower(concat('%', :keyword, '%'))
           )
         order by p.updatedAt desc
+        """,
+        countQuery = """
+        select count(p.id)
+        from CommunityJobPost p
+        where p.deletedAt is null
+          and p.postType in :postTypes
+          and (:applyCategoryFilter = false or p.jobCategory.id in :jobCategoryIds)
+          and (:applySigFilter = false or p.sig.sigCd in :sigCds)
+          and (
+              :keyword = ''
+              or coalesce(lower(p.title), '') like lower(concat('%', :keyword, '%'))
+              or coalesce(lower(p.content), '') like lower(concat('%', :keyword, '%'))
+              or coalesce(lower(p.username), '') like lower(concat('%', :keyword, '%'))
+          )
         """
     )
-    fun searchJobPosts(
+    fun searchJobPostIds(
         @Param("postTypes") postTypes: Collection<JobPostType>,
         @Param("applyCategoryFilter") applyCategoryFilter: Boolean,
         @Param("jobCategoryIds") jobCategoryIds: Collection<Long>,
         @Param("applySigFilter") applySigFilter: Boolean,
         @Param("sigCds") sigCds: Collection<String>,
-        @Param("keyword") keyword: String
+        @Param("keyword") keyword: String,
+        pageable: Pageable
+    ): Page<Long>
+
+    /**
+     * 페이징된 id로 본문과 연관을 한 번에 가져온다.
+     *
+     * 페이징과 join fetch를 한 쿼리에 같이 쓰면 Hibernate가 전체를 읽어 메모리에서 자르므로
+     * id만 페이징한 뒤 이 쿼리로 채우는 두 단계로 나눈다.
+     */
+    @Query(
+        """
+        select p
+        from CommunityJobPost p
+        join fetch p.jobCategory
+        join fetch p.sig
+        where p.id in :postIds
+        """
+    )
+    fun findAllWithAssociationsByIds(
+        @Param("postIds") postIds: Collection<Long>
     ): List<CommunityJobPost>
 
     /**
@@ -51,7 +85,7 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
      */
     @Query(
         """
-        select l.communityJobPost.id, count(l.id)
+        select l.communityJobPost.id as postId, count(l.id) as count
         from CommunityJobPostLike l
         where l.communityJobPost.id in :postIds
         group by l.communityJobPost.id
@@ -59,7 +93,7 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
     )
     fun countLikesByPostIds(
         @Param("postIds") postIds: Collection<Long>
-    ): List<Array<Any>>
+    ): List<PostCountProjection>
 
     /**
      * 현재 회원이 좋아요를 누른 글의 id 목록. 목록 응답의 isLiked를 한 번에 채운다.

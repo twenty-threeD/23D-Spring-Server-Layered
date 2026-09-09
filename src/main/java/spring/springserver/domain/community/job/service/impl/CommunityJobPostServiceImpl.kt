@@ -1,11 +1,11 @@
 package spring.springserver.domain.community.job.service.impl
 
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.common.data.response.DeleteResponse
-import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.CreateJobPostRequest
 import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
@@ -24,6 +24,7 @@ import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
+import spring.springserver.global.data.PageResponse
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.Duration
 import java.time.LocalDateTime
@@ -112,12 +113,12 @@ class CommunityJobPostServiceImpl(
     @Transactional(readOnly = true)
     override fun getJobPosts(
         searchJobPostRequest: SearchJobPostRequest
-    ): List<CommunityJobPostResponse> {
+    ): PageResponse<CommunityJobPostResponse> {
 
         val postTypes = searchJobPostRequest.postType?.let { listOf(it) }
             ?: JobPostType.entries
 
-        val jobCategoryId = searchJobPostRequest.jobCategoryId
+        val jobCategoryId = searchJobPostRequest.resolvedJobCategoryId()
 
         val jobCategoryIds = jobCategoryId
             ?.let { jobCategoryService.getCategoryIdsIncludingDescendants(it) }
@@ -133,16 +134,35 @@ class CommunityJobPostServiceImpl(
          * 대상 시군구가 비어 있으면 "주변에 아무것도 없음"이므로 매칭되지 않는 더미 값을 넣는다.
          * 여기서 필터를 꺼 버리면 조건이 사라져 전국 글이 전부 나온다.
          */
-        val communityJobPosts = communityJobPostRepository.searchJobPosts(
+        val postIds = communityJobPostRepository.searchJobPostIds(
             postTypes = postTypes,
             applyCategoryFilter = jobCategoryId != null,
             jobCategoryIds = jobCategoryIds,
             applySigFilter = sigCds != null,
             sigCds = sigCds?.ifEmpty { listOf(NO_FILTER_SIG_CD) } ?: listOf(NO_FILTER_SIG_CD),
-            keyword = searchJobPostRequest.keyword?.trim().orEmpty()
+            keyword = searchJobPostRequest.keyword?.trim().orEmpty(),
+            pageable = PageRequest.of(searchJobPostRequest.page, searchJobPostRequest.size)
         )
 
-        return toResponses(communityJobPosts)
+        return PageResponse.of(postIds, toResponses(findOrderedByIds(postIds.content)))
+    }
+
+    /**
+     * in 절 조회는 순서를 보장하지 않으므로 페이징 쿼리가 준 id 순서로 다시 세운다.
+     */
+    private fun findOrderedByIds(
+        postIds: List<Long>
+    ): List<CommunityJobPost> {
+
+        if (postIds.isEmpty()) {
+
+            return emptyList()
+        }
+
+        val communityJobPosts = communityJobPostRepository.findAllWithAssociationsByIds(postIds)
+            .associateBy { communityJobPost -> communityJobPost.getId() }
+
+        return postIds.mapNotNull { postId -> communityJobPosts[postId] }
     }
 
     /**
@@ -161,10 +181,10 @@ class CommunityJobPostServiceImpl(
         val postIds = communityJobPosts.mapNotNull { communityJobPost -> communityJobPost.getId() }
 
         val commentCounts = communityJobCommentRepository.countCommentsByPostIds(postIds)
-            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+            .associate { row -> row.getPostId() to row.getCount() }
 
         val likeCounts = communityJobPostRepository.countLikesByPostIds(postIds)
-            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+            .associate { row -> row.getPostId() to row.getCount() }
 
         val likedPostIds = currentMemberIdOrNull()
             ?.let { memberId -> communityJobPostRepository.findLikedPostIds(postIds, memberId) }
@@ -190,8 +210,7 @@ class CommunityJobPostServiceImpl(
      */
     private fun currentMemberIdOrNull(): Long? {
 
-        return runCatching { communityAuthorizationService.getCurrentMember().getId() }
-            .getOrNull()
+        return communityAuthorizationService.getCurrentMemberOrNull()?.getId()
     }
 
     /**
@@ -255,8 +274,13 @@ class CommunityJobPostServiceImpl(
             return sigCd?.trim()?.takeIf { it.isNotBlank() }?.let { listOf(it) }
         }
 
+        /**
+         * 기준 지역을 정할 수 없으면 지역 필터를 걸지 않는다(null).
+         * 목록 조회 자체를 400으로 막으면 지역 미설정 회원은 글을 아예 볼 수 없다.
+         */
         val baseSigCd = sigCd?.trim()?.takeIf { it.isNotBlank() }
-            ?: currentMemberSigCd()
+            ?: currentMemberSigCdOrNull()
+            ?: return null
 
         return locationService.findNearbySigCds(
             baseSigCd,
@@ -280,12 +304,15 @@ class CommunityJobPostServiceImpl(
         return communityJobPost
     }
 
-    private fun currentMemberSigCd(): String {
+    /**
+     * 비로그인이거나 프로필에 지역이 없으면 null이다.
+     */
+    private fun currentMemberSigCdOrNull(): String? {
 
-        val member = communityAuthorizationService.getCurrentMember()
+        val member = communityAuthorizationService.getCurrentMemberOrNull()
+            ?: return null
 
         return profileRepository.findByMember(member)?.sig?.getSigCd()
-            ?: throw ApplicationException(CommunityStatusCode.REGION_NOT_SET)
     }
 
     private fun validatePhoneVerified(

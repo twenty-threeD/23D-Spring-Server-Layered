@@ -2,7 +2,10 @@ package spring.springserver.domain.community.job.service.impl
 
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.JobPostLikeRequest
 import spring.springserver.domain.community.job.data.response.JobPostLikeResponse
@@ -16,8 +19,14 @@ import spring.springserver.domain.community.job.service.CommunityJobLikeService
 class CommunityJobLikeServiceImpl(
     private val communityAuthorizationService: CommunityAuthorizationService,
     private val communityJobAuthorizationService: CommunityJobAuthorizationService,
-    private val communityJobPostLikeRepository: CommunityJobPostLikeRepository
+    private val communityJobPostLikeRepository: CommunityJobPostLikeRepository,
+    private val platformTransactionManager: PlatformTransactionManager
 ): CommunityJobLikeService {
+
+    private val requiresNewTransaction = TransactionTemplate(platformTransactionManager).apply {
+
+        propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
 
     /**
      * 이미 눌렀으면 에러 대신 현재 상태를 그대로 돌려준다.
@@ -39,15 +48,22 @@ class CommunityJobLikeServiceImpl(
             /**
              * exists 확인과 INSERT 사이에 같은 회원의 요청이 겹치면 유니크 제약에 걸린다.
              * 결과적으로 좋아요가 눌린 상태는 동일하므로 실패로 보지 않는다.
+             *
+             * 반드시 별도 트랜잭션에서 저장한다. 같은 트랜잭션에서 제약 위반이 나면
+             * 예외를 잡더라도 세션이 오염되고 rollback-only로 마킹되어,
+             * 뒤따르는 조회가 정상 동작하는 것처럼 보여도 커밋에서 UnexpectedRollbackException이 난다.
              */
             runCatching {
 
-                communityJobPostLikeRepository.saveAndFlush(
-                    CommunityJobPostLike(
-                        member = member,
-                        communityJobPost = communityJobPost,
+                requiresNewTransaction.execute {
+
+                    communityJobPostLikeRepository.save(
+                        CommunityJobPostLike(
+                            member = member,
+                            communityJobPost = communityJobPost,
+                        )
                     )
-                )
+                }
             }.onFailure {
 
                 throwable ->

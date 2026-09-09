@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.job.data.request
 
+import jakarta.validation.constraints.Max
+import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.Size
 import spring.springserver.domain.community.job.entity.JobPostType
 
@@ -18,6 +20,13 @@ data class SearchJobPostRequest(
      */
     val jobCategoryId: Long? = null,
 
+    /**
+     * jobCategoryId의 다른 이름. 프론트가 categoryId로 보내므로 함께 받는다.
+     * 쿼리 파라미터 바인딩은 Jackson을 타지 않아 @JsonAlias가 듣지 않으므로 필드를 따로 둔다.
+     * 두 값이 같이 오면 jobCategoryId가 이긴다.
+     */
+    val categoryId: Long? = null,
+
     @field:Size(min = 5, max = 5, message = "시군구 코드는 5자리입니다.")
     val sigCd: String? = null,
 
@@ -27,5 +36,21 @@ data class SearchJobPostRequest(
      */
     val nearbyOnly: Boolean = false,
 
-    val keyword: String? = null
-)
+    val keyword: String? = null,
+
+    @field:Min(value = 0, message = "페이지 번호는 0 이상입니다.")
+    val page: Int = 0,
+
+    @field:Min(value = 1, message = "페이지 크기는 1 이상입니다.")
+    @field:Max(value = 100, message = "페이지 크기는 100 이하입니다.")
+    val size: Int = 20
+) {
+
+    /**
+     * 프론트가 categoryId로 보내는 경우를 흡수한다.
+     */
+    fun resolvedJobCategoryId(): Long? {
+
+        return jobCategoryId ?: categoryId
+    }
+}

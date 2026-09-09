@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.job.service.impl
 
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.common.data.response.DeleteResponse
@@ -7,6 +8,7 @@ import spring.springserver.domain.community.common.service.CommunityAuthorizatio
 import spring.springserver.domain.community.job.data.request.CreateJobCommentRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobCommentRequest
 import spring.springserver.domain.community.job.data.response.CommunityJobCommentResponse
+import spring.springserver.global.data.PageResponse
 import spring.springserver.domain.community.job.entity.CommunityJobComment
 import spring.springserver.domain.community.job.repository.CommunityJobCommentRepository
 import spring.springserver.domain.community.job.service.CommunityJobAuthorizationService
@@ -46,20 +48,29 @@ class CommunityJobCommentServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getJobComments(
-        postId: Long
-    ): List<CommunityJobCommentResponse> {
+        postId: Long,
+        page: Int,
+        size: Int
+    ): PageResponse<CommunityJobCommentResponse> {
 
         communityJobAuthorizationService.getActiveJobPost(postId)
 
-        return communityJobCommentRepository
-            .findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(postId)
-            .map {
+        val communityJobComments = communityJobCommentRepository
+            .findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+                postId,
+                PageRequest.of(page, size)
+            )
+
+        return PageResponse.of(
+            communityJobComments,
+            communityJobComments.content.map {
 
                 communityJobComment ->
                 CommunityJobCommentResponse.of(
                     communityJobComment = communityJobComment,
                 )
             }
+        )
     }
 
     override fun updateJobComment(

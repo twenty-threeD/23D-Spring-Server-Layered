@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.job.data.request
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
@@ -23,7 +24,11 @@ data class CreateJobPostRequest(
     @field:Size(max = 2000, message = "첨부 파일 경로는 2000자 이하로 입력해주세요.")
     val fileUrl: String?,
 
+    /**
+     * 프론트가 categoryId로 보내므로 두 이름을 모두 받는다.
+     */
     @field:NotNull(message = "용역 카테고리는 필수입니다.")
+    @field:JsonAlias("categoryId")
     val jobCategoryId: Long?,
 
     /**

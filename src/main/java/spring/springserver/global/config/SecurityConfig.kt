@@ -268,7 +268,7 @@ class SecurityConfig(
                         "/api/jobs/post",
                         "/api/jobs/post/search",
                         "/api/jobs/comment"
-                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
                         "/phone/send",

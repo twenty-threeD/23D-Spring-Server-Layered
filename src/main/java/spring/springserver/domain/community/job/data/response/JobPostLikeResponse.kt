@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.job.data.response
 
+import com.fasterxml.jackson.annotation.JsonProperty
+
 /**
  * 구인/구직 좋아요 응답.
  * 등록·취소를 멱등으로 처리하므로 결과 상태(isLiked)를 함께 내려 프론트가
@@ -13,6 +15,7 @@ data class JobPostLikeResponse(
 
     val likeCount: Long,
 
+    @get:JsonProperty("isLiked")
     val isLiked: Boolean,
 
     val message: String,

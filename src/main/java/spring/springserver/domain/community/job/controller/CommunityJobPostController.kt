@@ -17,6 +17,7 @@ import spring.springserver.domain.community.job.data.request.UpdateJobPostReques
 import spring.springserver.domain.community.job.data.response.CommunityJobPostResponse
 import spring.springserver.domain.community.job.service.CommunityJobPostService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.data.PageResponse
 
 /**
  * 용역 구인/구직 커뮤니티.
@@ -55,7 +56,7 @@ class CommunityJobPostController(
     @GetMapping
     fun getJobPosts(
         @ModelAttribute @Valid searchJobPostRequest: SearchJobPostRequest
-    ): BaseResponse<List<CommunityJobPostResponse>> {
+    ): BaseResponse<PageResponse<CommunityJobPostResponse>> {
 
         return BaseResponse.ok(communityJobPostService.getJobPosts(searchJobPostRequest))
     }
@@ -78,7 +79,7 @@ class CommunityJobPostController(
     @GetMapping("/search")
     fun searchJobPosts(
         @ModelAttribute @Valid searchJobPostRequest: SearchJobPostRequest
-    ): BaseResponse<List<CommunityJobPostResponse>> {
+    ): BaseResponse<PageResponse<CommunityJobPostResponse>> {
 
         return BaseResponse.ok(communityJobPostService.getJobPosts(searchJobPostRequest))
     }

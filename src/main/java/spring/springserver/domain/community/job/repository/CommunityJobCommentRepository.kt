@@ -1,5 +1,8 @@
 package spring.springserver.domain.community.job.repository
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -12,9 +15,15 @@ interface CommunityJobCommentRepository : JpaRepository<CommunityJobComment, Lon
         id: Long
     ): CommunityJobComment?
 
+    /**
+     * 작성자 이름을 응답에 담으므로 member를 함께 가져온다.
+     * ToOne 연관이라 페이징과 함께 fetch해도 행이 늘지 않는다.
+     */
+    @EntityGraph(attributePaths = ["member"])
     fun findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(
-        communityJobPostId: Long
-    ): List<CommunityJobComment>
+        communityJobPostId: Long,
+        pageable: Pageable
+    ): Page<CommunityJobComment>
 
     fun countByCommunityJobPostIdAndDeletedAtIsNull(
         communityJobPostId: Long
@@ -25,7 +34,7 @@ interface CommunityJobCommentRepository : JpaRepository<CommunityJobComment, Lon
      */
     @Query(
         """
-        select c.communityJobPost.id, count(c.id)
+        select c.communityJobPost.id as postId, count(c.id) as count
         from CommunityJobComment c
         where c.communityJobPost.id in :postIds
           and c.deletedAt is null
@@ -34,7 +43,7 @@ interface CommunityJobCommentRepository : JpaRepository<CommunityJobComment, Lon
     )
     fun countCommentsByPostIds(
         @Param("postIds") postIds: Collection<Long>
-    ): List<Array<Any>>
+    ): List<PostCountProjection>
 
     fun findAllByDeletedAtBefore(
         deletedAt: LocalDateTime

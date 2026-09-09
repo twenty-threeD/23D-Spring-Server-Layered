@@ -8,6 +8,7 @@ import spring.springserver.domain.community.job.data.request.UpdateJobCommentReq
 import spring.springserver.domain.community.job.data.response.CommunityJobCommentResponse
 import spring.springserver.domain.community.job.service.CommunityJobCommentService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.data.PageResponse
 
 @RestController
 @RequestMapping("/api/jobs/comment")
@@ -25,10 +26,12 @@ class CommunityJobCommentController(
 
     @GetMapping
     fun getJobComments(
-        @RequestParam postId: Long
-    ): BaseResponse<List<CommunityJobCommentResponse>> {
+        @RequestParam postId: Long,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int
+    ): BaseResponse<PageResponse<CommunityJobCommentResponse>> {
 
-        return BaseResponse.ok(communityJobCommentService.getJobComments(postId))
+        return BaseResponse.ok(communityJobCommentService.getJobComments(postId, page, size))
     }
 
     @PatchMapping

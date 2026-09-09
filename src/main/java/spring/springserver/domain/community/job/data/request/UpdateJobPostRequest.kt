@@ -1,12 +1,17 @@
 package spring.springserver.domain.community.job.data.request
 
+import com.fasterxml.jackson.annotation.JsonAlias
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
 import spring.springserver.domain.community.job.entity.JobPostType
 
 data class UpdateJobPostRequest(
+    /**
+     * 프론트가 id로 보내므로 두 이름을 모두 받는다.
+     */
     @field:NotNull(message = "게시글 아이디는 필수입니다.")
+    @field:JsonAlias("id")
     val postId: Long?,
 
     @field:NotNull(message = "구인/구직 구분은 필수입니다.")
@@ -24,6 +29,7 @@ data class UpdateJobPostRequest(
     val fileUrl: String?,
 
     @field:NotNull(message = "용역 카테고리는 필수입니다.")
+    @field:JsonAlias("categoryId")
     val jobCategoryId: Long?,
 
     @field:NotBlank(message = "지역은 필수입니다.")
