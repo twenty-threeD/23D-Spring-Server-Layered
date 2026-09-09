@@ -34,7 +34,7 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
               or coalesce(lower(p.content), '') like lower(concat('%', :keyword, '%'))
               or coalesce(lower(p.username), '') like lower(concat('%', :keyword, '%'))
           )
-        order by p.updatedAt desc
+        order by p.updatedAt desc, p.id desc
         """,
         countQuery = """
         select count(p.id)

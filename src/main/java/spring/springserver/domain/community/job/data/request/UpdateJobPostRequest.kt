@@ -14,8 +14,10 @@ data class UpdateJobPostRequest(
     @field:JsonAlias("id")
     val postId: Long?,
 
-    @field:NotNull(message = "구인/구직 구분은 필수입니다.")
-    val postType: JobPostType?,
+    /**
+     * 비우면 기존 값을 유지한다.
+     */
+    val postType: JobPostType? = null,
 
     @field:NotBlank(message = "제목은 필수입니다.")
     @field:Size(max = 255, message = "제목은 255자 이하로 입력해주세요.")
@@ -32,6 +34,8 @@ data class UpdateJobPostRequest(
     @field:JsonAlias("categoryId")
     val jobCategoryId: Long?,
 
-    @field:NotBlank(message = "지역은 필수입니다.")
-    val sigCd: String?
+    /**
+     * 비우면 기존 값을 유지한다.
+     */
+    val sigCd: String? = null
 )

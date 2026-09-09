@@ -20,7 +20,7 @@ interface CommunityJobCommentRepository : JpaRepository<CommunityJobComment, Lon
      * ToOne 연관이라 페이징과 함께 fetch해도 행이 늘지 않는다.
      */
     @EntityGraph(attributePaths = ["member"])
-    fun findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+    fun findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
         communityJobPostId: Long,
         pageable: Pageable
     ): Page<CommunityJobComment>

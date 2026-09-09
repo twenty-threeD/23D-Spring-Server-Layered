@@ -5,7 +5,7 @@ import spring.springserver.domain.community.job.data.request.CreateJobPostReques
 import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobPostRequest
 import spring.springserver.domain.community.job.data.response.CommunityJobPostResponse
-import spring.springserver.global.data.PageResponse
+import spring.springserver.domain.community.job.data.response.JobPostPageResponse
 
 interface CommunityJobPostService {
 
@@ -40,11 +40,12 @@ interface CommunityJobPostService {
     /**
      * 구인/구직 목록. 넘기지 않은 조건은 필터에서 빠진다.
      * nearbyOnly가 켜지면 기준 지역에서 NEARBY_RADIUS_KM 이내인 시군구만 본다.
-     * 기준 지역을 정할 수 없으면 지역 필터 없이 전체를 본다.
+     * 기준 지역을 정할 수 없으면 지역 필터 없이 전체를 보되,
+     * 응답의 nearbyFilterApplied로 그 사실을 알린다.
      */
     fun getJobPosts(
         searchJobPostRequest: SearchJobPostRequest
-    ): PageResponse<CommunityJobPostResponse>
+    ): JobPostPageResponse
 
     /**
      * 구인/구직 상세. 게시글 테이블이 갈렸으므로 일반 커뮤니티 상세로는 열리지 않는다.

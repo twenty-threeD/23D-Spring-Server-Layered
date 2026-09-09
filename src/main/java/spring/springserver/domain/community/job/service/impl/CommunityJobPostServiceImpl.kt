@@ -6,11 +6,13 @@ import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.common.data.response.DeleteResponse
+import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.CreateJobPostRequest
 import spring.springserver.domain.community.job.data.request.SearchJobPostRequest
 import spring.springserver.domain.community.job.data.request.UpdateJobPostRequest
 import spring.springserver.domain.community.job.data.response.CommunityJobPostResponse
+import spring.springserver.domain.community.job.data.response.JobPostPageResponse
 import spring.springserver.domain.community.job.entity.CommunityJobPost
 import spring.springserver.domain.community.job.entity.JobPostType
 import spring.springserver.domain.community.job.event.JobPostCreatedEvent
@@ -24,7 +26,6 @@ import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
-import spring.springserver.global.data.PageResponse
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.Duration
 import java.time.LocalDateTime
@@ -52,9 +53,21 @@ class CommunityJobPostServiceImpl(
 
         validatePhoneVerified(member)
 
-        val postType = createJobPostRequest.postType!!
+        /**
+         * 구인/구직 구분과 지역은 프론트가 보내지 않을 수 있어 기본값으로 채운다.
+         * 지역은 알림 대상 선정의 기준점이라 비워 둘 수 없으므로,
+         * 요청에도 프로필에도 없으면 그때는 막는다.
+         */
+        val postType = createJobPostRequest.postType
+            ?: JobPostType.HIRING
+
         val jobCategory = jobCategoryService.getJobCategory(createJobPostRequest.jobCategoryId!!)
-        val sig = locationService.getSig(createJobPostRequest.sigCd!!.trim())
+
+        val sigCd = createJobPostRequest.sigCd?.trim()?.takeIf { it.isNotBlank() }
+            ?: currentMemberSigCdOrNull()
+            ?: throw ApplicationException(CommunityStatusCode.REGION_NOT_SET)
+
+        val sig = locationService.getSig(sigCd)
 
         val communityJobPost = communityJobPostRepository.save(
             CommunityJobPost(
@@ -89,13 +102,20 @@ class CommunityJobPostServiceImpl(
 
         val communityJobPost = getOwnedJobPost(updateJobPostRequest.postId!!)
 
+        /**
+         * 넘기지 않은 구분·지역은 기존 값을 그대로 둔다.
+         */
+        val sig = updateJobPostRequest.sigCd?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { sigCd -> locationService.getSig(sigCd) }
+            ?: communityJobPost.sig
+
         communityJobPost.update(
-            postType = updateJobPostRequest.postType!!,
+            postType = updateJobPostRequest.postType ?: communityJobPost.postType,
             title = updateJobPostRequest.title!!.trim(),
             content = updateJobPostRequest.content?.trim()?.takeIf { it.isNotBlank() },
             fileUrl = updateJobPostRequest.fileUrl?.trim()?.takeIf { it.isNotBlank() },
             jobCategory = jobCategoryService.getJobCategory(updateJobPostRequest.jobCategoryId!!),
-            sig = locationService.getSig(updateJobPostRequest.sigCd!!.trim())
+            sig = sig
         )
 
         return toResponse(communityJobPost)
@@ -113,7 +133,7 @@ class CommunityJobPostServiceImpl(
     @Transactional(readOnly = true)
     override fun getJobPosts(
         searchJobPostRequest: SearchJobPostRequest
-    ): PageResponse<CommunityJobPostResponse> {
+    ): JobPostPageResponse {
 
         val postTypes = searchJobPostRequest.postType?.let { listOf(it) }
             ?: JobPostType.entries
@@ -144,7 +164,11 @@ class CommunityJobPostServiceImpl(
             pageable = PageRequest.of(searchJobPostRequest.page, searchJobPostRequest.size)
         )
 
-        return PageResponse.of(postIds, toResponses(findOrderedByIds(postIds.content)))
+        return JobPostPageResponse.of(
+            page = postIds,
+            content = toResponses(findOrderedByIds(postIds.content)),
+            nearbyFilterApplied = searchJobPostRequest.nearbyOnly.takeIf { it }?.let { sigCds != null }
+        )
     }
 
     /**

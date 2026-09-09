@@ -56,7 +56,7 @@ class CommunityJobCommentServiceImpl(
         communityJobAuthorizationService.getActiveJobPost(postId)
 
         val communityJobComments = communityJobCommentRepository
-            .findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(
+            .findAllByCommunityJobPostIdAndDeletedAtIsNullOrderByCreatedAtDescIdDesc(
                 postId,
                 PageRequest.of(page, size)
             )
