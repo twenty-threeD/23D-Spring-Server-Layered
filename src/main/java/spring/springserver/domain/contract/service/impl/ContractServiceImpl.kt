@@ -18,6 +18,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import java.util.regex.Pattern
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -126,7 +127,7 @@ class ContractServiceImpl(
 
         val normalizedUrl = contractUrl.trim()
 
-        if (!normalizedUrl.lowercase().endsWith(PDF_EXTENSION)) {
+        if (!ALLOWED_CONTRACT_URL.matcher(normalizedUrl).matches()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_FILE)
         }
@@ -149,6 +150,7 @@ class ContractServiceImpl(
 
     companion object {
 
-        private const val PDF_EXTENSION = ".pdf"
+        private val ALLOWED_CONTRACT_URL =
+            Pattern.compile("https://www\\.idta\\.store/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf$")
     }
 }
