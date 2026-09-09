@@ -12,7 +12,8 @@ data class NotificationResponse(
     val receiverUsername: String,
     val message: String,
     val sentAt: Instant,
-    val roomId: Long?
+    val roomId: Long?,
+    val postId: Long?
 ) {
 
     companion object {
@@ -28,7 +29,8 @@ data class NotificationResponse(
                 receiverUsername = notification.receiver.username,
                 message = notification.message,
                 sentAt = notification.sentAt,
-                roomId = notification.roomId
+                roomId = notification.roomId,
+                postId = notification.postId
             )
     }
 }
