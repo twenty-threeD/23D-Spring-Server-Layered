@@ -4,11 +4,11 @@ import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.community.job.data.request.JobPostLikeRequest
 import spring.springserver.domain.community.job.service.CommunityJobLikeService
-import spring.springserver.domain.community.like.data.response.CommunityLikeResponse
+import spring.springserver.domain.community.job.data.response.JobPostLikeResponse
 import spring.springserver.global.data.BaseResponse
 
 @RestController
-@RequestMapping("/api/community/job/like")
+@RequestMapping("/api/jobs/like")
 class CommunityJobLikeController(
     private val communityJobLikeService: CommunityJobLikeService
 ) {
@@ -16,7 +16,7 @@ class CommunityJobLikeController(
     @PostMapping
     fun likeJobPost(
         @Valid @RequestBody jobPostLikeRequest: JobPostLikeRequest
-    ): BaseResponse<CommunityLikeResponse> {
+    ): BaseResponse<JobPostLikeResponse> {
 
         return BaseResponse.ok(communityJobLikeService.likeJobPost(jobPostLikeRequest))
     }
@@ -24,7 +24,7 @@ class CommunityJobLikeController(
     @DeleteMapping
     fun unlikeJobPost(
         @RequestParam postId: Long
-    ): BaseResponse<CommunityLikeResponse> {
+    ): BaseResponse<JobPostLikeResponse> {
 
         return BaseResponse.ok(communityJobLikeService.unlikeJobPost(postId))
     }

@@ -14,8 +14,6 @@ data class CommunityJobCommentResponse(
 
     val isEdited: Boolean,
 
-    val likeCount: Long,
-
     val createdAt: LocalDateTime?,
 
     val updatedAt: LocalDateTime?,
@@ -24,8 +22,7 @@ data class CommunityJobCommentResponse(
     companion object {
 
         fun of(
-            communityJobComment: CommunityJobComment,
-            likeCount: Long
+            communityJobComment: CommunityJobComment
         ): CommunityJobCommentResponse {
 
             return CommunityJobCommentResponse(
@@ -34,7 +31,6 @@ data class CommunityJobCommentResponse(
                 communityJobComment.member.username,
                 communityJobComment.content,
                 communityJobComment.isEdited,
-                likeCount,
                 communityJobComment.getCreatedAt(),
                 communityJobComment.getUpdatedAt(),
             )

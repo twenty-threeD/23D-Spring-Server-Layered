@@ -1,6 +1,7 @@
 package spring.springserver.domain.community.job.service.impl
 
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.common.data.response.DeleteResponse
@@ -24,6 +25,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.Duration
 import java.time.LocalDateTime
 
 @Service
@@ -37,7 +39,8 @@ class CommunityJobPostServiceImpl(
     private val jobCategoryService: JobCategoryService,
     private val locationService: LocationService,
     private val profileRepository: ProfileRepository,
-    private val applicationEventPublisher: ApplicationEventPublisher
+    private val applicationEventPublisher: ApplicationEventPublisher,
+    private val redisTemplate: RedisTemplate<String, String>
 ): CommunityJobPostService {
 
     override fun createJobPost(
@@ -126,14 +129,69 @@ class CommunityJobPostServiceImpl(
             searchJobPostRequest.nearbyOnly
         )
 
-        return communityJobPostRepository.searchJobPosts(
+        /**
+         * 대상 시군구가 비어 있으면 "주변에 아무것도 없음"이므로 매칭되지 않는 더미 값을 넣는다.
+         * 여기서 필터를 꺼 버리면 조건이 사라져 전국 글이 전부 나온다.
+         */
+        val communityJobPosts = communityJobPostRepository.searchJobPosts(
             postTypes = postTypes,
-            jobCategoryId = jobCategoryId,
+            applyCategoryFilter = jobCategoryId != null,
             jobCategoryIds = jobCategoryIds,
-            sigCdFilter = sigCds?.firstOrNull(),
-            sigCds = sigCds ?: listOf(NO_FILTER_SIG_CD),
+            applySigFilter = sigCds != null,
+            sigCds = sigCds?.ifEmpty { listOf(NO_FILTER_SIG_CD) } ?: listOf(NO_FILTER_SIG_CD),
             keyword = searchJobPostRequest.keyword?.trim().orEmpty()
-        ).map { communityJobPost -> toResponse(communityJobPost) }
+        )
+
+        return toResponses(communityJobPosts)
+    }
+
+    /**
+     * 목록은 댓글 수·좋아요 수·좋아요 여부를 글 수와 무관하게 세 번의 쿼리로 모아 온다.
+     * 글마다 집계 쿼리를 날리면 글이 쌓일수록 그대로 느려진다.
+     */
+    private fun toResponses(
+        communityJobPosts: List<CommunityJobPost>
+    ): List<CommunityJobPostResponse> {
+
+        if (communityJobPosts.isEmpty()) {
+
+            return emptyList()
+        }
+
+        val postIds = communityJobPosts.mapNotNull { communityJobPost -> communityJobPost.getId() }
+
+        val commentCounts = communityJobCommentRepository.countCommentsByPostIds(postIds)
+            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+
+        val likeCounts = communityJobPostRepository.countLikesByPostIds(postIds)
+            .associate { row -> (row[0] as Long) to (row[1] as Long) }
+
+        val likedPostIds = currentMemberIdOrNull()
+            ?.let { memberId -> communityJobPostRepository.findLikedPostIds(postIds, memberId) }
+            ?.toSet()
+            ?: emptySet()
+
+        return communityJobPosts.map {
+
+            communityJobPost ->
+            val postId = communityJobPost.getId()
+
+            CommunityJobPostResponse.of(
+                communityJobPost = communityJobPost,
+                commentCount = commentCounts[postId] ?: 0L,
+                likeCount = likeCounts[postId] ?: 0L,
+                isLiked = postId in likedPostIds
+            )
+        }
+    }
+
+    /**
+     * 비로그인 조회에서도 목록은 내려가야 하므로 회원을 못 찾으면 null로 둔다.
+     */
+    private fun currentMemberIdOrNull(): Long? {
+
+        return runCatching { communityAuthorizationService.getCurrentMember().getId() }
+            .getOrNull()
     }
 
     /**
@@ -146,9 +204,41 @@ class CommunityJobPostServiceImpl(
 
         val communityJobPost = communityJobAuthorizationService.getActiveJobPost(postId)
 
-        communityJobPost.increaseViewCount()
+        if (shouldCountView(communityJobPost)) {
+
+            communityJobPost.increaseViewCount()
+        }
 
         return toResponse(communityJobPost)
+    }
+
+    /**
+     * 작성자 본인의 조회와 같은 회원의 재조회는 세지 않는다.
+     * Redis 키에 TTL을 걸어 회원 한 명당 글 하나를 하루에 한 번만 반영한다.
+     *
+     * Redis가 죽어 있으면 조회수를 세지 않는 쪽으로 넘어간다.
+     * 상세 조회 자체가 실패하는 것보다 집계가 조금 비는 편이 낫다.
+     */
+    private fun shouldCountView(
+        communityJobPost: CommunityJobPost
+    ): Boolean {
+
+        val memberId = currentMemberIdOrNull()
+            ?: return false
+
+        if (memberId == communityJobPost.member.getId()) {
+
+            return false
+        }
+
+        val key = "$VIEW_COUNT_KEY_PREFIX${communityJobPost.getId()}:$memberId"
+
+        return runCatching {
+
+            redisTemplate.opsForValue()
+                .setIfAbsent(key, "1", VIEW_COUNT_TTL)
+                ?: false
+        }.getOrDefault(false)
     }
 
     /**
@@ -212,10 +302,19 @@ class CommunityJobPostServiceImpl(
         communityJobPost: CommunityJobPost
     ): CommunityJobPostResponse {
 
+        val memberId = currentMemberIdOrNull()
+
+        val isLiked = memberId != null
+            && communityJobPostRepository.findLikedPostIds(
+                listOf(communityJobPost.getId()!!),
+                memberId
+            ).isNotEmpty()
+
         return CommunityJobPostResponse.toJobPostResponse(
             communityJobPost,
             communityJobCommentRepository,
-            communityJobPostLikeRepository
+            communityJobPostLikeRepository,
+            isLiked
         )
     }
 
@@ -228,5 +327,9 @@ class CommunityJobPostServiceImpl(
         private const val NO_FILTER_ID = -1L
 
         private const val NO_FILTER_SIG_CD = "-"
+
+        private const val VIEW_COUNT_KEY_PREFIX = "job-post-view:"
+
+        private val VIEW_COUNT_TTL = Duration.ofDays(1)
     }
 }

@@ -1,16 +1,15 @@
 package spring.springserver.domain.community.job.service.impl
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.community.job.data.request.JobPostLikeRequest
+import spring.springserver.domain.community.job.data.response.JobPostLikeResponse
 import spring.springserver.domain.community.job.entity.CommunityJobPostLike
 import spring.springserver.domain.community.job.repository.CommunityJobPostLikeRepository
 import spring.springserver.domain.community.job.service.CommunityJobAuthorizationService
 import spring.springserver.domain.community.job.service.CommunityJobLikeService
-import spring.springserver.domain.community.like.data.response.CommunityLikeResponse
-import spring.springserver.global.exception.exception.ApplicationException
-import spring.springserver.global.exception.status_code.CommonStatusCode
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -20,9 +19,14 @@ class CommunityJobLikeServiceImpl(
     private val communityJobPostLikeRepository: CommunityJobPostLikeRepository
 ): CommunityJobLikeService {
 
+    /**
+     * 이미 눌렀으면 에러 대신 현재 상태를 그대로 돌려준다.
+     * 좋아요는 재시도·더블탭으로 같은 요청이 반복되기 쉬워, 중복을 실패로 다루면
+     * 프론트가 성공/실패 두 갈래로 상태를 따로 관리해야 한다.
+     */
     override fun likeJobPost(
         jobPostLikeRequest: JobPostLikeRequest
-    ): CommunityLikeResponse {
+    ): JobPostLikeResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
@@ -30,52 +34,58 @@ class CommunityJobLikeServiceImpl(
 
         val communityJobPost = communityJobAuthorizationService.getActiveJobPost(postId)
 
-        if (communityJobPostLikeRepository.existsByMemberAndCommunityJobPost(member, communityJobPost)) {
+        if (!communityJobPostLikeRepository.existsByMemberAndCommunityJobPost(member, communityJobPost)) {
 
-            throw ApplicationException.of(
-                CommonStatusCode.INVALID_ARGUMENT,
-                "이미 좋아요를 누른 게시글입니다."
-            )
+            /**
+             * exists 확인과 INSERT 사이에 같은 회원의 요청이 겹치면 유니크 제약에 걸린다.
+             * 결과적으로 좋아요가 눌린 상태는 동일하므로 실패로 보지 않는다.
+             */
+            runCatching {
+
+                communityJobPostLikeRepository.saveAndFlush(
+                    CommunityJobPostLike(
+                        member = member,
+                        communityJobPost = communityJobPost,
+                    )
+                )
+            }.onFailure {
+
+                throwable ->
+                if (throwable !is DataIntegrityViolationException) {
+
+                    throw throwable
+                }
+            }
         }
 
-        communityJobPostLikeRepository.save(
-            CommunityJobPostLike(
-                member = member,
-                communityJobPost = communityJobPost,
-            )
-        )
-
-        return CommunityLikeResponse.of(
-            targetId = postId,
+        return JobPostLikeResponse.of(
+            postId = postId,
             likeCount = communityJobPostLikeRepository.countByCommunityJobPostId(postId),
+            isLiked = true,
             message = "게시글 좋아요가 등록되었습니다.",
         )
     }
 
+    /**
+     * 누르지 않은 상태에서의 취소도 최종 상태가 같으므로 성공으로 본다.
+     */
     override fun unlikeJobPost(
         postId: Long
-    ): CommunityLikeResponse {
+    ): JobPostLikeResponse {
 
         val member = communityAuthorizationService.getCurrentMember()
 
         val communityJobPost = communityJobAuthorizationService.getActiveJobPost(postId)
 
-        val deletedCount = communityJobPostLikeRepository.deleteByMemberAndCommunityJobPost(
+        communityJobPostLikeRepository.deleteByMemberAndCommunityJobPost(
             member,
             communityJobPost
         )
 
-        if (deletedCount == 0L) {
-
-            throw ApplicationException.of(
-                CommonStatusCode.INVALID_ARGUMENT,
-                "좋아요를 누르지 않은 게시글입니다."
-            )
-        }
-
-        return CommunityLikeResponse.of(
-            targetId = postId,
+        return JobPostLikeResponse.of(
+            postId = postId,
             likeCount = communityJobPostLikeRepository.countByCommunityJobPostId(postId),
+            isLiked = false,
             message = "게시글 좋아요가 취소되었습니다.",
         )
     }

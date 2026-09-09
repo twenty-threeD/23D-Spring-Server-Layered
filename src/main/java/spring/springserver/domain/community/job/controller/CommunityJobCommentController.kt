@@ -10,7 +10,7 @@ import spring.springserver.domain.community.job.service.CommunityJobCommentServi
 import spring.springserver.global.data.BaseResponse
 
 @RestController
-@RequestMapping("/api/community/job/comment")
+@RequestMapping("/api/jobs/comment")
 class CommunityJobCommentController(
     private val communityJobCommentService: CommunityJobCommentService
 ) {

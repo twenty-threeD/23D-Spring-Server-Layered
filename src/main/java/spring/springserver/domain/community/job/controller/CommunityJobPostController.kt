@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PatchMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -24,7 +23,7 @@ import spring.springserver.global.data.BaseResponse
  * 일반 커뮤니티와 게시글 테이블이 다르므로 상세 조회·댓글·좋아요도 이 아래에 둔다.
  */
 @RestController
-@RequestMapping("/api/community/job")
+@RequestMapping("/api/jobs/post")
 class CommunityJobPostController(
     private val communityJobPostService: CommunityJobPostService
 ) {
@@ -62,14 +61,25 @@ class CommunityJobPostController(
     }
 
     /**
-     * comment·like 컨트롤러가 쓰는 /api/community/job/comment 같은 고정 경로는
-     * 경로 변수보다 먼저 매칭되므로 이 매핑과 부딪히지 않는다.
+     * 목록과 경로가 같고 postId 파라미터 유무로만 갈린다.
+     * params 조건이 더 구체적이라 postId가 붙은 요청은 항상 이쪽으로 매칭된다.
      */
-    @GetMapping("/{postId}")
+    @GetMapping(params = ["postId"])
     fun getJobPost(
-        @PathVariable postId: Long
+        @RequestParam postId: Long
     ): BaseResponse<CommunityJobPostResponse> {
 
         return BaseResponse.ok(communityJobPostService.getJobPost(postId))
+    }
+
+    /**
+     * 목록 루트에서도 keyword를 받지만, 프론트가 검색을 별도 경로로 부르므로 함께 연다.
+     */
+    @GetMapping("/search")
+    fun searchJobPosts(
+        @ModelAttribute @Valid searchJobPostRequest: SearchJobPostRequest
+    ): BaseResponse<List<CommunityJobPostResponse>> {
+
+        return BaseResponse.ok(communityJobPostService.getJobPosts(searchJobPostRequest))
     }
 }

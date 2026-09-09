@@ -34,6 +34,11 @@ data class CommunityJobPostResponse(
 
     val likeCount: Long,
 
+    /**
+     * 요청한 회원이 이 글에 좋아요를 눌렀는지. 비로그인 조회에서는 false다.
+     */
+    val isLiked: Boolean,
+
     val jobCategoryId: Long?,
 
     val jobCategoryName: String,
@@ -47,10 +52,15 @@ data class CommunityJobPostResponse(
 
     companion object {
 
+        /**
+         * 단건 조회 전용. 글 하나마다 count 쿼리 두 개를 날리므로 목록에서 쓰지 않는다.
+         * 목록은 서비스에서 집계를 한 번에 조회한 뒤 of()를 직접 호출한다.
+         */
         fun toJobPostResponse(
             communityJobPost: CommunityJobPost,
             communityJobCommentRepository: CommunityJobCommentRepository,
-            communityJobPostLikeRepository: CommunityJobPostLikeRepository
+            communityJobPostLikeRepository: CommunityJobPostLikeRepository,
+            isLiked: Boolean
         ): CommunityJobPostResponse {
 
             val postId = communityJobPost.getId()!!
@@ -60,14 +70,16 @@ data class CommunityJobPostResponse(
                 commentCount = communityJobCommentRepository
                     .countByCommunityJobPostIdAndDeletedAtIsNull(postId),
                 likeCount = communityJobPostLikeRepository
-                    .countByCommunityJobPostId(postId)
+                    .countByCommunityJobPostId(postId),
+                isLiked = isLiked
             )
         }
 
         fun of(
             communityJobPost: CommunityJobPost,
             commentCount: Long,
-            likeCount: Long
+            likeCount: Long,
+            isLiked: Boolean
         ): CommunityJobPostResponse {
 
             val jobCategory = communityJobPost.jobCategory
@@ -84,6 +96,7 @@ data class CommunityJobPostResponse(
                 communityJobPost.isEdited,
                 commentCount,
                 likeCount,
+                isLiked,
                 jobCategory.getId(),
                 jobCategory.getFullName(),
                 sig.getSigCd(),

@@ -41,7 +41,6 @@ class CommunityJobCommentServiceImpl(
 
         return CommunityJobCommentResponse.of(
             communityJobComment = communityJobComment,
-            likeCount = 0L,
         )
     }
 
@@ -59,7 +58,6 @@ class CommunityJobCommentServiceImpl(
                 communityJobComment ->
                 CommunityJobCommentResponse.of(
                     communityJobComment = communityJobComment,
-                    likeCount = 0L,
                 )
             }
     }
@@ -82,7 +80,6 @@ class CommunityJobCommentServiceImpl(
 
         return CommunityJobCommentResponse.of(
             communityJobComment = communityJobComment,
-            likeCount = 0L,
         )
     }
 
