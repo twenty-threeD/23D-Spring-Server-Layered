@@ -83,17 +83,7 @@ class CommunityPostServiceImpl(
     @Transactional(readOnly = true)
     override fun getPosts(): List<CommunityPostResponse> {
 
-        return communityPostRepository
-            .findAllByDeletedAtIsNullOrderByUpdatedAtDesc()
-            .map {
-                
-                communityPost ->
-                CommunityPostResponse.toPostResponse(
-                    communityPost,
-                    communityCommentRepository,
-                    communityPostLikeRepository
-                )
-            }
+        return toResponses(communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc())
     }
 
     @Transactional(readOnly = true)

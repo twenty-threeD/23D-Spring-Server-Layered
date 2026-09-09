@@ -3,7 +3,10 @@ package spring.springserver.domain.notification.service.impl
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
@@ -24,10 +27,16 @@ import java.util.concurrent.ConcurrentHashMap
 @Service
 class NotificationServiceImpl(
     private val notificationRepository: NotificationRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val platformTransactionManager: PlatformTransactionManager
 ) : NotificationService {
 
     private val emitters = ConcurrentHashMap<String, MutableSet<SseEmitter>>()
+
+    private val requiresNewTransaction = TransactionTemplate(platformTransactionManager).apply {
+
+        propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
+    }
 
     override fun subscribe(
         username: String,
@@ -134,7 +143,16 @@ class NotificationServiceImpl(
         return response
     }
 
-    @Transactional
+    /**
+     * 이 메서드는 AFTER_COMMIT 리스너에서 호출된다. 그 시점에는 방금 커밋된 트랜잭션의
+     * 리소스가 아직 스레드에 바인딩돼 있어, 기본 전파(REQUIRED)로는 새 트랜잭션이 열리지 않고
+     * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 수신자 한 명마다
+     * REQUIRES_NEW로 트랜잭션을 새로 연다.
+     *
+     * 수신자 단위로 트랜잭션을 끊어야 한 명의 저장 실패가 나머지를 롤백시키지 않는다.
+     * 메서드 전체를 한 트랜잭션으로 묶으면 예외를 잡아도 rollback-only로 마킹되어
+     * 마지막 커밋에서 전부 날아간다.
+     */
     override fun sendJobPostNotification(
         receiverUsernames: Collection<String>,
         message: String,
@@ -149,16 +167,20 @@ class NotificationServiceImpl(
                 receiverUsername ->
                 runCatching {
 
-                    val response = save(
-                        type = NotificationType.JOB_POST,
-                        receiverUsername = receiverUsername,
-                        senderUsername = null,
-                        message = message,
-                        sentAt = sentAt,
-                        roomId = null,
-                        postId = postId
-                    )
+                    val response = requiresNewTransaction.execute {
 
+                        save(
+                            type = NotificationType.JOB_POST,
+                            receiverUsername = receiverUsername,
+                            senderUsername = null,
+                            message = message,
+                            sentAt = sentAt,
+                            roomId = null,
+                            postId = postId
+                        )
+                    }!!
+
+                    // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
                     dispatch(receiverUsername) { event(response) }
 
                     response

@@ -39,7 +39,13 @@ class SigCoordinateSeedRunner(
 
         if (!resource.exists()) {
 
-            log.info("Sig coordinate seed skipped. (resource not found: {})", RESOURCE_PATH)
+            log.warn(
+                "Sig coordinate seed skipped. (resource not found: {}) " +
+                    "좌표가 없으면 반경 기반 조회와 알림이 기준 시군구 하나로만 좁혀진다.",
+                RESOURCE_PATH
+            )
+
+            warnIfNoCoordinate()
 
             return
         }
@@ -47,6 +53,10 @@ class SigCoordinateSeedRunner(
         val coordinates = readCoordinates(resource)
 
         if (coordinates.isEmpty()) {
+
+            log.warn("Sig coordinate seed skipped. (no valid row in {})", RESOURCE_PATH)
+
+            warnIfNoCoordinate()
 
             return
         }
@@ -68,6 +78,18 @@ class SigCoordinateSeedRunner(
         if (updated.isNotEmpty()) {
 
             log.info("Seeded sig coordinates. (updated: {})", updated.size)
+        }
+    }
+
+    /**
+     * 좌표가 한 건도 없으면 반경 기능이 사실상 꺼진 상태이므로 경고로 남긴다.
+     * 이미 채워진 좌표가 있으면 CSV가 없어도 정상 동작이므로 조용히 넘어간다.
+     */
+    private fun warnIfNoCoordinate() {
+
+        if (sigRepository.findAllWithCoordinate().isEmpty()) {
+
+            log.warn("No sig has coordinate. 반경 기반 조회/알림이 기준 시군구 하나로만 동작한다.")
         }
     }
 

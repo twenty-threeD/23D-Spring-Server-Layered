@@ -16,6 +16,7 @@ data class CreateJobPostRequest(
     @field:Size(max = 255, message = "제목은 255자 이하로 입력해주세요.")
     val title: String?,
 
+    @field:NotBlank(message = "내용은 필수입니다.")
     @field:Size(max = 2000, message = "내용은 2000자 이하로 입력해주세요.")
     val content: String?,
 
