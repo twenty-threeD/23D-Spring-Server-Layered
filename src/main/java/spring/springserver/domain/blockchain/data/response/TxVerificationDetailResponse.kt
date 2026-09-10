@@ -4,8 +4,9 @@ package spring.springserver.domain.blockchain.data.response
 data class TxVerificationDetailResponse(
     val contractUrl: String,
     val contractUrlMatched: Boolean?,
-    val sellerName: String?,
-    val buyerName: String?
+    val txHashMatched: Boolean?,
+    val paymentHashMatched: Boolean?,
+    val buyerAddressMatched: Boolean?
 ) {
 
     companion object {
@@ -13,15 +14,17 @@ data class TxVerificationDetailResponse(
         fun of(
             contractUrl: String,
             contractUrlMatched: Boolean?,
-            sellerName: String?,
-            buyerName: String?
+            txHashMatched: Boolean?,
+            paymentHashMatched: Boolean?,
+            buyerAddressMatched: Boolean?
         ): TxVerificationDetailResponse {
 
             return TxVerificationDetailResponse(
                 contractUrl = contractUrl,
                 contractUrlMatched = contractUrlMatched,
-                sellerName = sellerName,
-                buyerName = buyerName
+                txHashMatched = txHashMatched,
+                paymentHashMatched = paymentHashMatched,
+                buyerAddressMatched = buyerAddressMatched
             )
         }
     }

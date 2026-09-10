@@ -83,7 +83,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = null
             )
         }
@@ -96,7 +95,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = null
             )
 
@@ -109,7 +107,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = record
             )
         }
@@ -126,7 +123,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = false,
                 payment = null,
-                contractPartyResponse = null,
                 chainPaymentRecordResponse = record
             )
         }
@@ -146,7 +142,6 @@ class TxVerificationServiceImpl(
                 signatureValid = false,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = record
             )
         }
@@ -159,8 +154,8 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
-                chainPaymentRecordResponse = record,
-                contractPartyResponse = contractPartyResponse
+                txHash = normalizedTxHash,
+                chainPaymentRecordResponse = record
             )
         )
     }
@@ -195,13 +190,14 @@ class TxVerificationServiceImpl(
     private fun detailOf(
         payment: Payment?,
         party: Boolean,
-        chainPaymentRecordResponse: ChainPaymentRecordResponse?,
-        contractPartyResponse: ContractPartyResponse?
+        txHash: String,
+        chainPaymentRecordResponse: ChainPaymentRecordResponse?
     ): TxVerificationDetailResponse? {
 
         if (!party || payment == null) return null
 
         val contractUrl = payment.getContractUrl()
+        val normalizedTxHash = txHash.trim().uppercase()
 
         return TxVerificationDetailResponse.of(
             contractUrl = contractUrl,
@@ -212,8 +208,20 @@ class TxVerificationServiceImpl(
                     it.contractUrlHash
                 )
             },
-            sellerName = contractPartyResponse?.professionalName,
-            buyerName = contractPartyResponse?.clientName
+            txHashMatched = payment.getBlockchainTxHash()?.trim()?.uppercase()?.let {
+
+                it == normalizedTxHash
+            },
+            paymentHashMatched = payment.getPaymentHash()?.let {
+                storedPaymentHash -> chainPaymentRecordResponse?.let {
+
+                    storedPaymentHash == it.paymentHash
+                }
+            },
+            buyerAddressMatched = chainPaymentRecordResponse?.let {
+
+                buyerAddressOf(payment.getMemberId())?.equals(it.buyerAddress)
+            }
         )
     }
 
@@ -224,7 +232,6 @@ class TxVerificationServiceImpl(
         signatureValid: Boolean?,
         party: Boolean,
         payment: Payment?,
-        contractPartyResponse: ContractPartyResponse?,
         chainPaymentRecordResponse: ChainPaymentRecordResponse?
     ): TxVerificationResponse {
 
@@ -237,10 +244,18 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
-                chainPaymentRecordResponse = chainPaymentRecordResponse,
-                contractPartyResponse = contractPartyResponse
+                txHash = chainTxResponse.txHash,
+                chainPaymentRecordResponse = chainPaymentRecordResponse
             )
         )
+    }
+
+    private fun buyerAddressOf(
+        memberId: Long
+    ): String? {
+
+        return runCatching { keyService.deriveCosmosAddress(memberId = memberId) }
+            .getOrNull()
     }
 
     companion object {
