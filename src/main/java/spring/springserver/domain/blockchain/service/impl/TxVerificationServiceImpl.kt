@@ -154,6 +154,7 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
+                txHash = normalizedTxHash,
                 chainPaymentRecordResponse = record
             )
         )
@@ -189,12 +190,14 @@ class TxVerificationServiceImpl(
     private fun detailOf(
         payment: Payment?,
         party: Boolean,
+        txHash: String,
         chainPaymentRecordResponse: ChainPaymentRecordResponse?
     ): TxVerificationDetailResponse? {
 
         if (!party || payment == null) return null
 
         val contractUrl = payment.getContractUrl()
+        val normalizedTxHash = txHash.trim().uppercase()
 
         return TxVerificationDetailResponse.of(
             contractUrl = contractUrl,
@@ -204,6 +207,16 @@ class TxVerificationServiceImpl(
                     contractUrl = contractUrl,
                     it.contractUrlHash
                 )
+            },
+            txHashMatched = payment.getBlockchainTxHash()?.trim()?.uppercase()?.let {
+
+                it == normalizedTxHash
+            },
+            paymentHashMatched = payment.getPaymentHash()?.let {
+                storedPaymentHash -> chainPaymentRecordResponse?.let {
+
+                    storedPaymentHash == it.paymentHash
+                }
             }
         )
     }
@@ -227,6 +240,7 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
+                txHash = chainTxResponse.txHash,
                 chainPaymentRecordResponse = chainPaymentRecordResponse
             )
         )
