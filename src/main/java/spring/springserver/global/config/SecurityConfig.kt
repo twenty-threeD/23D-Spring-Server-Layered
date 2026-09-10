@@ -141,7 +141,7 @@ class SecurityConfig(
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.DELETE,
-                        "/api/delete/account")
+                        "/api/member/account")
                     .hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
