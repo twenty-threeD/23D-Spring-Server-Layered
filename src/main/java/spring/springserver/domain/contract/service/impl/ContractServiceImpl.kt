@@ -120,19 +120,20 @@ class ContractServiceImpl(
 
     /**
      * 계약서는 PDF로만 주고받기로 했으므로 업로드된 PDF 경로인지 확인한다.
+     * 절대 URL로 들어와도 파일 업로드 응답과 같은 상대 경로(/files/<UUID>.pdf)로 통일해 저장한다.
      */
     private fun normalizeUrl(
         contractUrl: String
     ): String {
 
-        val normalizedUrl = contractUrl.trim()
+        val matcher = ALLOWED_CONTRACT_URL.matcher(contractUrl.trim())
 
-        if (!ALLOWED_CONTRACT_URL.matcher(normalizedUrl).matches()) {
+        if (!matcher.matches()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_FILE)
         }
 
-        return normalizedUrl
+        return matcher.group("path")
     }
 
     private fun getCurrentMember(): Member {
@@ -151,6 +152,6 @@ class ContractServiceImpl(
     companion object {
 
         private val ALLOWED_CONTRACT_URL =
-            Pattern.compile("https://www\\.idta\\.store/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf$")
+            Pattern.compile("^(?:https://(?:www\\.)?idta\\.store)?(?<path>/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf)$")
     }
 }
