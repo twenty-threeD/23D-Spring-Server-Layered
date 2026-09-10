@@ -178,6 +178,9 @@ jobs:
             server {
                 listen 80;
 
+                # 업로드 최대 크기(Spring multipart max-file-size 25MB에 맞춘다)
+                client_max_body_size 25M;
+
                 location /actuator {
                     allow 127.0.0.0/8;
                     allow 172.16.0.0/12;
