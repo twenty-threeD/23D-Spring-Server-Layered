@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
+import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
 import spring.springserver.domain.member.data.response.*
 
@@ -20,7 +21,7 @@ interface MemberService {
     ): PasswordResetResponse
 
     fun resetPasswordWithAuth(
-        passwordResetRequest: PasswordResetRequest,
+        passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): PasswordResetResponse

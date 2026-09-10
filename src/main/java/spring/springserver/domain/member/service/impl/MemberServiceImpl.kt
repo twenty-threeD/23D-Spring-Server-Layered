@@ -12,6 +12,7 @@ import spring.springserver.domain.email.service.EmailService
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
+import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.entity.Member
@@ -61,26 +62,39 @@ class MemberServiceImpl(
         val member = memberRepository.findByUsername(passwordResetRequest.username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
+        if (member.provider != Provider.AUTH) {
+
+            throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_RESET_PASSWORD)
+        }
+
+        verifyPasswordResetOwnership(
+            member,
+            passwordResetRequest
+        )
+
         member.password = passwordEncoder.encode(passwordResetRequest.newPassword)
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
 
     override fun resetPasswordWithAuth(
-        passwordResetRequest: PasswordResetRequest,
+        passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): PasswordResetResponse {
 
-        val username = tokenService.getCurrentUsername(httpServletRequest)
+        /**
+         * 변경 대상은 항상 토큰의 주체다.
+         * 요청 본문으로 다른 계정을 지정할 수 없다.
+         */
+        val member = getAuthenticatedMember(httpServletRequest)
 
-        if(username.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        ensureLocalAndVerifyPassword(
+            member,
+            passwordChangeRequest.currentPassword
+        )
 
-        val member = memberRepository.findByUsername(passwordResetRequest.username)
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-
-        val encoded = passwordEncoder.encode(passwordResetRequest.newPassword)
-        member.password = encoded
+        member.password = passwordEncoder.encode(passwordChangeRequest.newPassword)
 
         tokenService.deleteTokens(
             httpServletRequest,
@@ -254,6 +268,55 @@ class MemberServiceImpl(
         if (member.email != email && memberRepository.existsByEmail(email)) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+    }
+
+    /**
+     * 비로그인 재설정의 유일한 소유권 증거다.
+     * 휴대폰 또는 이메일로 발송된 인증코드를 먼저 소비한 뒤,
+     * 인증에 성공한 연락처가 실제로 그 계정의 것인지 확인한다.
+     */
+    private fun verifyPasswordResetOwnership(
+        member: Member,
+        passwordResetRequest: PasswordResetRequest
+    ) {
+
+        val verifyCode = passwordResetRequest.verifyCode
+
+        if (verifyCode.isNullOrBlank()) throw ApplicationException(MemberStatusCode.VERIFICATION_REQUIRED)
+
+        val phone = passwordResetRequest.phone
+        val email = passwordResetRequest.email
+
+        when {
+
+            !phone.isNullOrBlank() -> {
+
+                val verifiedPhone = phoneVerifyService.verifyCodeOnly(
+                    recipientNumber = phone,
+                    code = verifyCode
+                )
+
+                if (member.phone != verifiedPhone) {
+
+                    throw ApplicationException(MemberStatusCode.VERIFICATION_TARGET_MISMATCH)
+                }
+            }
+
+            !email.isNullOrBlank() -> {
+
+                emailService.checkVerifyCode(
+                    email,
+                    verifyCode
+                )
+
+                if (!member.email.equals(email, ignoreCase = true)) {
+
+                    throw ApplicationException(MemberStatusCode.VERIFICATION_TARGET_MISMATCH)
+                }
+            }
+
+            else -> throw ApplicationException(MemberStatusCode.VERIFICATION_REQUIRED)
         }
     }
 

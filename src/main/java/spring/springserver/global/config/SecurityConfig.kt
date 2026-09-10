@@ -111,7 +111,7 @@ class SecurityConfig(
                         "/api/auth/signup",
                         "/api/auth/signin",
                         "/api/auth/signout",
-                        "/api/auth/password/reset",
+                        "/api/member/password/reset",
                         "/api/auth/verify/password"
                     ).permitAll()
                     /**
@@ -132,7 +132,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/auth/password/reset/check"
+                        "/api/member/password/reset/check"
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.PATCH,

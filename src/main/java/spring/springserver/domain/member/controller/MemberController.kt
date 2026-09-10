@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
+import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.service.MemberService
@@ -32,14 +33,14 @@ class MemberController(
 
     @PostMapping("/password/reset/check")
     fun resetPassword(
-        @Valid @RequestBody passwordResetRequest: PasswordResetRequest,
+        @Valid @RequestBody passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): BaseResponse<PasswordResetResponse> {
 
         return BaseResponse.ok(
             memberService.resetPasswordWithAuth(
-                passwordResetRequest,
+                passwordChangeRequest,
                 httpServletRequest,
                 httpServletResponse
             )
