@@ -1,167 +1,92 @@
-## 공통
+# CLAUDE.md
 
-중괄호 시작 후 항상 한 줄 줄바꿈 후 코드 작성
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-```kotlin
-@Service
-@Transactional(rollbackFor = [Exception::class])
-class MemberServiceImpl: MemberService {
+# 23D Spring Server (Layered)
 
-    override fun deleteAccount
+Kotlin + Spring Boot 3.5 / Java 21 툴체인 / Gradle(Groovy DSL) 기반 REST API 서버.
+
+## 절대 규칙
+
+- **모든 답변은 한국어로 한다.** 코드·식별자·주석은 영어를 써도 되지만 설명·요약·리뷰 결과는 한국어.
+- **코드를 쓰거나 고치기 전에 반드시 `.claude/convention.md`를 읽는다.** 이 파일이 컨벤션의 단일 출처다(루트 `CONVENTIONS.md`는 같은 내용의 리뷰용 프롬프트 사본이므로 충돌 시 `.claude/convention.md`를 따른다). 이 프로젝트의 컨벤션은 일반적인 Kotlin 스타일과 다른 부분이 많다(여는 중괄호 뒤 빈 줄, `return` 앞 빈 줄, 파라미터 줄바꿈 등). 컨벤션과 요청이 충돌하면 먼저 알리고, 사용자가 명시적으로 뒤집지 않는 한 컨벤션을 따른다.
+- `.env`는 실제 운영 비밀값이다. 읽지 말고, 값을 코드·로그·문서에 옮기지 않는다.
+- 요청받지 않은 리팩토링·의존성 추가·파일 생성을 하지 않는다.
+
+## 소스 레이아웃
+
+주의: **소스는 Kotlin인데 디렉터리는 `src/main/java`**다. 새 파일도 이 경로 아래에 만든다.
+
+```
+src/main/java/spring/springserver/
+├── domain/<도메인>/
+│   ├── controller/          @RestController, "/api/<도메인>"
+│   ├── service/             인터페이스(UseCase) + impl/ 구현체
+│   ├── repository/          Spring Data 인터페이스
+│   ├── entity/              JPA 엔티티 + 상태 enum
+│   ├── data/request/        요청 DTO (Bean Validation)
+│   ├── data/response/       응답 DTO (companion object의 of() 팩토리)
+│   └── exception/           <도메인>StatusCode enum
+└── global/
+    ├── config/              SecurityConfig, WebConfig, TossPaymentsProperties,
+    │                        하위 폴더 redis/ mail/ swagger/ websocket/ blockchain/
+    ├── jwt/                 JwtProvider, TokenProvider, JwtAuthFilter, MemberDetails(Service)
+    ├── handler/             GlobalExceptionHandler(@RestControllerAdvice), 인증/인가 핸들러
+    ├── data/                BaseResponse, ErrorResponse
+    ├── exception/exception/ ApplicationException
+    ├── exception/status_code/ StatusCode 인터페이스, CommonStatusCode
+    └── util/
 ```
 
-파일 내 코드 마지막 부분에서 중괄호 닫은 이후 줄 바꿈 금지
-```kotlin
-		return ApiResponse.ok("");
-	}
-}
+도메인: auth, member, profile, post, community, chat, notification, payment,
+contract, estimate, file, email, phone, location, jobcategory, key, blockchain
+
+외부 연동이 있는 도메인은 위 6종 외 디렉터리를 더 쓴다(예: `payment/client/TossPaymentsClient.kt`,
+`payment/scheduler/PaymentRecoveryScheduler.kt`).
+
+## 아키텍처 계약
+
+- **계층**: Controller → Service(인터페이스) → ServiceImpl → Repository. 컨트롤러에 비즈니스 로직 금지, 컨트롤러에서 Repository 직접 호출 금지.
+- **서비스는 항상 인터페이스 먼저** 만들고 `impl/` 아래 구현체를 둔다. 의존성은 생성자 주입만 사용(필드 주입·`@Autowired` 금지).
+- **응답은 항상 `BaseResponse<T>`**로 감싼다. 컨트롤러 반환 타입은 `BaseResponse<XxxResponse>`이고 본문은 `BaseResponse.ok(...)`. 본문이 없으면 `BaseResponse<Void>` + `BaseResponse.ok(null)`.
+- **에러는 항상 `ApplicationException(XxxStatusCode.YYY)`**로 던진다. 컨트롤러에서 try/catch 하지 않고 `GlobalExceptionHandler`가 처리한다. 새 에러가 필요하면 해당 도메인의 `StatusCode` enum에 항목을 추가한다(코드/메시지/HttpStatus).
+- **엔티티 ID**는 `private var id: Long? = null` + `fun getId() = id`. setter를 만들지 않는다.
+- **Optional/null**은 `?: throw ApplicationException(...)` 형태로 처리한다.
+- 클래스 생성은 Builder 없이 생성자로 한다.
+- `@Transactional(rollbackFor = [Exception::class])`를 서비스 구현체에 붙이고, 조회 전용 메서드는 `@Transactional(readOnly = true)`.
+- 로그인 사용자는 `@AuthenticationPrincipal memberDetails: MemberDetails`로 받는다.
+
+## 인증/인가
+
+JWT(jjwt) + Spring Security. 새 엔드포인트를 추가하면 **`global/config/SecurityConfig.kt`의 `authorizeHttpRequests` 규칙도 반드시 같이 갱신**한다. 규칙을 빠뜨리면 `anyRequest().authenticated()`에 걸린다. 공개 API가 아니면 `permitAll()`을 쓰지 않는다.
+
+## 빌드 / 실행
+
+```bash
+./gradlew build -x test     # 컴파일 확인 (가장 자주 쓰는 검증 수단)
+./gradlew bootRun           # 로컬 실행 (.env 필요)
+./gradlew test --tests 'spring.springserver.<FQCN>'   # 테스트가 생긴 뒤 단일 실행
 ```
 
+- 린터·포매터 설정은 없다. 스타일은 `.claude/convention.md`를 사람이/모델이 지키는 방식으로만 강제된다.
+- 테스트 하네스는 아직 도입하지 않았다(`src/test` 없음). 의존성(`spring-boot-starter-test`, `mockito-kotlin`)만 선언돼 있다. **요청 없이 테스트 코드를 만들지 않는다.**
+- 변경 후 검증은 `./gradlew build -x test` 컴파일 통과로 한다.
+- 인프라: PostgreSQL, Redis. 설정은 `src/main/resources/application.yaml`, 값은 `.env`에서 주입.
+- 외부 연동: TossPayments(결제), Solapi(SMS), Cosmos 노드(blockchain), Tika(파일 검사), BouncyCastle(secp256k1).
+- CI/CD: `.github/workflows/deploy.yml` — `main`/`develop` 푸시 시 `gradle test bootJar` → Docker 빌드 → SSH 배포.
 
-모든 리턴은 BaseResponse를 이용한 공통 응답 반환 및 response활용
-```kotlin
-return BaseResponse.ok(SignUpResponse.of("가입되었습니다."));
-```
+## 작업 흐름
 
+1. 관련 도메인의 기존 파일을 먼저 읽어 패턴을 파악한다(가장 가까운 유사 도메인을 복제하듯 따른다).
+2. 구현한다.
+3. `./gradlew build -x test`로 컴파일을 확인한다.
+4. 변경 파일 목록과 남은 리스크를 한국어로 요약한다.
 
-소괄호 내 값이 2개 이상인 경우 줄바꿈
-```kotlin
-return SignInResponse.of(
-            tokenService.generateAccessToken(
-                generateTokenRequest,
-                httpServletResponse
-            ),
-            tokenService.generateRefreshToken(
-                generateTokenRequest,
-                httpServletResponse
-            )
-        )
-```
+`.claude/skills/`에 `harness`(코드 작성), `new-domain`(도메인·엔드포인트 추가), `security-review`(보안 리뷰) 스킬과
+`.claude/commands/`에 대응 슬래시 커맨드가 있다. 해당 작업이면 그 절차를 따른다.
 
+## Git
 
-매개변수는 클래스 이름을 카멜케이스로 표기한다.
-
-어노테이션은 길이가 긴걸 아래에 위치시킨다.
-
-return문은 항상 줄바꿈 이후 사용
-
-매개변수에는 HttpServletRequest같이 스프링 부트에서 기본적으로 지원하는 애들 보다 DTO가 더 앞에 사용되도록 해주세요.
-
-
-
-변수를 선언할 때는 항상 val을 사용한다.(단, 본인의 판단하에 var을 사용해도 되나 이에 따른 불이익은 사용자 본인에게 있다.)
-
-DI(의존성 주입)하는 경우 클래스명 뒤에 작성하기에 매개변수 취급한다.
-```kotlin
-// 의존성을 하나만 받는 경우
-class CommunityLikeImpl(
-  private val communityLikeRepository: CommunityLikeRepository
-): { ... }
-
-// 의존성을 두개 이상 받는 경우
-class CommunityLikeImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
-): { ... }
-```
-자바에서 orElseThrow를 사용한 경우 ?: 를 이용해 리팩토링 하며, ?:를 사용하기 전에 항상 줄바꿈 한다.
-```kotlin
-// 예시 1
-val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-
-
-// 예시 2
-communityLikeRepository.delete(communityLikeRepository.findByMember(memberRepository.findMemberById(communityPostUnlikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-        )
-            ?: throw ApplicationException(LikeStatusCode.NOT_LIKED)
-        )
-```
-컴파일러에서 타입 추론이 가능한 경우 타입 선언은 생략한다.
-```kotlin
-// 타입 추론이 가능하지만 Member 타입을 선언한 경우 X
-val member: Member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-
-// 타입 추론이 가능하기에 Member를 생략 O
-val member = memberRepository.findMemberById(communityLikeRequest.memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-```
-항상 유스케이스(인터페이스)를 만들고 한 대 묶어 구현체(서비스)를 만들어야 한다.
-
-상속을 받아 구현할 때는 아래와 같이 작성한다.
-```kotlin
-// 두 개 이상을 상속 받아 구현할 때
-class CommunityLikeImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
-): CommunityPostLikeUseCase, CommunityPostUnlikeUseCase {
-
-// 하나만 상속 받아 구현할 때
-class CommunityLikeImpl(
-  private val communityLikeRepository: CommunityLikeRepository,
-  private val memberRepository: MemberRepository
-): CommunityPostLikeUseCase {
-```
-b. 상속 받아 오버라이딩을 할 때 @Override 어노테이션을 사용하지 않고 코틀린 기본 문법을 아래와 같이 사용한다.
-```kotlin
-override fun like(): CommunityPostLikeResponse {
-```
-c. 파일 구조는 아래와 같이 한다.
-```
-service/
-└── usecase/
-│   ├── CommunityPostLikeUseCase
-│   └── CommunityPostUnlikeUseCase
-└── CommunityLikeImpl
-```
-Builder 패턴을 사용하지 않고, 생성자를 이용해 생성한다.
-
-그 외 모든 컨밴션은 Backend Java Convention과 동일시 한다.
-
-엔티티 클래스
-
-모든 엔티티 클래스의 ID는 우선적으로 Long타입을 사용한다.(단, 추후 리팩토링 시에 UUID등과 같은 타입으로 변경될 수 있다.)
-
-ID는 private을 사용한다.
-
-ID의 setter는 만들지 않으며 getter는 아래와 같이 만든다.
-```kotlin
-@Id
-@GeneratedValue(strategy = GenerationType.IDENTITY)
-private val id: Long? = null
-
-fun getId() = id
-```
-매개변수
-
-생성자 매개변수와 메서드내 매개변수의 형식은 같다
-
-생성자 매개변수는 소괄호 이후 항상 줄바꿈을 한다.
-
-끝마치는 소괄호 이후에 상속받는 것이 있다면 콜론(:)을 닫는 소괄호 바로 뒤에 작성한다.
-
-2개 이상을 상속받는 경우 쉼표(,)를 사용해 구분하되 줄바꿈하지 않는다.
-```kotlin
-class PostServiceImpl(
-    private val postRepository: PostRepository
-): PostService {
-
-class PostServiceImpl(
-    private val postRepository: PostRepository,
-    private val memberRepository: MemberRepository
-): PostService {
-```
-```kotlin
-// 메서드내 메개변수가 하나인 경우
-public SignUpResponse signUp(
-    SignUpRequest signUpRequest
-) { ... }
-
-//메서드내 매개변수가 두 개 이상인 경우
-public SignInResponse signIn(
-    SignInRequest signInRequest,
-    HttpServletResponse httpServletResponse
-) { ... }
-```
+- 기본 브랜치 `main`, 작업 브랜치 `develop` 및 `<이슈번호>-<타입>-<설명>` (예: `130-fix-merge-oauth-package-with-auth`).
+- 커밋 메시지: `feat: `, `fix: `, `refactor: ` 등 + 한국어 설명.
+- 커밋·푸시는 사용자가 요청할 때만 한다.

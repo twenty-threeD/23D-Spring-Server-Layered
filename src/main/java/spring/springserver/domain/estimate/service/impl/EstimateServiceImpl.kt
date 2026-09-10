@@ -159,6 +159,18 @@ class EstimateServiceImpl(
         return EstimateResponse.of(estimate)
     }
 
+    @Transactional(readOnly = true)
+    override fun isProfessional(
+        estimateId: Long,
+        memberId: Long
+    ): Boolean {
+
+        val estimate = estimateRepository.findById(estimateId).orElse(null)
+            ?: return false
+
+        return estimate.professional.getId() == memberId
+    }
+
     private fun getPostEntity(
         postId: Long
     ): Post {

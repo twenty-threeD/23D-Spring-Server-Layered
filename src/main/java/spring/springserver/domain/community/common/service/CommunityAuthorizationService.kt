@@ -34,6 +34,23 @@ class CommunityAuthorizationService(
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
 
+    /**
+     * 비로그인이면 null이다. permitAll로 열린 조회에서 로그인 여부에 따라
+     * 응답을 달리할 때 쓴다. 예외를 잡아 삼키면 DB 장애까지 비로그인으로 보이므로
+     * 인증 여부만 보고 갈라낸다.
+     */
+    fun getCurrentMemberOrNull(): Member? {
+
+        val username = SecurityContextHolder.getContext().authentication?.name
+
+        if (username.isNullOrBlank() || username == "anonymousUser") {
+
+            return null
+        }
+
+        return memberRepository.findByUsername(username)
+    }
+
     fun getActivePost(
         postId: Long
     ): CommunityPost {

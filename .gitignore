@@ -165,3 +165,5 @@ gradle/
 ### Gradle Wrapper ###
 gradlew
 gradlew.bat
+
+.codex

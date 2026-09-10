@@ -248,6 +248,29 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/jobs/post",
+                        "/api/jobs/comment",
+                        "/api/jobs/like"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/jobs/post",
+                        "/api/jobs/comment"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/jobs/post",
+                        "/api/jobs/comment",
+                        "/api/jobs/like"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/jobs/post",
+                        "/api/jobs/post/search",
+                        "/api/jobs/comment"
+                    ).permitAll()
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/phone/send",
                         "/phone/verify"
                     ).permitAll()

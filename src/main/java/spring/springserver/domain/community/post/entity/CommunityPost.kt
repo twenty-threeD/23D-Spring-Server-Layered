@@ -5,6 +5,11 @@ import org.hibernate.annotations.UpdateTimestamp
 import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
+/**
+ * 일반 커뮤니티 게시글.
+ * 구인/구직 글은 형식이 달라 community_job_post 테이블을 따로 쓰므로,
+ * 이 테이블에는 게시판을 가려내기 위한 구분 값이 필요 없다.
+ */
 @Entity
 @Table(name = "community_post")
 class CommunityPost(

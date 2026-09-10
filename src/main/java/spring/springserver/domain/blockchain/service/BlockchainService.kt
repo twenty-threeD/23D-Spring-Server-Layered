@@ -307,16 +307,19 @@ class BlockchainService(
     ): ChainPaymentRecordResponse? {
 
         val url = "${cosmosProperties.nodeUrl}/itda/payment/v1/payments/$orderId"
+        val record = try {
+            restTemplate.getForObject(url, Map::class.java)
+                ?.get("record") as? Map<*, *>
+                ?: return null
+        } catch (_: HttpClientErrorException.NotFound) {
 
-        return runCatching {
-            (restTemplate.getForObject(url, Map::class.java)?.get("record") as? Map<*, *>)
-                ?.let { ChainPaymentRecordResponse.of(it) }
-        }.getOrElse {
+            return null
+        } catch (_: Exception) {
 
-            log.warn("기록을 조회할 수 없습니다. orderId = {}", orderId, it)
-
-            null
+            throw ApplicationException(BlockchainStatusCode.BLOCKCHAIN_NODE_UNAVAILABLE)
         }
+
+        return ChainPaymentRecordResponse.of(record = record)
     }
 
     /**
