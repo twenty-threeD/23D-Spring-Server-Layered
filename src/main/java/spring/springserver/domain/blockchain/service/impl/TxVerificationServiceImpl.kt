@@ -83,7 +83,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = null
             )
         }
@@ -96,7 +95,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = null
             )
 
@@ -109,7 +107,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = record
             )
         }
@@ -126,7 +123,6 @@ class TxVerificationServiceImpl(
                 signatureValid = null,
                 party = false,
                 payment = null,
-                contractPartyResponse = null,
                 chainPaymentRecordResponse = record
             )
         }
@@ -146,7 +142,6 @@ class TxVerificationServiceImpl(
                 signatureValid = false,
                 party = party,
                 payment = payment,
-                contractPartyResponse = contractPartyResponse,
                 chainPaymentRecordResponse = record
             )
         }
@@ -159,8 +154,7 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
-                chainPaymentRecordResponse = record,
-                contractPartyResponse = contractPartyResponse
+                chainPaymentRecordResponse = record
             )
         )
     }
@@ -195,8 +189,7 @@ class TxVerificationServiceImpl(
     private fun detailOf(
         payment: Payment?,
         party: Boolean,
-        chainPaymentRecordResponse: ChainPaymentRecordResponse?,
-        contractPartyResponse: ContractPartyResponse?
+        chainPaymentRecordResponse: ChainPaymentRecordResponse?
     ): TxVerificationDetailResponse? {
 
         if (!party || payment == null) return null
@@ -211,9 +204,7 @@ class TxVerificationServiceImpl(
                     contractUrl = contractUrl,
                     it.contractUrlHash
                 )
-            },
-            sellerName = contractPartyResponse?.professionalName,
-            buyerName = contractPartyResponse?.clientName
+            }
         )
     }
 
@@ -224,7 +215,6 @@ class TxVerificationServiceImpl(
         signatureValid: Boolean?,
         party: Boolean,
         payment: Payment?,
-        contractPartyResponse: ContractPartyResponse?,
         chainPaymentRecordResponse: ChainPaymentRecordResponse?
     ): TxVerificationResponse {
 
@@ -237,8 +227,7 @@ class TxVerificationServiceImpl(
             txVerificationDetailResponse = detailOf(
                 payment = payment,
                 party = party,
-                chainPaymentRecordResponse = chainPaymentRecordResponse,
-                contractPartyResponse = contractPartyResponse
+                chainPaymentRecordResponse = chainPaymentRecordResponse
             )
         )
     }
