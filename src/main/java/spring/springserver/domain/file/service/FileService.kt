@@ -46,6 +46,11 @@ class FileService(
                 throw ApplicationException(FileStatusCode.FILE_UPLOAD_FAILED)
             }
 
+            if (detectedType in IMAGE_MIME_TYPES && multipartFile.size > MAX_IMAGE_FILE_SIZE_BYTES) {
+
+                throw ApplicationException(FileStatusCode.FILE_SIZE_EXCEEDED)
+            }
+
             val originalFilename = multipartFile.originalFilename
 
             if (originalFilename == null || !originalFilename.contains(".")) {
@@ -161,6 +166,14 @@ class FileService(
             "image/webp" to setOf("webp"),
             "application/pdf" to setOf("pdf")
         )
+
+        private val IMAGE_MIME_TYPES = setOf(
+            "image/jpeg",
+            "image/png",
+            "image/webp"
+        )
+
+        private const val MAX_IMAGE_FILE_SIZE_BYTES = 25L * 1024 * 1024
 
         private val ALLOWED_STORED_FILE_NAME: Pattern =
             Pattern.compile("^[0-9a-fA-F\\-]{36}\\.(jpg|jpeg|png|webp|pdf)$")

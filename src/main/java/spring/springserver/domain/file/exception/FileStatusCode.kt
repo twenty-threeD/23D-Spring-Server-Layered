@@ -11,7 +11,8 @@ enum class FileStatusCode(
 
     FILE_EMPTY("FILE_EMPTY", "업로드할 파일이 비어 있습니다.", HttpStatus.BAD_REQUEST),
     FILE_NOT_FOUND("FILE_NOT_FOUND", "파일을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
+    FILE_UPLOAD_FAILED("FILE_UPLOAD_FAILED", "파일 업로드에 실패했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    FILE_SIZE_EXCEEDED("FILE_SIZE_EXCEEDED", "이미지 파일은 25MB 이하만 업로드할 수 있습니다.", HttpStatus.BAD_REQUEST);
 
     override fun getCode(): String = code
 
