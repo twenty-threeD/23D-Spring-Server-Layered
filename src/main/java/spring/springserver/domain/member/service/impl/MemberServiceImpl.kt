@@ -19,6 +19,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.retention.MemberRetentionService
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -32,7 +33,8 @@ class MemberServiceImpl(
     private val tokenService: TokenService,
     private val emailService: EmailService,
     private val phoneVerifyService: PhoneVerifyService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val memberRetentionService: MemberRetentionService
 ) : MemberService {
 
     override fun deleteAccount(
@@ -186,6 +188,11 @@ class MemberServiceImpl(
         }
 
         if (member.isDeleted()) {
+
+            if (memberRetentionService.releaseIfRetentionExpired(member.getId()!!)) {
+
+                return
+            }
 
             throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT_CANNOT_REJOIN)
         }

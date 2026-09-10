@@ -17,6 +17,7 @@ import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.retention.MemberRetentionService
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -30,7 +31,8 @@ class AuthServiceImpl(
     private val tokenService: TokenService,
     private val keyService: KeyService,
     private val profileService: ProfileService,
-    private val phoneVerifyService: PhoneVerifyService
+    private val phoneVerifyService: PhoneVerifyService,
+    private val memberRetentionService: MemberRetentionService
 ): AuthService {
 
     override fun signUp(
@@ -41,7 +43,8 @@ class AuthServiceImpl(
 
         /**
          * 탈퇴 회원도 행이 남고 username·email·phone의 unique 제약이 그대로라 재가입이 막힌다.
-         * 그냥 "이미 존재"로 응답하면 프론트가 안내할 수 없어 탈퇴 계정임을 구분해 알려준다.
+         * 제한 기간(MemberRetentionService.RETENTION_DAYS)이 지났으면 값을 풀어 가입시키고,
+         * 기간 중이면 "이미 존재"와 구분되는 코드로 탈퇴 계정임을 알려준다.
          */
         checkDuplicate(
             member = memberRepository.findByUsername(signUpRequest.username),
@@ -153,6 +156,14 @@ class AuthServiceImpl(
         }
 
         if (member.isDeleted()) {
+
+            /**
+             * 재가입 제한 기간이 지났으면 그 자리에서 값을 풀어주고 가입을 통과시킨다.
+             */
+            if (memberRetentionService.releaseIfRetentionExpired(member.getId()!!)) {
+
+                return
+            }
 
             throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT_CANNOT_REJOIN)
         }

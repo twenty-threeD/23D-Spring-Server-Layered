@@ -51,6 +51,13 @@ class Member(
     @Column(name = "deleted_at")
     private var deletedAt: LocalDateTime? = null
 
+    /**
+     * 익명화 시각. 탈퇴 후 재가입 제한 기간이 지나 식별자·개인정보를 치환한 시점이다.
+     * null이 아니면 이 회원이 쥐고 있던 username·email·phone은 이미 풀려 재가입에 쓸 수 있다.
+     */
+    @Column(name = "anonymized_at")
+    private var anonymizedAt: LocalDateTime? = null
+
     @PrePersist
     fun prePersistDate() {
 
@@ -109,6 +116,46 @@ class Member(
     fun withdraw() {
 
         this.deletedAt = LocalDateTime.now()
+    }
+
+    fun getAnonymizedAt(): LocalDateTime? = anonymizedAt
+
+    fun isAnonymized(): Boolean = anonymizedAt != null
+
+    /**
+     * 탈퇴 후 재가입 제한 기간이 지났는지. threshold는 (현재 시각 - 제한 기간)이다.
+     */
+    fun isWithdrawnBefore(
+        threshold: LocalDateTime
+    ): Boolean {
+
+        val deletedAt = this.deletedAt ?: return false
+
+        return deletedAt.isBefore(threshold)
+    }
+
+    /**
+     * 재가입 제한 기간이 지난 탈퇴 회원의 식별자·개인정보를 치환한다.
+     * username·email·phone에 unique 제약이 있어 원래 값을 그대로 두면
+     * 같은 이메일·전화번호로 다시 가입할 수 없으므로 회원 id를 섞은 값으로 비켜준다.
+     * 계약·견적이 참조하는 행 자체는 그대로 남는다.
+     */
+    fun anonymize() {
+
+        if (isAnonymized()) {
+
+            return
+        }
+
+        val suffix = id ?: System.currentTimeMillis()
+
+        this.username = "deleted_$suffix"
+        this.name = WITHDRAWN_DISPLAY_NAME
+        this.email = "deleted_$suffix@deleted.local"
+        this.phone = null
+        this.password = null
+        this.phoneVerified = false
+        this.anonymizedAt = LocalDateTime.now()
     }
 
     companion object {
