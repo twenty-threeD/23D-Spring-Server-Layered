@@ -13,6 +13,10 @@ interface MemberRepository: JpaRepository<Member, Long> {
         email: String
     ): Member?
 
+    fun findByPhone(
+        phone: String
+    ): Member?
+
     fun existsByUsername(
         username: String
     ): Boolean
@@ -28,6 +32,7 @@ interface MemberRepository: JpaRepository<Member, Long> {
             SELECT m.username 
             FROM Member m 
             WHERE m.email = :email
+              AND m.deletedAt IS NULL
             """
     )
     fun findUsernameByEmail(

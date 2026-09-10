@@ -15,6 +15,7 @@ import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.auth.AuthService
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.key.service.KeyService
+import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.domain.profile.service.ProfileService
@@ -38,9 +39,27 @@ class AuthServiceImpl(
 
         val phone = PhoneNormalizer.normalize(signUpRequest.phone)
 
-        if(memberRepository.existsByUsername(signUpRequest.username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
-        if (memberRepository.existsByEmail(signUpRequest.email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
-        if (phone != null && memberRepository.existsByPhone(phone)) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        /**
+         * 탈퇴 회원도 행이 남고 username·email·phone의 unique 제약이 그대로라 재가입이 막힌다.
+         * 그냥 "이미 존재"로 응답하면 프론트가 안내할 수 없어 탈퇴 계정임을 구분해 알려준다.
+         */
+        checkDuplicate(
+            member = memberRepository.findByUsername(signUpRequest.username),
+            duplicateStatusCode = AuthStatusCode.USERNAME_ALREADY_EXIST
+        )
+
+        checkDuplicate(
+            member = memberRepository.findByEmail(signUpRequest.email),
+            duplicateStatusCode = AuthStatusCode.EMAIL_ALREADY_EXIST
+        )
+
+        if (phone != null) {
+
+            checkDuplicate(
+                member = memberRepository.findByPhone(phone),
+                duplicateStatusCode = AuthStatusCode.PHONE_ALREADY_EXIST
+            )
+        }
 
         val newMember = signUpRequest.toEntity(
             encodedPassword = passwordEncoder.encode(signUpRequest.password),
@@ -117,6 +136,28 @@ class AuthServiceImpl(
         )
 
         return SignOutResponse.of("로그아웃 되었습니다.")
+    }
+
+    /**
+     * 가입에 쓰려는 값이 이미 쓰이고 있으면 예외를 던진다.
+     * 그 값을 쥐고 있는 회원이 탈퇴 회원이면 재가입 불가임을 구분해 알려준다.
+     */
+    private fun checkDuplicate(
+        member: Member?,
+        duplicateStatusCode: AuthStatusCode
+    ) {
+
+        if (member == null) {
+
+            return
+        }
+
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT_CANNOT_REJOIN)
+        }
+
+        throw ApplicationException(duplicateStatusCode)
     }
 
     override fun verifyPassword(

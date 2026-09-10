@@ -146,6 +146,15 @@ class TokenServiceImpl(
             throw ApplicationException(AuthStatusCode.INVALID_JWT)
         }
 
+        /**
+         * 탈퇴 시 저장된 refreshToken을 지우지만, 그 처리가 어긋난 경우에도
+         * 탈퇴 회원이 accessToken을 다시 받아가지 못하도록 여기서도 막는다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
         val accessToken = generateAccessToken(
             GenerateTokenRequest(
                 username = member.username,

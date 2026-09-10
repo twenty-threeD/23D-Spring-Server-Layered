@@ -24,6 +24,8 @@ enum class AuthStatusCode (
     UNKNOWN_REGISTRATION_ID("UNKNOWN_REGISTRATION_ID", "잘못된 소셜로그인 시도입니다.", HttpStatus.BAD_REQUEST),
     OAUTH_LOGIN_FAILED("OAUTH_LOGIN_FAILED", "소셜로그인에 실패했습니다.", HttpStatus.UNAUTHORIZED),
     OAUTH_EMAIL_NOT_PROVIDED("OAUTH_EMAIL_NOT_PROVIDED", "소셜 계정의 이메일 제공에 동의해야 합니다.", HttpStatus.BAD_REQUEST),
+    WITHDRAWN_ACCOUNT("WITHDRAWN_ACCOUNT", "탈퇴한 계정입니다.", HttpStatus.UNAUTHORIZED),
+    WITHDRAWN_ACCOUNT_CANNOT_REJOIN("WITHDRAWN_ACCOUNT_CANNOT_REJOIN", "탈퇴한 계정의 정보입니다. 같은 정보로는 다시 가입할 수 없습니다.", HttpStatus.BAD_REQUEST),
     OAUTH_PROVIDER_MISMATCH("OAUTH_PROVIDER_MISMATCH", "해당 이메일은 다른 방식으로 가입된 계정입니다. 기존 가입 수단으로 로그인해 주세요.", HttpStatus.CONFLICT),
     PASSWORD_IS_WEAK("PASSWORD_IS_WEAK", "비밀번호는 8자 이상이며, 영어 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.", HttpStatus.BAD_REQUEST),
 
