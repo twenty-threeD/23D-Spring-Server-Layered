@@ -50,7 +50,13 @@ class MemberServiceImpl(
             httpServletResponse,
         )
 
-        memberRepository.delete(member)
+        /**
+         * 계약·견적 등 거래 기록이 member를 참조하고 있어 행을 지우지 않고 탈퇴 표시만 남긴다.
+         * 저장된 리프레시 토큰은 위 deleteTokens에서 이미 지워진다.
+         */
+        member.withdraw()
+
+        memberRepository.save(member)
 
         return DeleteAccountResponse.of("탈퇴되었습니다.")
     }

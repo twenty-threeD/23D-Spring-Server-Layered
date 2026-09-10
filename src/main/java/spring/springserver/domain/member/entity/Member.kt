@@ -44,6 +44,13 @@ class Member(
 
     private var createdAt: LocalDateTime? = null
 
+    /**
+     * 탈퇴 시각. null이 아니면 탈퇴한 회원이며 로그인할 수 없다.
+     * 계약·견적 같은 거래 기록을 남겨야 해서 행 자체는 지우지 않는다.
+     */
+    @Column(name = "deleted_at")
+    private var deletedAt: LocalDateTime? = null
+
     @PrePersist
     fun prePersistDate() {
 
@@ -72,4 +79,26 @@ class Member(
     }
 
     fun update(name: String) { this.name = name }
+
+    fun getDeletedAt(): LocalDateTime? = deletedAt
+
+    fun isDeleted(): Boolean = deletedAt != null
+
+    /**
+     * 탈퇴 처리. 행은 남기되 로그인에 쓰이는 식별자와 개인정보를 익명화한다.
+     * username·email·phone에 unique 제약이 있어 값을 비워두면 재가입이 막히므로
+     * 회원 id를 섞은 값으로 치환한다.
+     */
+    fun withdraw() {
+
+        val suffix = id ?: System.currentTimeMillis()
+
+        this.username = "deleted_$suffix"
+        this.name = "탈퇴한 사용자"
+        this.email = "deleted_$suffix@deleted.local"
+        this.phone = null
+        this.password = null
+        this.phoneVerified = false
+        this.deletedAt = LocalDateTime.now()
+    }
 }

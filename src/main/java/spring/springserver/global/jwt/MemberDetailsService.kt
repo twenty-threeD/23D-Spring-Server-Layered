@@ -14,6 +14,17 @@ class MemberDetailsService(private val memberRepository: MemberRepository): User
     @Transactional(readOnly = true)
     override fun loadUserByUsername(username: String): UserDetails? {
 
-         return MemberDetails.from(memberRepository.findByUsername(username) ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND))
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 탈퇴한 회원은 행이 남아 있으므로 여기서 걸러야 기존 토큰으로도 인증되지 않는다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+        }
+
+        return MemberDetails.from(member)
     }
 }

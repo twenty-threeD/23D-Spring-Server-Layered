@@ -75,6 +75,15 @@ class AuthServiceImpl(
         val member = memberRepository.findByEmail(signInRequest.email)
             ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
 
+        /**
+         * 탈퇴한 회원은 행이 남아 있으므로 로그인 단계에서 걸러낸다.
+         * 탈퇴 여부를 알려주지 않기 위해 자격 증명 오류와 같은 응답을 준다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
+        }
+
         if(!passwordEncoder.matches(signInRequest.password, member.password)) {
 
             throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
