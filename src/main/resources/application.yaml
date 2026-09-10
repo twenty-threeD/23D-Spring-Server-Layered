@@ -168,6 +168,13 @@ cosmos:
   chain-id: ${COSMOS_CHAIN_ID}
   contract-url-salt: ${COSMOS_CONTRACT_URL_SALT}
 
+agora:
+  app-id: ${AGORA_APP_ID:}
+  app-certificate: ${AGORA_APP_CERTIFICATE:}
+  token-expiration-seconds: ${AGORA_TOKEN_EXPIRATION_SECONDS:3600}
+  ringing-timeout-seconds: ${AGORA_RINGING_TIMEOUT_SECONDS:60}
+  max-call-duration-seconds: ${AGORA_MAX_CALL_DURATION_SECONDS:14400}
+
 solapi:
   api-key: ${SOLAPI_API_KEY}
   api-secret-key: ${SOLAPI_API_SECRET_KEY}
