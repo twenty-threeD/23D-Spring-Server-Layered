@@ -1,5 +1,6 @@
 package spring.springserver.domain.community.post.repository
 
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -13,7 +14,7 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         """
         select c
         from CommunityPost c
-        left join c.member m
+        left join fetch c.member m
         where c.deletedAt is null
           and (
               :keyword = ''
@@ -28,6 +29,7 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         @Param("keyword") keyword: String
     ): List<CommunityPost>
 
+    @EntityGraph(attributePaths = ["member"])
     @Query(
         """
         select c
@@ -41,10 +43,12 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         @Param("category") category: Category
     ): List<CommunityPost>
 
+    @EntityGraph(attributePaths = ["member"])
     fun findByIdAndDeletedAtIsNull(
         id: Long
     ): CommunityPost?
 
+    @EntityGraph(attributePaths = ["member"])
     fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(): List<CommunityPost>
 
     fun findAllByDeletedAtBefore(

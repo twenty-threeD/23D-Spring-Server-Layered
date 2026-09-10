@@ -19,6 +19,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.retention.MemberRetentionService
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -32,7 +33,8 @@ class MemberServiceImpl(
     private val tokenService: TokenService,
     private val emailService: EmailService,
     private val phoneVerifyService: PhoneVerifyService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val memberRetentionService: MemberRetentionService
 ) : MemberService {
 
     override fun deleteAccount(
@@ -50,7 +52,13 @@ class MemberServiceImpl(
             httpServletResponse,
         )
 
-        memberRepository.delete(member)
+        /**
+         * 계약·견적 등 거래 기록이 member를 참조하고 있어 행을 지우지 않고 탈퇴 표시만 남긴다.
+         * 저장된 리프레시 토큰은 위 deleteTokens에서 이미 지워진다.
+         */
+        member.withdraw()
+
+        memberRepository.save(member)
 
         return DeleteAccountResponse.of("탈퇴되었습니다.")
     }
@@ -61,6 +69,15 @@ class MemberServiceImpl(
 
         val member = memberRepository.findByUsername(passwordResetRequest.username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 탈퇴 회원도 행이 남아 있어 여기서 걸러야 탈퇴한 계정의 비밀번호가 바뀌지 않는다.
+         * 탈퇴 여부를 알려주지 않기 위해 없는 사용자와 같은 응답을 준다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+        }
 
         if (member.provider != Provider.AUTH) {
 
@@ -119,7 +136,10 @@ class MemberServiceImpl(
         email: String
     ): CheckResponse {
 
-        if (memberRepository.existsByEmail(email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        checkDuplicate(
+            member = memberRepository.findByEmail(email),
+            duplicateStatusCode = AuthStatusCode.EMAIL_ALREADY_EXIST
+        )
 
         return CheckResponse.of("사용할 수 있는 이메일입니다.")
     }
@@ -129,9 +149,13 @@ class MemberServiceImpl(
         phone: String
         ): CheckResponse {
 
-        if (memberRepository.existsByPhone(PhoneNormalizer.normalize(phone)
-                ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT))
-            ) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+            ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT)
+
+        checkDuplicate(
+            member = memberRepository.findByPhone(normalizedPhone),
+            duplicateStatusCode = AuthStatusCode.PHONE_ALREADY_EXIST
+        )
 
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
@@ -141,9 +165,39 @@ class MemberServiceImpl(
         username: String
     ): UsernameCheckResponse {
 
-        if (memberRepository.existsByUsername(username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        checkDuplicate(
+            member = memberRepository.findByUsername(username),
+            duplicateStatusCode = AuthStatusCode.USERNAME_ALREADY_EXIST
+        )
 
         return UsernameCheckResponse.of("사용 가능한 사용자명입니다.")
+    }
+
+    /**
+     * 중복 확인 응답을 회원가입(AuthServiceImpl.signUp)과 같은 기준으로 맞춘다.
+     * 탈퇴 회원이 쥐고 있는 값이면 재가입 불가임을 구분해 알려준다.
+     */
+    private fun checkDuplicate(
+        member: Member?,
+        duplicateStatusCode: AuthStatusCode
+    ) {
+
+        if (member == null) {
+
+            return
+        }
+
+        if (member.isDeleted()) {
+
+            if (memberRetentionService.releaseIfRetentionExpired(member.getId()!!)) {
+
+                return
+            }
+
+            throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT_CANNOT_REJOIN)
+        }
+
+        throw ApplicationException(duplicateStatusCode)
     }
 
     @Transactional(readOnly = true)

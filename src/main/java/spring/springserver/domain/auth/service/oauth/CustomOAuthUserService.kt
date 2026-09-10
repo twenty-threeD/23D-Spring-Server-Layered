@@ -123,6 +123,14 @@ class CustomOAuthUserService(
         val existingMember = memberRepository.findByEmail(email)
             ?.also { member ->
 
+                /**
+                 * 탈퇴 회원도 행이 남아 있어 이 검사가 없으면 소셜 로그인으로 계정이 되살아난다.
+                 */
+                if (member.isDeleted()) {
+
+                    throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT)
+                }
+
                 if (member.provider != provider) {
 
                     throw ApplicationException(AuthStatusCode.OAUTH_PROVIDER_MISMATCH)
