@@ -34,8 +34,8 @@ data class CommunityCommentResponse(
             return CommunityCommentResponse(
                 communityComment.getId(),
                 communityComment.communityPost.getId(),
-                communityComment.member.username,
-                imageUrl,
+                communityComment.member.getDisplayUsername(),
+                if (communityComment.member.isDeleted()) null else imageUrl,
                 communityComment.content,
                 communityComment.isEdited,
                 likeCount,

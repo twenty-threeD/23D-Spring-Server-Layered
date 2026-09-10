@@ -28,7 +28,7 @@ data class CommunityJobCommentResponse(
             return CommunityJobCommentResponse(
                 communityJobComment.getId(),
                 communityJobComment.communityJobPost.getId(),
-                communityJobComment.member.username,
+                communityJobComment.member.getDisplayUsername(),
                 communityJobComment.content,
                 communityJobComment.isEdited,
                 communityJobComment.getCreatedAt(),

@@ -5,6 +5,7 @@ import spring.springserver.domain.community.job.entity.CommunityJobPost
 import spring.springserver.domain.community.job.entity.JobPostType
 import spring.springserver.domain.community.job.repository.CommunityJobCommentRepository
 import spring.springserver.domain.community.job.repository.CommunityJobPostLikeRepository
+import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
 /**
@@ -96,10 +97,13 @@ data class CommunityJobPostResponse(
             val jobCategory = communityJobPost.jobCategory
             val sig = communityJobPost.sig
 
+            // username은 작성 시점 값이라 탈퇴 후에도 남는다. 탈퇴 회원이면 낮춰 응답한다.
+            val isWithdrawn = communityJobPost.member.isDeleted()
+
             return CommunityJobPostResponse(
                 communityJobPost.getId(),
                 communityJobPost.getId(),
-                communityJobPost.username,
+                if (isWithdrawn) Member.WITHDRAWN_DISPLAY_NAME else communityJobPost.username,
                 communityJobPost.postType,
                 communityJobPost.title,
                 communityJobPost.content,

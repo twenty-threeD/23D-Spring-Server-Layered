@@ -73,6 +73,7 @@ interface CommunityJobPostRepository : JpaRepository<CommunityJobPost, Long> {
         from CommunityJobPost p
         join fetch p.jobCategory
         join fetch p.sig
+        join fetch p.member
         where p.id in :postIds
         """
     )

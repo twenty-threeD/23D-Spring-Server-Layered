@@ -85,6 +85,24 @@ class Member(
     fun isDeleted(): Boolean = deletedAt != null
 
     /**
+     * 게시글·댓글 작성자로 노출할 이름.
+     * 탈퇴 회원은 익명화된 식별자(deleted_1 등)가 그대로 보이지 않도록
+     * 항상 "탈퇴한 사용자"로 낮춰 응답한다.
+     */
+    fun getDisplayName(): String {
+
+        return if (isDeleted()) WITHDRAWN_DISPLAY_NAME else name
+    }
+
+    /**
+     * 작성자 표시용 username. 탈퇴 회원이면 getDisplayName()과 같은 값이다.
+     */
+    fun getDisplayUsername(): String {
+
+        return if (isDeleted()) WITHDRAWN_DISPLAY_NAME else username
+    }
+
+    /**
      * 탈퇴 처리. 행은 남기되 로그인에 쓰이는 식별자와 개인정보를 익명화한다.
      * username·email·phone에 unique 제약이 있어 값을 비워두면 재가입이 막히므로
      * 회원 id를 섞은 값으로 치환한다.
@@ -94,11 +112,16 @@ class Member(
         val suffix = id ?: System.currentTimeMillis()
 
         this.username = "deleted_$suffix"
-        this.name = "탈퇴한 사용자"
+        this.name = WITHDRAWN_DISPLAY_NAME
         this.email = "deleted_$suffix@deleted.local"
         this.phone = null
         this.password = null
         this.phoneVerified = false
         this.deletedAt = LocalDateTime.now()
+    }
+
+    companion object {
+
+        const val WITHDRAWN_DISPLAY_NAME = "탈퇴한 사용자"
     }
 }
