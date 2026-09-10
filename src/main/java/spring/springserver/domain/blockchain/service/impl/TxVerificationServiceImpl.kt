@@ -217,6 +217,10 @@ class TxVerificationServiceImpl(
 
                     storedPaymentHash == it.paymentHash
                 }
+            },
+            buyerAddressMatched = chainPaymentRecordResponse?.let {
+
+                buyerAddressOf(payment.getMemberId())?.equals(it.buyerAddress)
             }
         )
     }
@@ -244,6 +248,14 @@ class TxVerificationServiceImpl(
                 chainPaymentRecordResponse = chainPaymentRecordResponse
             )
         )
+    }
+
+    private fun buyerAddressOf(
+        memberId: Long
+    ): String? {
+
+        return runCatching { keyService.deriveCosmosAddress(memberId = memberId) }
+            .getOrNull()
     }
 
     companion object {

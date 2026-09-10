@@ -5,7 +5,8 @@ data class TxVerificationDetailResponse(
     val contractUrl: String,
     val contractUrlMatched: Boolean?,
     val txHashMatched: Boolean?,
-    val paymentHashMatched: Boolean?
+    val paymentHashMatched: Boolean?,
+    val buyerAddressMatched: Boolean?
 ) {
 
     companion object {
@@ -14,14 +15,16 @@ data class TxVerificationDetailResponse(
             contractUrl: String,
             contractUrlMatched: Boolean?,
             txHashMatched: Boolean?,
-            paymentHashMatched: Boolean?
+            paymentHashMatched: Boolean?,
+            buyerAddressMatched: Boolean?
         ): TxVerificationDetailResponse {
 
             return TxVerificationDetailResponse(
                 contractUrl = contractUrl,
                 contractUrlMatched = contractUrlMatched,
                 txHashMatched = txHashMatched,
-                paymentHashMatched = paymentHashMatched
+                paymentHashMatched = paymentHashMatched,
+                buyerAddressMatched = buyerAddressMatched
             )
         }
     }
