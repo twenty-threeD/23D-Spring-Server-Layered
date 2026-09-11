@@ -271,6 +271,29 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/call",
+                        "/api/call/*/accept",
+                        "/api/call/*/reject",
+                        "/api/call/*/cancel",
+                        "/api/call/*/end",
+                        "/api/call/*/token",
+                        "/api/call/*/screen-share"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/call/*/media"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/call/*/screen-share"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/call/*",
+                        "/api/call/rooms/*"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/phone/send",
                         "/phone/verify"
                     ).permitAll()

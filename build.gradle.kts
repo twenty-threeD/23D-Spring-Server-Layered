@@ -94,6 +94,9 @@ dependencies {
     // Solapi
     implementation("com.solapi:sdk:1.0.3")
 
+    // Agora (RTC 토큰 발급)
+    implementation("io.agora:authentication:2.1.3")
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
