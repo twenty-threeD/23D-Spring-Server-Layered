@@ -65,7 +65,7 @@ class PaymentServiceImpl(
             }
         }
 
-        val contractUrl = preparePaymentRequest.contractId?.let { contractId ->
+        preparePaymentRequest.contractId?.let { contractId ->
 
             val contractPartyResponse = contractService.findPartyById(contractId = contractId)
                 ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
@@ -75,10 +75,13 @@ class PaymentServiceImpl(
 
                 throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
             }
-
-            contractPartyResponse.contractUrl
         }
-            ?: preparePaymentRequest.contractUrl
+
+        /**
+         * 계약서에는 더 이상 PDF 경로가 없다. 원장에 해시로 올릴 경로는 요청 값에서 받는다.
+         * contractId는 요청자가 그 계약의 당사자인지 확인하는 용도로만 쓴다.
+         */
+        val contractUrl = preparePaymentRequest.contractUrl
 
         return PreparePaymentResponse.of(
             paymentRecordService.create(
