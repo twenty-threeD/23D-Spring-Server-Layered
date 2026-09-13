@@ -18,6 +18,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.LocalDateTime
 import java.util.regex.Pattern
 
 @Service
@@ -47,13 +48,22 @@ class ContractServiceImpl(
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
 
+        validatePeriod(
+            startedAt = createContractRequest.startedAt,
+            endedAt = createContractRequest.endedAt
+        )
+
         val contract = contractRepository.save(
             Contract(
-                client = client,
-                professional = professional,
-                writer = writer,
-                contractUrl = normalizeUrl(createContractRequest.contractUrl!!),
-                price = createContractRequest.price!!
+                client = client, // 갑
+                professional = professional, // 을
+                startedAt = createContractRequest.startedAt, // 계약 시작일
+                endedAt = createContractRequest.endedAt, // 계약 종료일
+                inspectionPeriod = createContractRequest.inspectionPeriod!!, // 계약 검수일
+                price = createContractRequest.price!!, // 계약 대금
+                servicesDescription = createContractRequest.servicesDescription!!.trim(), // 용역 내용
+                writer = writer, // 작성자
+                contractUrl = normalizeUrl(createContractRequest.contractUrl!!)
             )
         )
 
@@ -103,10 +113,28 @@ class ContractServiceImpl(
         member: Member
     ) {
 
-        if (contract.client.getId() != member.getId() &&
-            contract.professional.getId() != member.getId()) {
+        if (!contract.isParty(member.getId())) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
+        }
+    }
+
+    /**
+     * 시작·종료 시각은 둘 다 비워 둘 수 있지만, 둘 다 있으면 순서가 맞아야 한다.
+     */
+    private fun validatePeriod(
+        startedAt: LocalDateTime?,
+        endedAt: LocalDateTime?
+    ) {
+
+        if (startedAt == null || endedAt == null) {
+
+            return
+        }
+
+        if (endedAt.isBefore(startedAt)) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_PERIOD)
         }
     }
 
@@ -116,6 +144,19 @@ class ContractServiceImpl(
 
         return memberRepository.findMemberById(memberId)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+    }
+
+    private fun getCurrentMember(): Member {
+
+        val username = SecurityContextHolder.getContext().authentication?.name
+
+        if (username.isNullOrBlank() || username == "anonymousUser") {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
+        return memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
 
     /**
@@ -136,22 +177,10 @@ class ContractServiceImpl(
         return matcher.group("path")
     }
 
-    private fun getCurrentMember(): Member {
-
-        val username = SecurityContextHolder.getContext().authentication?.name
-
-        if (username.isNullOrBlank() || username == "anonymousUser") {
-
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
-        }
-
-        return memberRepository.findByUsername(username)
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-    }
-
     companion object {
 
         private val ALLOWED_CONTRACT_URL =
             Pattern.compile("^(?:https://(?:www\\.)?idta\\.store)?(?<path>/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf)$")
     }
+
 }
