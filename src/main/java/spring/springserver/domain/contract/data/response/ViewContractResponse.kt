@@ -29,7 +29,14 @@ data class ViewContractResponse(
      */
     val price: Long,
 
-    val servicesDescription: String
+    val servicesDescription: String,
+
+    /**
+     * 계약서 PDF 경로.
+     */
+    val contractUrl: String,
+
+    val createdAt: LocalDateTime?
 ) {
 
     companion object {
@@ -49,7 +56,9 @@ data class ViewContractResponse(
                 contract.endedAt,
                 contract.inspectionPeriod,
                 contract.price,
-                contract.servicesDescription
+                contract.servicesDescription,
+                contract.contractUrl,
+                contract.getCreatedAt()
             )
         }
     }

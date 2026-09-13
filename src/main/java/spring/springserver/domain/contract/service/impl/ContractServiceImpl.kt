@@ -19,6 +19,7 @@ import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
+import java.util.regex.Pattern
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -54,14 +55,15 @@ class ContractServiceImpl(
 
         val contract = contractRepository.save(
             Contract(
-                client = client,
-                professional = professional,
-                writer = writer,
-                startedAt = createContractRequest.startedAt,
-                endedAt = createContractRequest.endedAt,
-                inspectionPeriod = createContractRequest.inspectionPeriod!!,
-                price = createContractRequest.price!!,
-                servicesDescription = createContractRequest.servicesDescription!!.trim()
+                client = client, // 갑
+                professional = professional, // 을
+                startedAt = createContractRequest.startedAt, // 계약 시작일
+                endedAt = createContractRequest.endedAt, // 계약 종료일
+                inspectionPeriod = createContractRequest.inspectionPeriod!!, // 계약 검수일
+                price = createContractRequest.price!!, // 계약 대금
+                servicesDescription = createContractRequest.servicesDescription!!.trim(), // 용역 내용
+                writer = writer, // 작성자
+                contractUrl = normalizeUrl(createContractRequest.contractUrl!!)
             )
         )
 
@@ -156,4 +158,29 @@ class ContractServiceImpl(
         return memberRepository.findByUsername(username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
+
+    /**
+     * 계약서는 PDF로만 주고받기로 했으므로 업로드된 PDF 경로인지 확인한다.
+     * 절대 URL로 들어와도 파일 업로드 응답과 같은 상대 경로(/files/<UUID>.pdf)로 통일해 저장한다.
+     */
+    private fun normalizeUrl(
+        contractUrl: String
+    ): String {
+
+        val matcher = ALLOWED_CONTRACT_URL.matcher(contractUrl.trim())
+
+        if (!matcher.matches()) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_FILE)
+        }
+
+        return matcher.group("path")
+    }
+
+    companion object {
+
+        private val ALLOWED_CONTRACT_URL =
+            Pattern.compile("^(?:https://(?:www\\.)?idta\\.store)?(?<path>/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf)$")
+    }
+
 }

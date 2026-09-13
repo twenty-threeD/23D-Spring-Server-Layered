@@ -49,5 +49,12 @@ data class CreateContractRequest(
      */
     @field:NotBlank(message = "용역 내용은 필수입니다.")
     @field:Size(max = 2000, message = "용역 내용은 2000자 이하로 입력해주세요.")
-    val servicesDescription: String?
+    val servicesDescription: String?,
+
+    /**
+     * 파일 업로드 API가 돌려준 계약서 PDF의 경로.
+     */
+    @field:NotBlank(message = "계약서 URL은 필수입니다.")
+    @field:Size(max = 2048, message = "계약서 URL은 2048자 이하로 입력해주세요.")
+    val contractUrl: String?
 )

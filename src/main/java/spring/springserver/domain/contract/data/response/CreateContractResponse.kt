@@ -35,7 +35,14 @@ data class CreateContractResponse(
      */
     val price: Long,
 
-    val servicesDescription: String
+    val servicesDescription: String,
+
+    /**
+     * 계약서 PDF 경로. 채팅 메시지에 첨부해 그대로 보여준다.
+     */
+    val contractUrl: String,
+
+    val createdAt: LocalDateTime?
 ) {
 
     companion object {
@@ -53,7 +60,9 @@ data class CreateContractResponse(
                 contract.endedAt,
                 contract.inspectionPeriod,
                 contract.price,
-                contract.servicesDescription
+                contract.servicesDescription,
+                contract.contractUrl,
+                contract.getCreatedAt()
             )
         }
     }

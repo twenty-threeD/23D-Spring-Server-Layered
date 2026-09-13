@@ -8,9 +8,7 @@ import java.time.LocalDateTime
 @Table(name = "contract")
 class Contract(
 
-    /**
-     * 계약 당사자 갑(의뢰인). 용역을 의뢰하고 대금을 지급하는 쪽이다.
-     */
+    // 갑(대체로 용역 구매자)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "party_a_id",
@@ -19,9 +17,7 @@ class Contract(
     )
     var client: Member,
 
-    /**
-     * 계약 당사자 을(전문가). 용역을 제공하고 대금을 받는 쪽이다.
-     */
+    // 을(대체로 능력자, 용역 판매자)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "party_b_id",
@@ -30,9 +26,27 @@ class Contract(
     )
     var professional: Member,
 
-    /**
-     * 계약서를 등록한 당사자다. 의뢰인·전문가 중 한쪽이며 요청 본문으로 받지 않고 로그인 정보에서 채운다.
-     */
+    // 계약 시작일
+    @Column(name = "started_at")
+    var startedAt: LocalDateTime?,
+
+    // 계약 만료일
+    @Column(name = "ended_at")
+    var endedAt: LocalDateTime?,
+
+    // 계약 검수 기간
+    @Column(name = "inspection_period", nullable = false)
+    var inspectionPeriod: Int,
+
+    // 계약 대금
+    @Column(name = "price", nullable = false)
+    var price: Long,
+
+    // 용역의 내용
+    @Column(name = "services_description", nullable = false, length = 2000)
+    var servicesDescription: String,
+
+    // 계약서 작성자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(
         name = "writer_id",
@@ -41,42 +55,25 @@ class Contract(
     )
     var writer: Member,
 
-    /**
-     * 용역 시작 시각. 아직 정하지 않았으면 비워 둔다.
-     */
-    @Column(name = "started_at")
-    var startedAt: LocalDateTime?,
-
-    /**
-     * 용역 종료 시각. 아직 정하지 않았으면 비워 둔다.
-     */
-    @Column(name = "ended_at")
-    var endedAt: LocalDateTime?,
-
-    /**
-     * 용역 완료 후 의뢰인이 결과물을 검수하는 기간(일).
-     */
-    @Column(name = "inspection_period", nullable = false)
-    var inspectionPeriod: Int,
-
-    /**
-     * 계약 금액(원). 의뢰인(갑)이 전문가(을)에게 지급하기로 한 용역 대금이다.
-     */
-    @Column(name = "price", nullable = false)
-    var price: Long,
-
-    /**
-     * 계약 대상 용역의 내용.
-     */
-    @Column(name = "services_description", nullable = false, length = 2000)
-    var servicesDescription: String
+    // 계약서 주소
+    @Column(name = "contract_url", nullable = false, length = 2048)
+    var contractUrl: String
 ) {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
 
+    private var createdAt: LocalDateTime? = null
+
+    @PrePersist
+    fun prePersistDate() {
+
+        createdAt = LocalDateTime.now()
+    }
+
     fun getId(): Long? = id
+    fun getCreatedAt(): LocalDateTime? = createdAt
 
     fun isParty(
         memberId: Long?
