@@ -152,13 +152,12 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/intellij,macos,dotenv
 
-documents/CLAUDE-FABLE-5.md
-
 .idea
 build/
 .gradle/
 gradle/
-.claude/
+.claude/settings.json
+.claude/settings.local.json
 ### Claude Code ###
 .mcp.json
 
