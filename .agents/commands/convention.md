@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git status:*)
 
 `.agents/convention.md`를 먼저 읽고, 아래 대상 코드에서 컨벤션 위반을 찾아 보고해라.
 
-대상: $1
+대상: $ARGUMENTS
 
 대상이 비어 있으면 `git status`와 `git diff HEAD`로 변경된 파일을 찾아 그 파일들을 검사한다.
 
