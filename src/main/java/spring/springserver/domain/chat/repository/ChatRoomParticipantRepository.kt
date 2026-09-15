@@ -69,6 +69,17 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
 
     @Query(
         """
+            select p.room.id as roomId, p.member.id as memberId
+            from ChatRoomParticipant p
+            where p.room.id in :roomIds
+            """
+    )
+    fun findRoomMemberIdsByRoomIds(
+        @Param("roomIds") roomIds: Collection<Long>
+    ): List<RoomMemberIdProjection>
+
+    @Query(
+        """
             select count(p) > 0
             from ChatRoomParticipant p
             where p.room.id = :roomId
