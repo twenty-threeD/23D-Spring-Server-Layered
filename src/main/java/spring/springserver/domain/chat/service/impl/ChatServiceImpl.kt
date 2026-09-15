@@ -139,7 +139,7 @@ class ChatServiceImpl(
     ): List<ChatRoomResponse> {
 
         val rooms = chatRoomRepository.findAllByParticipantUsername(username)
-        rooms.forEach(::ensureParticipantRows)
+        ensureParticipantRowsInBatch(rooms)
 
         val participantsByRoomId = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
             .associateBy { it.room.getId() }
@@ -611,6 +611,55 @@ class ChatServiceImpl(
 
         ensureParticipantRow(room, room.client)
         ensureParticipantRow(room, room.professional)
+    }
+
+    /**
+     * 여러 방의 참여자 row를 한 번에 보정한다.
+     *
+     * 방마다 존재 여부를 조회하면 방 수에 비례해 쿼리가 늘어나므로(N+1),
+     * 조회 1회로 기존 (roomId, memberId) 조합을 모두 읽고 없는 것만 한 번에 저장한다.
+     */
+    private fun ensureParticipantRowsInBatch(
+        rooms: List<ChatRoom>
+    ) {
+
+        val roomIds = rooms.mapNotNull { it.getId() }
+
+        if (roomIds.isEmpty()) {
+
+            return
+        }
+
+        val existingPairs = chatRoomParticipantRepository.findRoomMemberIdsByRoomIds(roomIds)
+            .map { it.getRoomId() to it.getMemberId() }
+            .toSet()
+
+        val missingParticipants = rooms.flatMap { room ->
+
+            listOf(room.client, room.professional).mapNotNull { member ->
+
+                val roomId = room.getId()
+                val memberId = member.getId()
+
+                if (roomId == null || memberId == null || (roomId to memberId) in existingPairs) {
+
+                    null
+                } else {
+
+                    ChatRoomParticipant(
+                        room = room,
+                        member = member
+                    )
+                }
+            }
+        }
+
+        if (missingParticipants.isEmpty()) {
+
+            return
+        }
+
+        chatRoomParticipantRepository.saveAll(missingParticipants)
     }
 
     private fun ensureParticipantRow(
