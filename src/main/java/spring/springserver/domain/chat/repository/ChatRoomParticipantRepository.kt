@@ -12,8 +12,7 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
             select p
             from ChatRoomParticipant p
             join fetch p.room r
-            join fetch r.client
-            join fetch r.professional
+            join fetch r.post
             where p.member.username = :username
               and p.visible = true
             order by
@@ -31,8 +30,8 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
             select p
             from ChatRoomParticipant p
             join fetch p.room r
-            join fetch r.client
-            join fetch r.professional
+            join fetch r.post
+            join fetch p.member
             where r.id = :roomId
               and p.member.username = :username
             """
@@ -54,10 +53,28 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
         @Param("roomId") roomId: Long
     ): List<ChatRoomParticipant>
 
+    /**
+     * 여러 방의 참여자를 한 번에 읽는다. 방 목록에서 상대방을 찾을 때 N+1을 피하려고 쓴다.
+     */
     @Query(
         """
             select p
             from ChatRoomParticipant p
+            join fetch p.room
+            join fetch p.member
+            where p.room.id in :roomIds
+            """
+    )
+    fun findAllByRoomIds(
+        @Param("roomIds") roomIds: Collection<Long>
+    ): List<ChatRoomParticipant>
+
+    @Query(
+        """
+            select p
+            from ChatRoomParticipant p
+            join fetch p.room
+            join fetch p.member
             where p.room.id = :roomId
               and p.member.id = :memberId
             """
@@ -83,12 +100,11 @@ interface ChatRoomParticipantRepository : JpaRepository<ChatRoomParticipant, Lon
             select count(p) > 0
             from ChatRoomParticipant p
             where p.room.id = :roomId
-              and p.member.username = :username
-              and p.visible = true
+              and p.member.id = :memberId
             """
     )
-    fun existsVisibleParticipant(
-        @Param("roomId") roomId: Long,
-        @Param("username") username: String
+    fun existsByRoomIdAndMemberId(
+        @Param("roomId") roomId: Long?,
+        @Param("memberId") memberId: Long?
     ): Boolean
 }
