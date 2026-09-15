@@ -12,6 +12,10 @@ interface ChatRoomRepository : JpaRepository<ChatRoom, Long> {
         postId: Long
     ): ChatRoom?
 
+    /**
+     * 참여자 테이블이 비어 있는 과거 방을 보정하기 위한 조회다.
+     * 멤버십 판단에는 쓰지 않는다. 판단은 `ChatRoomParticipantRepository`가 담당한다.
+     */
     @Query(
         """
             select cr

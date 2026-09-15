@@ -120,7 +120,7 @@ class ChatServiceImpl(
             return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
                 postId = existingRoom.post.getId(),
-                participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
+                participantUsername = target.username,
                 existingRoom = true,
                 clearBefore = participant.deletedAt
             )
@@ -129,7 +129,6 @@ class ChatServiceImpl(
         return createRoom(
             requester = requester,
             target = target,
-            requesterUsername = requesterUsername,
             post = post
         )
     }
@@ -138,29 +137,35 @@ class ChatServiceImpl(
         username: String
     ): List<ChatRoomResponse> {
 
-        val rooms = chatRoomRepository.findAllByParticipantUsername(username)
-        ensureParticipantRowsInBatch(rooms)
+        backfillParticipantRowsForMember(username)
 
-        val participantsByRoomId = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
-            .associateBy { it.room.getId() }
+        val myParticipants = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
 
-        val visibleRooms = rooms.filter { it.getId() in participantsByRoomId }
+        if (myParticipants.isEmpty()) {
 
-        val others = visibleRooms.associateWith { getOtherParticipant(it, username) }
+            return emptyList()
+        }
+
+        val othersByRoomId = chatRoomParticipantRepository
+            .findAllByRoomIds(myParticipants.mapNotNull { it.room.getId() })
+            .filter { it.member.username != username }
+            .associateBy({ it.room.getId() }, { it.member })
 
         val imageUrls = profileService.getImageUrlsByMemberIds(
-            others.values.mapNotNull { it.getId() }
+            othersByRoomId.values.mapNotNull { it.getId() }
         )
 
-        return visibleRooms.map { room ->
+        return myParticipants.mapNotNull { participant ->
 
-            val other = others.getValue(room)
+            val room = participant.room
+            val other = othersByRoomId[room.getId()]
+                ?: return@mapNotNull null
 
             ChatRoomResponse.of(
                 room = room,
                 participant = other,
                 participantImageUrl = other.getId()?.let { imageUrls[it] },
-                clearBefore = participantsByRoomId[room.getId()]?.deletedAt
+                clearBefore = participant.deletedAt
             )
         }
     }
@@ -247,9 +252,9 @@ class ChatServiceImpl(
         username: String
     ): ChatParticipantResponse {
 
-        val participant = getVisibleParticipant(roomId, username)
-        
-        return ChatParticipantResponse(getOtherParticipant(participant.room, username).username)
+        getVisibleParticipant(roomId, username)
+
+        return ChatParticipantResponse(getOtherMember(roomId, username).username)
     }
 
     override fun canAccessRoom(
@@ -257,15 +262,13 @@ class ChatServiceImpl(
         roomId: Long
     ): Boolean {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId)
-            ?: return false
-
-        ensureParticipantRows(room)
-
-        return chatRoomParticipantRepository.existsVisibleParticipant(
+        val participant = findParticipant(
             roomId = roomId,
             username = username
         )
+            ?: return false
+
+        return participant.visible
     }
 
     override fun leaveRoom(
@@ -294,10 +297,14 @@ class ChatServiceImpl(
         memberId: Long
     ): Boolean {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
-            ?: return false
+        if (chatRoomParticipantRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
 
-        return room.client.getId() == memberId || room.professional.getId() == memberId
+            return true
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.existsByRoomIdAndMemberId(roomId, memberId)
     }
 
     override fun sendPaymentMessage(
@@ -306,17 +313,14 @@ class ChatServiceImpl(
         payment: ChatPaymentResponse
     ): ChatMessageResponse {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
-            ?: throw ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND)
+        val senderParticipant = findParticipant(
+            roomId = roomId,
+            memberId = senderMemberId
+        )
+            ?: throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
 
-        ensureParticipantRows(room = room)
-
-        val sender = when (senderMemberId) {
-            room.client.getId() -> room.client
-            room.professional.getId() -> room.professional
-            else -> throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
-        }
-
+        val room = senderParticipant.room
+        val sender = senderParticipant.member
         val createdAt = Instant.now()
 
         val response = ChatMessageResponse(
@@ -354,10 +358,13 @@ class ChatServiceImpl(
         return response
     }
 
+    /**
+     * 1:1 방만 만든다. 참여자를 두 명으로 제한하는 책임은 스키마가 아니라 이 서비스 계층에 있다.
+     * 방과 참여자 row는 같은 트랜잭션에서 저장해 참여자 없는 방이 남지 않게 한다.
+     */
     private fun createRoom(
         requester: Member,
         target: Member,
-        requesterUsername: String,
         post: Post
     ): CreateChatRoomResponse {
 
@@ -371,13 +378,23 @@ class ChatServiceImpl(
 
         val savedRoom = chatRoomRepository.saveAndFlush(room)
 
-        chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.client))
-        chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.professional))
+        chatRoomParticipantRepository.saveAll(
+            listOf(
+                ChatRoomParticipant(
+                    room = savedRoom,
+                    member = requester
+                ),
+                ChatRoomParticipant(
+                    room = savedRoom,
+                    member = target
+                )
+            )
+        )
 
         return CreateChatRoomResponse.of(
             roomId = savedRoom.getId(),
             postId = savedRoom.post.getId(),
-            participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
+            participantUsername = target.username,
             existingRoom = false,
             clearBefore = null
         )
@@ -409,7 +426,7 @@ class ChatServiceImpl(
         return CreateChatRoomResponse.of(
             roomId = room.getId(),
             postId = room.post.getId(),
-            participantUsername = getOtherParticipant(room, requesterUsername).username,
+            participantUsername = target.username,
             existingRoom = true,
             clearBefore = participant.deletedAt
         )
@@ -420,15 +437,10 @@ class ChatServiceImpl(
         username: String
     ): ChatRoomParticipant {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId)
-            ?: throw ApplicationException.of(
-                CommonStatusCode.ENDPOINT_NOT_FOUND,
-                "존재하지 않는 채팅방입니다."
-            )
-
-        ensureParticipantRows(room)
-
-        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+        val participant = findParticipant(
+            roomId = roomId,
+            username = username
+        )
             ?: throw ApplicationException.of(
                 CommonStatusCode.INVALID_ARGUMENT,
                 "해당 채팅방에 접근할 수 없습니다."
@@ -444,6 +456,61 @@ class ChatServiceImpl(
 
         return participant
     }
+
+    /**
+     * 참여자 row를 찾는다. 없으면 과거 방일 수 있으므로 한 번 보정한 뒤 다시 찾는다.
+     *
+     * 보정은 참여자 테이블이 도입되기 전에 만들어진 방을 위한 호환 장치일 뿐이다.
+     * 일회성 데이터 백필이 끝나면 `backfillParticipantRows*` 계열과 함께 지워도 된다.
+     */
+    private fun findParticipant(
+        roomId: Long,
+        username: String
+    ): ChatRoomParticipant? {
+
+        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+
+        if (participant != null) {
+
+            return participant
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+    }
+
+    private fun findParticipant(
+        roomId: Long,
+        memberId: Long
+    ): ChatRoomParticipant? {
+
+        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberId(roomId, memberId)
+
+        if (participant != null) {
+
+            return participant
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.findByRoomIdAndMemberId(roomId, memberId)
+    }
+
+    /**
+     * 요청자가 아닌 상대 참여자. 1:1 방이므로 참여자는 항상 둘이다.
+     */
+    private fun getOtherMember(
+        roomId: Long,
+        username: String
+    ): Member =
+        chatRoomParticipantRepository.findAllByRoomId(roomId)
+            .firstOrNull { it.member.username != username }
+            ?.member
+            ?: throw ApplicationException.of(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "채팅방 참여자가 아닙니다."
+            )
 
     private fun getMemberByUsername(
         username: String
@@ -476,27 +543,6 @@ class ChatServiceImpl(
         }
 
         return post
-    }
-
-    private fun getOtherParticipant(
-        room: ChatRoom,
-        username: String
-    ): Member {
-
-        if (room.client.username == username) {
-
-            return room.professional
-        }
-
-        if (room.professional.username == username) {
-
-            return room.client
-        }
-
-        throw ApplicationException.of(
-            CommonStatusCode.INVALID_ARGUMENT,
-            "채팅방 참여자가 아닙니다."
-        )
     }
 
     private fun isProfessional(
@@ -604,6 +650,27 @@ class ChatServiceImpl(
                 CommonStatusCode.ENDPOINT_NOT_FOUND,
                 "메시지 식별자를 생성할 수 없습니다."
             )
+
+    /**
+     * 참여자 row가 없는 과거 방 하나를 보정한다.
+     * 보정의 근거로만 `client` / `professional`을 읽고, 멤버십 판단에는 쓰지 않는다.
+     */
+    private fun backfillParticipantRows(
+        roomId: Long
+    ) {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId)
+            ?: return
+
+        ensureParticipantRows(room)
+    }
+
+    private fun backfillParticipantRowsForMember(
+        username: String
+    ) {
+
+        ensureParticipantRowsInBatch(chatRoomRepository.findAllByParticipantUsername(username))
+    }
 
     private fun ensureParticipantRows(
         room: ChatRoom

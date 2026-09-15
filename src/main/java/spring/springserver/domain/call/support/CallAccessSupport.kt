@@ -5,7 +5,9 @@ import spring.springserver.domain.call.entity.Call
 import spring.springserver.domain.call.exception.CallStatusCode
 import spring.springserver.domain.call.repository.CallRepository
 import spring.springserver.domain.chat.entity.ChatRoom
+import spring.springserver.domain.chat.repository.ChatRoomParticipantRepository
 import spring.springserver.domain.chat.repository.ChatRoomRepository
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
@@ -20,6 +22,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 class CallAccessSupport(
     private val callRepository: CallRepository,
     private val chatRoomRepository: ChatRoomRepository,
+    private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
+    private val chatService: ChatService,
     private val memberRepository: MemberRepository
 ) {
 
@@ -55,15 +59,34 @@ class CallAccessSupport(
         return call
     }
 
+    /**
+     * 참여 여부는 `chat_room_participant`가 단일 출처다.
+     * 채팅 서비스를 거쳐 과거 방의 참여자 row 보정까지 함께 처리한다.
+     */
     fun isRoomParticipant(
         room: ChatRoom,
         memberId: Long?
-    ): Boolean =
-        room.client.getId() == memberId || room.professional.getId() == memberId
+    ): Boolean {
+
+        val roomId = room.getId()
+
+        if (roomId == null || memberId == null) {
+
+            return false
+        }
+
+        return chatService.isRoomParticipant(
+            roomId = roomId,
+            memberId = memberId
+        )
+    }
 
     fun getRoomCounterpart(
         room: ChatRoom,
         memberId: Long?
     ): Member =
-        if (room.client.getId() == memberId) room.professional else room.client
+        chatRoomParticipantRepository.findAllByRoomId(room.getId()!!)
+            .firstOrNull { it.member.getId() != memberId }
+            ?.member
+            ?: throw ApplicationException(CallStatusCode.CALL_ROOM_NOT_FOUND)
 }
