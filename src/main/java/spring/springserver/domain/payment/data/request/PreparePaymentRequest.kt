@@ -25,5 +25,11 @@ data class PreparePaymentRequest(
      */
     val roomId: Long? = null,
 
-    val contractId: Long? = null
+    val contractId: Long? = null,
+
+    /**
+     * 견적서 결제인 경우에 전달한다.
+     * 결제 금액은 클라이언트 값이 아니라 이 견적서의 최종 금액을 기준으로 검증한다.
+     */
+    val estimateId: Long? = null
 )

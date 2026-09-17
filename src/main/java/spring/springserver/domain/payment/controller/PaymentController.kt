@@ -51,42 +51,62 @@ class PaymentController(
 
     @GetMapping("/{paymentKey}")
     fun findByPaymentKey(
-        @PathVariable paymentKey: String
+        @PathVariable paymentKey: String,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
-        return BaseResponse.ok(paymentService.findByPaymentKey(paymentKey))
+        return BaseResponse.ok(
+            paymentService.findByPaymentKey(
+                paymentKey,
+                memberDetails.getId()!!
+            )
+        )
     }
 
     @GetMapping("/orders/{orderId}")
     fun findByOrderId(
-        @PathVariable orderId: String
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
-        return BaseResponse.ok(paymentService.findByOrderId(orderId))
+        return BaseResponse.ok(
+            paymentService.findByOrderId(
+                orderId,
+                memberDetails.getId()!!
+            )
+        )
     }
 
     @PostMapping("/{paymentKey}/cancel")
     fun cancel(
-        @PathVariable paymentKey: String,
         @Valid @RequestBody cancelPaymentRequest: CancelPaymentRequest,
-        @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?
+        @PathVariable paymentKey: String,
+        @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
         return BaseResponse.ok(
             paymentService.cancel(
-                paymentKey,
                 cancelPaymentRequest,
-                idempotencyKey
+                paymentKey,
+                idempotencyKey,
+                memberDetails.getId()!!
             )
         )
     }
 
     @PostMapping("/virtual-accounts")
     fun issueVirtualAccount(
-        @Valid @RequestBody virtualAccountRequest: VirtualAccountRequest
+        @Valid @RequestBody virtualAccountRequest: VirtualAccountRequest,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
-        return BaseResponse.ok(paymentService.issueVirtualAccount(virtualAccountRequest))
+        return BaseResponse.ok(
+            paymentService.issueVirtualAccount(
+                virtualAccountRequest,
+                memberDetails.getId()!!
+            )
+        )
     }
 
     @GetMapping("/orders/{orderId}/verify")

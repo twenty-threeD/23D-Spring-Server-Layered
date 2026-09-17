@@ -24,19 +24,28 @@ class PaymentRecordServiceImpl(
         contractUrl: String
     ): Payment {
 
+        val payment = Payment(
+            orderId = preparePaymentRequest.orderId,
+            amount = preparePaymentRequest.amount,
+            memberId = memberId,
+            contractUrl = contractUrl,
+            orderName = preparePaymentRequest.orderName,
+            roomId = preparePaymentRequest.roomId,
+            contractId = preparePaymentRequest.contractId
+        )
+
+        /**
+         * 결제 금액의 기준이 된 견적서를 준비 시점에 박아 둔다.
+         * 승인 때 클라이언트가 보낸 estimateId를 믿지 않고 이 값을 쓴다.
+         */
+        preparePaymentRequest.estimateId?.let { estimateId ->
+
+            payment.linkEstimate(estimateId = estimateId)
+        }
+
         try {
 
-            return paymentRepository.saveAndFlush(
-                Payment(
-                    orderId = preparePaymentRequest.orderId,
-                    amount = preparePaymentRequest.amount,
-                    memberId = memberId,
-                    contractUrl = contractUrl,
-                    orderName = preparePaymentRequest.orderName,
-                    roomId = preparePaymentRequest.roomId,
-                    contractId = preparePaymentRequest.contractId
-                )
-            )
+            return paymentRepository.saveAndFlush(payment)
         } catch (_: DataIntegrityViolationException) {
 
             throw ApplicationException(PaymentStatusCode.PAYMENT_ORDER_ID_DUPLICATED)
@@ -70,6 +79,15 @@ class PaymentRecordServiceImpl(
         payment.markInProgress()
 
         return payment
+    }
+
+    @Transactional(readOnly = true)
+    override fun findByPaymentKey(
+        paymentKey: String
+    ): Payment {
+
+        return paymentRepository.findByPaymentKey(paymentKey)
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_FOUND)
     }
 
     @Transactional(readOnly = true)

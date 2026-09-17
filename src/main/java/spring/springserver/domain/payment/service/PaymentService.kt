@@ -22,21 +22,25 @@ interface PaymentService {
         ): ConfirmPaymentResponse
 
     fun findByPaymentKey(
-        paymentKey: String
+        paymentKey: String,
+        memberId: Long
     ): PaymentResponse
 
     fun findByOrderId(
-        orderId: String
+        orderId: String,
+        memberId: Long
     ): PaymentResponse
 
     fun cancel(
-        paymentKey: String,
         cancelPaymentRequest: CancelPaymentRequest,
-        idempotencyKey: String?
+        paymentKey: String,
+        idempotencyKey: String?,
+        memberId: Long
     ): PaymentResponse
 
     fun issueVirtualAccount(
-        virtualAccountRequest: VirtualAccountRequest
+        virtualAccountRequest: VirtualAccountRequest,
+        memberId: Long
     ): PaymentResponse
 
     fun verify(

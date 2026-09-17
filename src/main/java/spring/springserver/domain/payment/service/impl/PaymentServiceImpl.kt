@@ -65,6 +65,15 @@ class PaymentServiceImpl(
             }
         }
 
+        /**
+         * 결제 금액은 클라이언트가 정하는 값이 아니다.
+         * 견적서나 계약서라는 서버 측 금액 원천이 반드시 있어야 하고, 요청 금액은 그 값과 정확히 같아야 한다.
+         */
+        if (preparePaymentRequest.estimateId == null && preparePaymentRequest.contractId == null) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_SOURCE_REQUIRED)
+        }
+
         preparePaymentRequest.contractId?.let { contractId ->
 
             val contractPartyResponse = contractService.findPartyById(contractId = contractId)
@@ -75,6 +84,20 @@ class PaymentServiceImpl(
 
                 throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
             }
+
+            if (contractPartyResponse.price != preparePaymentRequest.amount) {
+
+                throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
+            }
+        }
+
+        preparePaymentRequest.estimateId?.let { estimateId ->
+
+            estimateService.validatePayable(
+                estimateId,
+                memberId,
+                preparePaymentRequest.amount
+            )
         }
 
         /**
@@ -109,12 +132,18 @@ class PaymentServiceImpl(
             )
         }
 
-        confirmPaymentRequest.estimateId?.let { estimateId ->
+        /**
+         * 견적서는 준비 시점에 박아 둔 값만 쓴다.
+         * 클라이언트가 보낸 estimateId를 믿으면 그 값을 빼는 것만으로 금액 검증을 건너뛸 수 있다.
+         */
+        val estimateId = stored.getEstimateId()
+
+        estimateId?.let {
 
             estimateService.validatePayable(
-                estimateId,
+                it,
                 memberId,
-                confirmPaymentRequest.amount
+                stored.getAmount()
             )
         }
 
@@ -162,17 +191,12 @@ class PaymentServiceImpl(
             resolvedTxHash
         )
 
-        confirmPaymentRequest.estimateId?.let { estimateId ->
-
-            paymentRecordService.linkEstimate(
-                confirmPaymentRequest.orderId,
-                estimateId = estimateId
-            )
+        estimateId?.let {
 
             estimateService.markAsPaid(
-                estimateId,
+                it,
                 memberId,
-                response.totalAmount ?: confirmPaymentRequest.amount
+                response.totalAmount ?: payment.getAmount()
             )
         }
 
@@ -232,7 +256,10 @@ class PaymentServiceImpl(
 
         val payment = paymentRecordService.findByOrderId(orderId = orderId)
 
-        if (payment.getMemberId() != memberId) throw ApplicationException(PaymentStatusCode.PAYMENT_MEMBER_MISMATCH)
+        validateOwner(
+            payment,
+            memberId
+        )
 
         val record = blockchainService.findRecord(orderId = orderId)
             ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN)
@@ -361,21 +388,43 @@ class PaymentServiceImpl(
             .joinToString("") { "%02x".format(it) }
     }
 
-    override fun findByPaymentKey(paymentKey: String): PaymentResponse {
+    override fun findByPaymentKey(
+        paymentKey: String,
+        memberId: Long
+    ): PaymentResponse {
+
+        validateOwner(
+            paymentRecordService.findByPaymentKey(paymentKey),
+            memberId
+        )
 
         return tossPaymentsClient.findByPaymentKey(paymentKey)
     }
 
-    override fun findByOrderId(orderId: String): PaymentResponse {
+    override fun findByOrderId(
+        orderId: String,
+        memberId: Long
+    ): PaymentResponse {
+
+        validateOwner(
+            paymentRecordService.findByOrderId(orderId),
+            memberId
+        )
 
         return tossPaymentsClient.findByOrderId(orderId)
     }
 
     override fun cancel(
-        paymentKey: String,
         cancelPaymentRequest: CancelPaymentRequest,
-        idempotencyKey: String?
+        paymentKey: String,
+        idempotencyKey: String?,
+        memberId: Long
     ): PaymentResponse {
+
+        validateOwner(
+            paymentRecordService.findByPaymentKey(paymentKey),
+            memberId
+        )
 
         return tossPaymentsClient.cancel(
             paymentKey,
@@ -384,9 +433,42 @@ class PaymentServiceImpl(
         )
     }
 
-    override fun issueVirtualAccount(virtualAccountRequest: VirtualAccountRequest): PaymentResponse {
+    override fun issueVirtualAccount(
+        virtualAccountRequest: VirtualAccountRequest,
+        memberId: Long
+    ): PaymentResponse {
+
+        /**
+         * 가상계좌도 주문번호로 붙는다. 남의 주문에 계좌를 끼워 넣지 못하도록 소유자와 금액을 먼저 확인한다.
+         */
+        val payment = paymentRecordService.findByOrderId(virtualAccountRequest.orderId)
+
+        validateOwner(
+            payment,
+            memberId
+        )
+
+        if (payment.getAmount() != virtualAccountRequest.amount) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
+        }
 
         return tossPaymentsClient.issueVirtualAccount(virtualAccountRequest)
+    }
+
+    /**
+     * 결제 건은 orderId·paymentKey만 알면 주소창에서 바꿔 넣을 수 있는 값이다.
+     * 토스로 넘기기 전에 요청자가 그 결제의 주인인지 반드시 확인한다.
+     */
+    private fun validateOwner(
+        payment: Payment,
+        memberId: Long
+    ) {
+
+        if (payment.getMemberId() != memberId) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_MEMBER_MISMATCH)
+        }
     }
 
     companion object {

@@ -13,6 +13,8 @@ interface PaymentRepository: JpaRepository<Payment, Long> {
 
     fun findByOrderId(orderId: String): Payment?
 
+    fun findByPaymentKey(paymentKey: String): Payment?
+
     fun existsByOrderId(orderId: String): Boolean
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
