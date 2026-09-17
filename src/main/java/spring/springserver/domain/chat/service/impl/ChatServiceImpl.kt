@@ -2,6 +2,7 @@ package spring.springserver.domain.chat.service.impl
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
@@ -17,8 +18,10 @@ import spring.springserver.domain.chat.data.response.ChatParticipantResponse
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
+import spring.springserver.domain.chat.entity.ChatMessage
 import spring.springserver.domain.chat.entity.ChatRoom
 import spring.springserver.domain.chat.entity.ChatRoomParticipant
+import spring.springserver.domain.chat.repository.ChatMessageRepository
 import spring.springserver.domain.chat.repository.ChatRoomParticipantRepository
 import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
@@ -39,6 +42,7 @@ import java.util.concurrent.TimeUnit
 class ChatServiceImpl(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
+    private val chatMessageRepository: ChatMessageRepository,
     private val memberRepository: MemberRepository,
     private val postRepository: PostRepository,
     private val profileService: ProfileService,
@@ -170,9 +174,19 @@ class ChatServiceImpl(
         }
     }
 
+    /**
+     * 최근 메시지는 Redis 캐시에서, 캐시에 없거나 더 오래된 구간은 PostgreSQL에서 읽는다.
+     *
+     * 페이지네이션은 offset이 아니라 커서(`id < :cursor`)다. 반환은 기존 계약대로 오래된 -> 최신 순이다.
+     * `after`가 오면 과거 스크롤이 아니라 델타 동기화이므로 그쪽으로 넘긴다(둘은 배타적이다).
+     */
+    @Transactional(readOnly = true)
     override fun getRoomMessages(
         username: String,
-        roomId: Long
+        roomId: Long,
+        cursor: Long?,
+        after: Long?,
+        size: Int
     ): List<ChatMessageResponse> {
 
         val participant = getVisibleParticipant(
@@ -180,19 +194,95 @@ class ChatServiceImpl(
             username = username
         )
 
-        val messages = getCachedRoomMessages(roomId)
+        val pageSize = normalizePageSize(size)
+        val clearBefore = participant.deletedAt
+        val createdAfter = clearBefore ?: Instant.EPOCH
 
-        val responses = if (participant.deletedAt == null) {
+        if (after != null) {
 
-            messages
-        } else {
-
-            messages.filter {
-                it.createdAt.isAfter(participant.deletedAt!!)
-            }
+            return getMessagesAfter(
+                roomId = roomId,
+                sinceId = after,
+                clearBefore = clearBefore,
+                createdAfter = createdAfter,
+                pageSize = pageSize
+            )
         }
 
-        return responses
+        val cachedMessages = getCachedRoomMessages(roomId)
+            .filter { clearBefore == null || it.createdAt.isAfter(clearBefore) }
+            .filter { it.messageId != null && (cursor == null || it.messageId < cursor) }
+            .sortedByDescending { it.messageId }
+            .take(pageSize)
+
+        if (cachedMessages.size >= pageSize) {
+
+            return cachedMessages.asReversed()
+        }
+
+        val nextCursor = cachedMessages.lastOrNull()?.messageId
+            ?: cursor
+        val remaining = pageSize - cachedMessages.size
+        val pageable = PageRequest.of(0, remaining)
+
+        val storedMessages = if (nextCursor == null) {
+
+            chatMessageRepository.findRecentByRoomId(
+                roomId = roomId,
+                clearBefore = createdAfter,
+                pageable = pageable
+            )
+        } else {
+
+            chatMessageRepository.findByRoomIdBefore(
+                roomId = roomId,
+                lastId = nextCursor,
+                clearBefore = createdAfter,
+                pageable = pageable
+            )
+        }
+
+        return (cachedMessages + storedMessages.map { toResponse(it) }).asReversed()
+    }
+
+    /**
+     * 클라이언트가 아는 마지막 메시지 이후만 돌려준다.
+     *
+     * Redis 리스트는 TTL 안의 메시지를 빠짐없이 순서대로 들고 있으므로,
+     * 요청한 지점이 캐시의 시작보다 뒤라면 그 이후는 전부 캐시에 있다고 볼 수 있어 DB를 건드리지 않는다.
+     * 그보다 오래된 지점이면(오래 접속하지 않은 클라이언트) DB에서 읽는다.
+     *
+     * 반환 개수가 `pageSize`와 같으면 아직 남은 구간이 있다는 뜻이고,
+     * 클라이언트는 마지막 id로 `after`를 갱신해 다시 호출하면 된다.
+     */
+    private fun getMessagesAfter(
+        roomId: Long,
+        sinceId: Long,
+        clearBefore: Instant?,
+        createdAfter: Instant,
+        pageSize: Int
+    ): List<ChatMessageResponse> {
+
+        val cachedMessages = getCachedRoomMessages(roomId)
+            .filter { clearBefore == null || it.createdAt.isAfter(clearBefore) }
+            .filter { it.messageId != null }
+            .sortedBy { it.messageId }
+
+        val oldestCachedId = cachedMessages.firstOrNull()?.messageId
+
+        if (oldestCachedId != null && sinceId + 1 >= oldestCachedId) {
+
+            return cachedMessages.filter { it.messageId!! > sinceId }
+                .take(pageSize)
+        }
+
+        return chatMessageRepository.findByRoomIdAfter(
+            roomId = roomId,
+            sinceId = sinceId,
+            clearBefore = createdAfter,
+            pageable = PageRequest.of(0, pageSize)
+        )
+            .map { toResponse(it) }
     }
 
     override fun sendMessage(
@@ -220,10 +310,20 @@ class ChatServiceImpl(
         }
 
         val createdAt = Instant.now()
-        val messageId = nextMessageId(room.getId()!!)
+
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = normalizedMessage,
+                createdAt = createdAt,
+                messageType = ChatMessageType.TEXT,
+                attachmentUrlsText = ChatMessage.joinAttachmentUrls(attachmentUrls)
+            )
+        )
 
         val response = ChatMessageResponse(
-            messageId = messageId,
+            messageId = chatMessage.getId(),
             roomId = room.getId(),
             senderUsername = sender.username,
             senderName = sender.name,
@@ -323,8 +423,19 @@ class ChatServiceImpl(
         val sender = senderParticipant.member
         val createdAt = Instant.now()
 
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = paymentMessagePreview,
+                createdAt = createdAt,
+                messageType = ChatMessageType.PAYMENT,
+                paymentPayload = objectMapper.writeValueAsString(payment)
+            )
+        )
+
         val response = ChatMessageResponse(
-            messageId = nextMessageId(roomId = roomId),
+            messageId = chatMessage.getId(),
             roomId = roomId,
             senderUsername = sender.username,
             senderName = sender.name,
@@ -632,24 +743,40 @@ class ChatServiceImpl(
         )
     }
 
+    /**
+     * 메시지 식별자를 Redis 카운터에서 DB PK로 옮기면서 캐시 키 버전을 올렸다.
+     * 구버전 키에 남은 방별 카운터 기반 id와 전역 PK가 섞이지 않게 하려는 것이고, 구버전 키는 TTL로 사라진다.
+     */
     private fun cacheKey(
         roomId: Long
     ): String =
-        "chat:room:$roomId:messages"
+        "chat:room:$roomId:messages:v2"
 
-    private fun messageSequenceKey(
-        roomId: Long
-    ): String =
-        "chat:room:$roomId:message-seq"
+    /**
+     * DB 행을 응답으로 되돌린다. 결제 상세는 저장된 JSON에서 복원하되,
+     * 형식이 깨진 과거 행 하나 때문에 대화 전체 조회가 실패하지 않도록 실패 시 null로 둔다.
+     */
+    private fun toResponse(
+        chatMessage: ChatMessage
+    ): ChatMessageResponse {
 
-    private fun nextMessageId(
-        roomId: Long
-    ): Long =
-        redisTemplate.opsForValue().increment(messageSequenceKey(roomId))
-            ?: throw ApplicationException.of(
-                CommonStatusCode.ENDPOINT_NOT_FOUND,
-                "메시지 식별자를 생성할 수 없습니다."
-            )
+        val payment = chatMessage.paymentPayload?.let {
+
+            runCatching {
+                objectMapper.readValue(it, ChatPaymentResponse::class.java)
+            }.getOrNull()
+        }
+
+        return ChatMessageResponse.of(
+            chatMessage = chatMessage,
+            payment = payment
+        )
+    }
+
+    private fun normalizePageSize(
+        size: Int
+    ): Int =
+        size.coerceIn(1, MAX_PAGE_SIZE)
 
     /**
      * 참여자 row가 없는 과거 방 하나를 보정한다.
@@ -781,5 +908,10 @@ class ChatServiceImpl(
 
             participant.reactivate()
         }
+    }
+
+    companion object {
+
+        private const val MAX_PAGE_SIZE = 100
     }
 }

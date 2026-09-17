@@ -39,12 +39,18 @@ class ChatController(
     @GetMapping("/rooms/{roomId}/messages")
     fun getMessages(
         @PathVariable roomId: Long,
+        @RequestParam(required = false) cursor: Long?,
+        @RequestParam(required = false) after: Long?,
+        @RequestParam(defaultValue = "50") size: Int,
         principal: Principal
     ): BaseResponse<List<ChatMessageResponse>> =
         BaseResponse.ok(
             chatService.getRoomMessages(
                 username = principal.name,
-                roomId = roomId
+                roomId = roomId,
+                cursor = cursor,
+                after = after,
+                size = size
             )
         )
 
