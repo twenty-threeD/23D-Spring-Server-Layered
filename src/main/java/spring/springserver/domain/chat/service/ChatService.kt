@@ -21,7 +21,10 @@ interface ChatService {
 
     fun getRoomMessages(
         username: String,
-        roomId: Long
+        roomId: Long,
+        cursor: Long?,
+        after: Long?,
+        size: Int
     ): List<ChatMessageResponse>
 
     fun sendMessage(
