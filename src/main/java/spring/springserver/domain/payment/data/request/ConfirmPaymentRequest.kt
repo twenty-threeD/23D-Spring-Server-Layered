@@ -16,8 +16,8 @@ data class ConfirmPaymentRequest(
     val amount: Long,
 
     /**
-     * 견적서 결제인 경우에만 전달한다.
-     * 결제가 승인되면 해당 견적서는 결제 완료 처리되어 수정·삭제가 막힌다.
+     * 하위 호환을 위해 받기만 하고 쓰지는 않는다.
+     * 결제 대상 견적서는 prepare 시점에 저장된 값을 쓴다.
      */
     val estimateId: Long? = null
 )
