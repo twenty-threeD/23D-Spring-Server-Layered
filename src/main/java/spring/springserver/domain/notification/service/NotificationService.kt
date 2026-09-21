@@ -34,8 +34,13 @@ interface NotificationService {
         postId: Long
     ): List<NotificationResponse>
 
+    /**
+     * 알림 목록. 지우기 전까지 쌓이므로 페이지 단위로 끊어 내려준다.
+     */
     fun getNotifications(
-        username: String
+        username: String,
+        page: Int,
+        size: Int
     ): List<NotificationResponse>
 
     fun getUnreadCount(
