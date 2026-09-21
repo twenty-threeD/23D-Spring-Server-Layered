@@ -1,5 +1,6 @@
 package spring.springserver.domain.notification.listener
 
+import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
@@ -15,6 +16,9 @@ import spring.springserver.domain.profile.repository.ProfileRepository
  * 프로필 카테고리가 글의 카테고리와 맞는 회원에게 알림을 보낸다.
  *
  * 알림 전송이 실패해도 글 작성은 살아 있어야 하므로 커밋 이후에 동작한다.
+ *
+ * 수신자 수만큼 트랜잭션이 열리므로 요청 스레드에서 돌리면 글 작성 응답이 그만큼 늦어진다.
+ * 커밋 후 작업이라 원래 요청과 공유할 상태가 없어 별도 스레드로 넘긴다.
  */
 @Component
 class JobPostNotificationListener(
@@ -24,6 +28,7 @@ class JobPostNotificationListener(
     private val notificationService: NotificationService
 ) {
 
+    @Async("notificationExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     fun sendJobPostNotification(
         event: JobPostCreatedEvent

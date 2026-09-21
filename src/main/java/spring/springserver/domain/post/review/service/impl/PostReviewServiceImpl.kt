@@ -175,7 +175,7 @@ class PostReviewServiceImpl(
 
         return PostReviewResponse.of(
             postReview,
-            memberId?.let { id -> profileService.getImageUrlsByMemberIds(listOf(id))[id] }
+            memberId?.let { id -> profileService.getImageUrlByMemberId(id) }
         )
     }
 

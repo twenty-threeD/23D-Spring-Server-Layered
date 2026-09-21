@@ -148,6 +148,6 @@ class CommunityPostServiceImpl(
     ): String? {
 
         return communityPost.member.getId()
-            ?.let { memberId -> profileService.getImageUrlsByMemberIds(listOf(memberId))[memberId] }
+            ?.let { memberId -> profileService.getImageUrlByMemberId(memberId) }
     }
 }

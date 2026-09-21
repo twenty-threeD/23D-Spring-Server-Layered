@@ -54,6 +54,7 @@ class ChatServiceImpl(
 ) : ChatService {
 
     private val chatMessageCacheTtlMillis = TimeUnit.DAYS.toMillis(3)
+    private val chatMessageCacheScanSize = 200L
     private val paymentMessagePreview = "결제 완료"
 
     private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
@@ -141,9 +142,17 @@ class ChatServiceImpl(
         username: String
     ): List<ChatRoomResponse> {
 
-        backfillParticipantRowsForMember(username)
-
+        /**
+         * 백필은 참여자 테이블 도입 전 방을 위한 호환 장치다. 목록 조회마다 돌리면
+         * 읽기 요청이 매번 쓰기 트랜잭션이 되므로, 결과가 비었을 때만 한 번 보정하고 다시 읽는다.
+         */
         val myParticipants = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
+            .ifEmpty {
+
+                backfillParticipantRowsForMember(username)
+
+                chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
+            }
 
         if (myParticipants.isEmpty()) {
 
@@ -290,14 +299,14 @@ class ChatServiceImpl(
         sendChatMessageRequest: SendChatMessageRequest
     ): ChatMessageResponse {
 
-        memberService.ensurePhoneVerified(username = senderUsername)
-
         val senderParticipant = getVisibleParticipant(
             roomId = sendChatMessageRequest.roomId,
             username = senderUsername
         )
         val room = senderParticipant.room
         val sender = senderParticipant.member
+
+        memberService.ensurePhoneVerified(member = sender)
         val normalizedMessage = normalizeMessage(sendChatMessageRequest.message)
         val attachmentUrls = normalizeAttachmentUrls(sendChatMessageRequest.fileUrls)
 
@@ -709,11 +718,20 @@ class ChatServiceImpl(
             }
     }
 
+    /**
+     * 캐시는 TTL(3일) 안의 메시지를 전부 들고 있어 활발한 방이면 수천 건이 된다.
+     * 읽기는 항상 최신 쪽에서 시작하므로 뒤에서 `chatMessageCacheScanSize`개만 가져온다.
+     * 그보다 오래된 구간을 찾는 요청은 기존대로 DB로 내려간다.
+     */
     private fun getCachedRoomMessages(
         roomId: Long
     ): List<ChatMessageResponse> {
 
-        val cachedMessages = redisTemplate.opsForList().range(cacheKey(roomId), 0, -1)
+        val cachedMessages = redisTemplate.opsForList().range(
+            cacheKey(roomId),
+            -chatMessageCacheScanSize,
+            -1
+        )
             ?: emptyList()
 
         return cachedMessages.mapNotNull {
