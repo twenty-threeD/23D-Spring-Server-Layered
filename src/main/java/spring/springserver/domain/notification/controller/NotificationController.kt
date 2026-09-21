@@ -36,10 +36,18 @@ class NotificationController(
 
     @GetMapping
     fun getNotifications(
-        principal: Principal
+        principal: Principal,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "50") size: Int
     ): BaseResponse<List<NotificationResponse>> {
 
-        return BaseResponse.ok(notificationService.getNotifications(principal.name))
+        return BaseResponse.ok(
+            notificationService.getNotifications(
+                principal.name,
+                page,
+                size
+            )
+        )
     }
 
     @GetMapping("/unread-count")

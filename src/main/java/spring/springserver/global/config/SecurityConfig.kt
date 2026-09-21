@@ -28,6 +28,7 @@ import spring.springserver.global.jwt.JwtAuthFilter
 @EnableWebSecurity
 class SecurityConfig(
     @param:Value($$"${app.cors.allowed-origins}") private val corsAllowedOrigins: String,
+    @param:Value($$"${springdoc.swagger-ui.enabled}") private val swaggerEnabled: Boolean,
     private val jwtAuthFilter: JwtAuthFilter,
     private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository,
     private val apiAuthenticationEntryPoint: ApiAuthenticationEntryPoint,
@@ -300,10 +301,18 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/files/*",
-                        "/images/*",
+                        "/images/*"
+                    ).permitAll()
+                    // 문서를 끈 환경에서는 경로 자체를 열어두지 않는다.
+                    // springdoc이 꺼져 있어도 규칙이 남아 있으면 노출 면적만 넓어진다.
+                    .requestMatchers(
+                        HttpMethod.GET,
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
-                    ).permitAll()
+                    ).access { _, _ ->
+
+                        AuthorizationDecision(swaggerEnabled)
+                    }
                     .anyRequest()
                     .authenticated()
             }

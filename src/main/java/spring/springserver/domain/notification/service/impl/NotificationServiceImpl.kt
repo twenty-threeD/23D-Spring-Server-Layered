@@ -1,6 +1,7 @@
 package spring.springserver.domain.notification.service.impl
 
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -92,7 +93,8 @@ class NotificationServiceImpl(
 
             notificationRepository.findMissedByReceiverUsername(
                 username = username,
-                lastEventId = lastEventId ?: 0L
+                lastEventId = lastEventId ?: 0L,
+                pageable = PageRequest.of(0, MAX_REPLAY_SIZE)
             ).forEach {
 
                 notification ->
@@ -199,10 +201,18 @@ class NotificationServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getNotifications(
-        username: String
+        username: String,
+        page: Int,
+        size: Int
     ): List<NotificationResponse> {
 
-        return notificationRepository.findAllByReceiverUsername(username)
+        return notificationRepository.findAllByReceiverUsername(
+            username = username,
+            pageable = PageRequest.of(
+                page.coerceAtLeast(0),
+                size.coerceIn(1, MAX_PAGE_SIZE)
+            )
+        )
             .map { NotificationResponse.of(it) }
     }
 
@@ -348,6 +358,14 @@ class NotificationServiceImpl(
         private const val TIMEOUT_MILLIS = 30L * 60L * 1000L
         private const val RECONNECT_MILLIS = 3_000L
         private const val HEARTBEAT_MILLIS = 15_000L
+
+        private const val MAX_PAGE_SIZE = 100
+
+        /**
+         * 재접속 한 번에 흘려보낼 미수신 알림의 상한.
+         * 더 남아 있으면 클라이언트가 마지막 id로 Last-Event-ID를 갱신해 다시 붙는다.
+         */
+        private const val MAX_REPLAY_SIZE = 100
 
         private val log = LoggerFactory.getLogger(NotificationServiceImpl::class.java)
     }
