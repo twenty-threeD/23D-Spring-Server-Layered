@@ -144,15 +144,17 @@ class ChatServiceImpl(
 
         /**
          * 백필은 참여자 테이블 도입 전 방을 위한 호환 장치다. 목록 조회마다 돌리면
-         * 읽기 요청이 매번 쓰기 트랜잭션이 되므로, 결과가 비었을 때만 한 번 보정하고 다시 읽는다.
+         * 읽기 요청이 매번 쓰기 트랜잭션이 되므로, 빠진 방이 실제로 있을 때만 보정한다.
+         *
+         * 조회 결과가 비었는지로 판단하면 안 된다. 신규 방과 과거 방을 함께 가진 회원은
+         * 결과가 비지 않으므로 보정이 영영 돌지 않고 과거 방이 계속 누락된다.
          */
+        if (chatRoomRepository.countRoomsMissingParticipantRow(username) > 0) {
+
+            backfillParticipantRowsForMember(username)
+        }
+
         val myParticipants = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
-            .ifEmpty {
-
-                backfillParticipantRowsForMember(username)
-
-                chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
-            }
 
         if (myParticipants.isEmpty()) {
 

@@ -76,12 +76,24 @@ class PostServiceImpl(
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
 
-        if (shouldCountView(post)) {
+        /**
+         * 응답을 먼저 만든다. 조회수 UPDATE가 `clearAutomatically`로 영속성 컨텍스트를
+         * 비우므로, 지연 로딩이 남아 있으면 그 뒤에는 초기화할 수 없다.
+         */
+        val postResponse = toResponse(post)
 
-            post.viewCount += 1
+        if (!shouldCountView(post)) {
+
+            return postResponse
         }
 
-        return toResponse(post)
+        /**
+         * 증가는 `viewCount = viewCount + 1` UPDATE로 원자적으로 처리한다.
+         * 엔티티에서 읽고 더하면 서로 다른 회원의 동시 조회가 서로를 덮어쓴다.
+         */
+        postRepository.incrementViewCount(id)
+
+        return postResponse.copy(viewCount = postResponse.viewCount + 1)
     }
 
     /**
