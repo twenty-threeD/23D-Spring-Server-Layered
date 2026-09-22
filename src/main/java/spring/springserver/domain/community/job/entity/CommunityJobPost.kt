@@ -24,7 +24,26 @@ import java.time.LocalDateTime
         Index(
             name = "idx_community_job_post_not_deleted_updated_at",
             columnList = "deleted_at, updated_at, id"
-        )
+        ),
+
+        /**
+         * 목록 조회의 지역·카테고리 필터(`searchJobPostIds`)가 탄다.
+         * 지역이 카테고리보다 선택도가 높아 sig_cd를 앞에 둔다.
+         */
+        Index(
+            name = "idx_community_job_post_sig_job_category",
+            columnList = "sig_cd, job_category_id"
+        ),
+
+        /**
+         * 구인/구직 구분만으로 거르는 목록 조회가 탄다.
+         */
+        Index(name = "idx_community_job_post_post_type", columnList = "post_type"),
+
+        /**
+         * 작성자별 글 목록과 회원 탈퇴 정리가 탄다.
+         */
+        Index(name = "idx_community_job_post_member", columnList = "member_id")
     ]
 )
 class CommunityJobPost(

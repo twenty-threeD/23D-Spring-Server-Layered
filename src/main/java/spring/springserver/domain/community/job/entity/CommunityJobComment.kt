@@ -11,7 +11,17 @@ import java.time.LocalDateTime
  * 게시글 테이블이 갈렸으므로 댓글도 community_job_post를 가리키는 전용 테이블을 쓴다.
  */
 @Entity
-@Table(name = "community_job_comment")
+@Table(
+    name = "community_job_comment",
+    indexes = [
+        /**
+         * 글 상세의 댓글 목록과 댓글 수 집계가 탄다.
+         */
+        Index(name = "idx_community_job_comment_post", columnList = "community_job_post_id"),
+
+        Index(name = "idx_community_job_comment_member", columnList = "member_id")
+    ]
+)
 class CommunityJobComment(
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

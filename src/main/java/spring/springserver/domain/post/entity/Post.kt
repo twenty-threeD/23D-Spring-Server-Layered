@@ -12,7 +12,17 @@ import java.time.LocalDateTime
         /**
          * 목록 조회(`findAllByIsDeletedFalseOrderByUpdatedAtDesc`)의 필터와 정렬을 함께 덮는다.
          */
-        Index(name = "idx_post_not_deleted_updated_at", columnList = "is_deleted, updated_at")
+        Index(name = "idx_post_not_deleted_updated_at", columnList = "is_deleted, updated_at"),
+
+        /**
+         * 작성자별 글 목록(`findAllWithDetailsByMemberUsername`)과 회원 삭제 정리가 탄다.
+         */
+        Index(name = "idx_post_client_member", columnList = "client_member_id"),
+
+        /**
+         * 카테고리 필터 검색(`searchPostsByTitleAndCategoryIds`)이 탄다.
+         */
+        Index(name = "idx_post_job_category", columnList = "job_category_id")
     ]
 )
 class Post(

@@ -12,6 +12,12 @@ import spring.springserver.domain.post.entity.Post
             name = "uk_post_favorite_member_post",
             columnNames = ["member_id", "post_id"]
         )
+    ],
+    indexes = [
+        /**
+         * 유니크 제약이 (member_id, post_id) 순이라 post_id 단독 조회는 덮이지 않는다.
+         */
+        Index(name = "idx_post_favorite_post", columnList = "post_id")
     ]
 )
 class PostFavorite(

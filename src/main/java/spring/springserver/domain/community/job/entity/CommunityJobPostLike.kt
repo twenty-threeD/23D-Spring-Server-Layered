@@ -15,6 +15,12 @@ import spring.springserver.domain.member.entity.Member
             name = "uk_community_job_post_like_member_post",
             columnNames = ["member_id", "community_job_post_id"]
         )
+    ],
+    indexes = [
+        /**
+         * 목록의 좋아요 수 집계(`countLikesByPostIds`)가 글 id 단독으로 조회한다.
+         */
+        Index(name = "idx_community_job_post_like_post", columnList = "community_job_post_id")
     ]
 )
 class CommunityJobPostLike(
