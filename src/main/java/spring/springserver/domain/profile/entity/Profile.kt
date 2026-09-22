@@ -8,7 +8,16 @@ import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "profile")
+@Table(
+    name = "profile",
+    indexes = [
+        /**
+         * 구인/구직 알림 수신자를 고르는 조회(`findUsernamesBySigCdsAndJobCategoryIds`)가 탄다.
+         * 이 인덱스가 없으면 글 하나가 올라올 때마다 profile 전체를 훑는다.
+         */
+        Index(name = "idx_profile_sig_job_category", columnList = "sig_cd, job_category_id")
+    ]
+)
 class Profile(
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)

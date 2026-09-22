@@ -146,14 +146,18 @@ class NotificationServiceImpl(
     /**
      * 이 메서드는 AFTER_COMMIT 리스너에서 호출된다. 그 시점에는 방금 커밋된 트랜잭션의
      * 리소스가 아직 스레드에 바인딩돼 있어, 기본 전파(REQUIRED)로는 새 트랜잭션이 열리지 않고
-     * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 수신자 한 명마다
-     * REQUIRES_NEW로 트랜잭션을 새로 연다.
+     * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 REQUIRES_NEW로 연다.
      *
-     * 수신자 단위로 트랜잭션을 끊어야 한 명의 저장 실패가 나머지를 롤백시키지 않는다.
+     * 트랜잭션을 끊는 이유는 한 건의 저장 실패가 나머지를 롤백시키지 않게 하려는 것이다.
      * 메서드 전체를 한 트랜잭션으로 묶으면 예외를 잡아도 rollback-only로 마킹되어
      * 마지막 커밋에서 전부 날아간다.
      *
-     * 수신자 조회는 이 격리와 무관하므로 앞에서 한 번에 끝낸다. 저장할 때는 id로 만든
+     * 다만 그 목적에 수신자 1명 = 트랜잭션 1개까지는 필요 없다. 수신자 500명이면
+     * begin/commit이 500번이고, 팬아웃 비용의 지배항은 조회가 아니라 이 개수다.
+     * `JOB_POST_CHUNK_SIZE`명씩 묶으면 트랜잭션은 그 만큼 줄고, 한 청크가 깨져도
+     * 손실은 그 청크로 제한된다.
+     *
+     * 수신자 조회는 격리와 무관하므로 앞에서 한 번에 끝낸다. 저장할 때는 id로 만든
      * 프록시 참조만 넘겨 수신자마다 다시 읽지 않는다.
      */
     override fun sendJobPostNotification(
@@ -167,80 +171,89 @@ class NotificationServiceImpl(
         val receiverIds = memberRepository.findIdsByUsernameIn(distinctUsernames)
             .associate { row -> (row[0] as String) to (row[1] as Long) }
 
-        return distinctUsernames.mapNotNull {
+        val missingUsernames = distinctUsernames.filterNot { receiverIds.containsKey(it) }
 
-            receiverUsername ->
-            val receiverId = receiverIds[receiverUsername]
+        if (missingUsernames.isNotEmpty()) {
 
-            if (receiverId == null) {
+            log.warn(
+                "구인/구직 알림 수신자를 찾을 수 없습니다: usernames={}, postId={}",
+                missingUsernames,
+                postId
+            )
+        }
 
-                log.warn(
-                    "구인/구직 알림 수신자를 찾을 수 없습니다: username={}, postId={}",
-                    receiverUsername,
-                    postId
-                )
+        return distinctUsernames.filter { receiverIds.containsKey(it) }
+            .chunked(JOB_POST_CHUNK_SIZE)
+            .flatMap {
 
-                return@mapNotNull null
-            }
+                chunk ->
+                val responses = runCatching {
 
-            runCatching {
+                    requiresNewTransaction.execute {
 
-                val response = requiresNewTransaction.execute {
+                        saveJobPostNotifications(
+                            receiverUsernames = chunk,
+                            receiverIds = receiverIds,
+                            message = message,
+                            sentAt = sentAt,
+                            postId = postId
+                        )
+                    }!!
+                }.onFailure {
 
-                    saveJobPostNotification(
-                        receiverId = receiverId,
-                        receiverUsername = receiverUsername,
-                        message = message,
-                        sentAt = sentAt,
-                        postId = postId
+                    throwable ->
+                    log.warn(
+                        "구인/구직 알림 전송 실패: usernames={}, postId={}",
+                        chunk,
+                        postId,
+                        throwable
                     )
-                }!!
+                }.getOrDefault(emptyList())
 
                 // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
-                dispatch(receiverUsername) { event(response) }
+                responses.forEach { response -> dispatch(response.receiverUsername) { event(response) } }
 
-                response
-            }.onFailure {
-
-                throwable ->
-                log.warn(
-                    "구인/구직 알림 전송 실패: username={}, postId={}",
-                    receiverUsername,
-                    postId,
-                    throwable
-                )
-            }.getOrNull()
-        }
+                responses
+            }
     }
 
     /**
-     * 수신자를 다시 읽지 않고 저장한다. `getReferenceById`는 프록시만 만들어
-     * FK에는 id만 들어가고, 응답의 username은 호출부가 이미 아는 값을 쓴다.
+     * 한 트랜잭션에서 청크 하나를 저장한다. 수신자를 다시 읽지 않는다.
+     * `getReferenceById`는 프록시만 만들어 FK에는 id만 들어가고,
+     * 응답의 username은 호출부가 이미 아는 값을 쓴다.
      */
-    private fun saveJobPostNotification(
-        receiverId: Long,
-        receiverUsername: String,
+    private fun saveJobPostNotifications(
+        receiverUsernames: List<String>,
+        receiverIds: Map<String, Long>,
         message: String,
         sentAt: Instant,
         postId: Long
-    ): NotificationResponse {
+    ): List<NotificationResponse> {
 
-        val notification = notificationRepository.save(
-            Notification(
-                type = NotificationType.JOB_POST,
-                receiver = memberRepository.getReferenceById(receiverId),
-                message = message,
-                sentAt = sentAt,
-                sender = null,
-                roomId = null,
-                postId = postId
+        val notifications = notificationRepository.saveAll(
+            receiverUsernames.map {
+
+                receiverUsername ->
+                Notification(
+                    type = NotificationType.JOB_POST,
+                    receiver = memberRepository.getReferenceById(receiverIds.getValue(receiverUsername)),
+                    message = message,
+                    sentAt = sentAt,
+                    sender = null,
+                    roomId = null,
+                    postId = postId
+                )
+            }
+        )
+
+        return notifications.mapIndexed {
+
+            index, notification ->
+            NotificationResponse.ofFanout(
+                notification,
+                receiverUsernames[index]
             )
-        )
-
-        return NotificationResponse.ofFanout(
-            notification,
-            receiverUsername
-        )
+        }
     }
 
     @Transactional(readOnly = true)
@@ -394,6 +407,11 @@ class NotificationServiceImpl(
         private const val TIMEOUT_MILLIS = 30L * 60L * 1000L
         private const val RECONNECT_MILLIS = 3_000L
         private const val HEARTBEAT_MILLIS = 15_000L
+
+        /**
+         * 팬아웃 저장을 묶는 단위. 트랜잭션 개수와 한 청크가 깨졌을 때의 손실 범위를 맞바꾼다.
+         */
+        private const val JOB_POST_CHUNK_SIZE = 100
 
         private val log = LoggerFactory.getLogger(NotificationServiceImpl::class.java)
     }

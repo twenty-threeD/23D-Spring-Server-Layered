@@ -11,7 +11,18 @@ import java.time.LocalDateTime
  * 이 테이블에는 게시판을 가려내기 위한 구분 값이 필요 없다.
  */
 @Entity
-@Table(name = "community_post")
+@Table(
+    name = "community_post",
+    indexes = [
+        /**
+         * 목록·검색 쿼리가 모두 `deleted_at is null` + `updated_at desc`로 끝난다.
+         */
+        Index(
+            name = "idx_community_post_not_deleted_updated_at",
+            columnList = "deleted_at, updated_at"
+        )
+    ]
+)
 class CommunityPost(
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

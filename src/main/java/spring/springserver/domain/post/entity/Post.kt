@@ -6,6 +6,15 @@ import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
 @Entity
+@Table(
+    name = "post",
+    indexes = [
+        /**
+         * 목록 조회(`findAllByIsDeletedFalseOrderByUpdatedAtDesc`)의 필터와 정렬을 함께 덮는다.
+         */
+        Index(name = "idx_post_not_deleted_updated_at", columnList = "is_deleted, updated_at")
+    ]
+)
 class Post(
     @Column(nullable = false, length = 255)
     var title: String,

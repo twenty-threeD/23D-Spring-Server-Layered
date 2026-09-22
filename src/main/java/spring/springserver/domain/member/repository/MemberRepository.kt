@@ -55,6 +55,7 @@ interface MemberRepository: JpaRepository<Member, Long> {
     fun findIdsByUsernameIn(
         @Param("usernames") usernames: Collection<String>
     ): List<Array<Any?>>
+
     /**
      * 재가입 제한 기간이 지났는데 아직 익명화되지 않은 탈퇴 회원.
      */
