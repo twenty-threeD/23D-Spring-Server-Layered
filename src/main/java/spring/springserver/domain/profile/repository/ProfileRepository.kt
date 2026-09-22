@@ -32,6 +32,21 @@ interface ProfileRepository: JpaRepository<Profile, Long> {
     ): List<Array<Any?>>
 
     /**
+     * 단건 응답에서 쓰는 조회다. 목록용 `findMemberImageUrls`에 한 건만 넘기면
+     * 불필요한 in 절과 Array 언박싱이 따라오므로 따로 둔다.
+     */
+    @Query(
+        """
+        select p.imageUrl
+        from Profile p
+        where p.member.id = :memberId
+        """
+    )
+    fun findImageUrlByMemberId(
+        @Param("memberId") memberId: Long
+    ): String?
+
+    /**
      * 구인/구직 알림을 받을 회원의 username을 찾는다.
      * 프로필에 지역과 카테고리를 모두 설정한 회원만 대상이 되며, 글쓴이 자신은 뺀다.
      */

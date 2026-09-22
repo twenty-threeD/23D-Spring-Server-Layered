@@ -111,6 +111,14 @@ class ProfileServiceImpl(
             .associate { row -> (row[0] as Long) to (row[1] as String?) }
     }
 
+    @Transactional(readOnly = true)
+    override fun getImageUrlByMemberId(
+        memberId: Long
+    ): String? {
+
+        return profileRepository.findImageUrlByMemberId(memberId)
+    }
+
     private fun applyUsername(
         member: Member,
         username: String?

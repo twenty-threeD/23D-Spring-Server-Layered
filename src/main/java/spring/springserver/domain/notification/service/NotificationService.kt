@@ -25,7 +25,8 @@ interface NotificationService {
 
     /**
      * 구인/구직 글이 올라왔을 때 조건에 맞는 회원들에게 한 번에 알린다.
-     * 받는 사람이 여러 명이므로 개별 발송이 실패해도 나머지는 계속 보낸다.
+     * 받는 사람이 여러 명이므로 일부 저장이 실패해도 나머지는 계속 보낸다.
+     * 실패 단위는 수신자 1명이 아니라 청크 하나다(구현체의 `JOB_POST_CHUNK_SIZE`).
      */
     fun sendJobPostNotification(
         receiverUsernames: Collection<String>,

@@ -208,6 +208,13 @@ class MemberServiceImpl(
         val member = memberRepository.findByUsername(username)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
+        ensurePhoneVerified(member = member)
+    }
+
+    override fun ensurePhoneVerified(
+        member: Member
+    ) {
+
         if (!member.isPhoneVerified()) {
 
             throw ApplicationException(MemberStatusCode.PHONE_NOT_VERIFIED)

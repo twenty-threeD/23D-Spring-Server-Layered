@@ -3,6 +3,7 @@ package spring.springserver.domain.post.service.impl
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -24,6 +25,8 @@ import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.service.PostService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.jwt.MemberDetails
+import java.time.Duration
 import java.time.LocalDateTime
 
 @Service
@@ -34,7 +37,8 @@ class PostServiceImpl(
     private val fileService: FileService,
     private val jobCategoryService: JobCategoryService,
     private val profileService: ProfileService,
-    private val memberService: MemberService
+    private val memberService: MemberService,
+    private val redisTemplate: RedisTemplate<String, String>
 ): PostService {
 
     override fun createPost(
@@ -43,7 +47,7 @@ class PostServiceImpl(
 
         val member = getCurrentMember()
 
-        memberService.ensurePhoneVerified(username = member.username)
+        memberService.ensurePhoneVerified(member = member)
 
         val post = createPostRequest.toEntity(
             member,
@@ -56,6 +60,10 @@ class PostServiceImpl(
         return toResponse(postRepository.save(post))
     }
 
+    /**
+     * 조회수를 올려야 하므로 readOnly로 두지 않는다.
+     * readOnly면 flush가 일어나지 않아 증가분이 저장되지 않는다.
+     */
     override fun viewPost(
         id: Long
     ): PostResponse {
@@ -68,17 +76,68 @@ class PostServiceImpl(
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
 
-        val updatePost = postRepository.incrementViewCount(id)
+        /**
+         * 응답을 먼저 만든다. 조회수 UPDATE가 `clearAutomatically`로 영속성 컨텍스트를
+         * 비우므로, 지연 로딩이 남아 있으면 그 뒤에는 초기화할 수 없다.
+         */
+        val postResponse = toResponse(post)
 
-        if (updatePost == 0) {
+        if (!shouldCountView(post)) {
 
-            throw ApplicationException(PostStatusCode.INVALID_POST)
+            return postResponse
         }
 
-        val updatedPost = postRepository.findPostById(id)
-            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+        /**
+         * 증가는 `viewCount = viewCount + 1` UPDATE로 원자적으로 처리한다.
+         * 엔티티에서 읽고 더하면 서로 다른 회원의 동시 조회가 서로를 덮어쓴다.
+         */
+        postRepository.incrementViewCount(id)
 
-        return toResponse(updatedPost)
+        return postResponse.copy(viewCount = postResponse.viewCount + 1)
+    }
+
+    /**
+     * 작성자 본인의 조회와 같은 회원의 재조회는 세지 않는다.
+     * Redis 키에 TTL을 걸어 회원 한 명당 글 하나를 하루에 한 번만 반영한다.
+     *
+     * Redis가 죽어 있으면 조회수를 세지 않는 쪽으로 넘어간다.
+     * 상세 조회 자체가 실패하는 것보다 집계가 조금 비는 편이 낫다.
+     */
+    private fun shouldCountView(
+        post: Post
+    ): Boolean {
+
+        val memberId = currentMemberIdOrNull()
+            ?: return false
+
+        if (memberId == post.member.getId()) {
+
+            return false
+        }
+
+        val key = "$VIEW_COUNT_KEY_PREFIX${post.getId()}:$memberId"
+
+        return runCatching {
+
+            redisTemplate.opsForValue()
+                .setIfAbsent(key, "1", VIEW_COUNT_TTL)
+                ?: false
+        }.getOrDefault(false)
+    }
+
+    /**
+     * 인증 주체에 이미 회원 id가 실려 있으면 그대로 쓴다.
+     * 소셜 로그인처럼 주체 타입이 다른 경우에만 username으로 한 번 찾는다.
+     */
+    private fun currentMemberIdOrNull(): Long? {
+
+        val authentication = SecurityContextHolder.getContext().authentication
+            ?: return null
+
+        return (authentication.principal as? MemberDetails)?.getId()
+            ?: authentication.name
+                ?.takeIf { username -> username.isNotBlank() && username != "anonymousUser" }
+                ?.let { username -> memberRepository.findByUsername(username)?.getId() }
     }
 
     override fun viewAllPosts(
@@ -181,7 +240,7 @@ class PostServiceImpl(
 
         return PostResponse.of(
             post,
-            memberId?.let { id -> profileService.getImageUrlsByMemberIds(listOf(id))[id] }
+            memberId?.let { id -> profileService.getImageUrlByMemberId(id) }
         )
     }
 
@@ -311,4 +370,11 @@ class PostServiceImpl(
 
     private fun Pageable.withoutSort(): Pageable =
         PageRequest.of(pageNumber, pageSize)
+
+    companion object {
+
+        private const val VIEW_COUNT_KEY_PREFIX = "post-view:"
+
+        private val VIEW_COUNT_TTL = Duration.ofDays(1)
+    }
 }

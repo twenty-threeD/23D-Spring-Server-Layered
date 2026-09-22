@@ -15,7 +15,18 @@ import java.time.LocalDateTime
  * 목록 조회에서 게시판을 가려내는 조건도 필요 없다.
  */
 @Entity
-@Table(name = "community_job_post")
+@Table(
+    name = "community_job_post",
+    indexes = [
+        /**
+         * 목록·검색 쿼리가 모두 `deleted_at is null` + `updated_at desc, id desc`로 끝난다.
+         */
+        Index(
+            name = "idx_community_job_post_not_deleted_updated_at",
+            columnList = "deleted_at, updated_at, id"
+        )
+    ]
+)
 class CommunityJobPost(
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
