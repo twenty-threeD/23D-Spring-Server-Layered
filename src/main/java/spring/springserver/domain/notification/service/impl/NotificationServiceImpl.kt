@@ -152,6 +152,9 @@ class NotificationServiceImpl(
      * 수신자 단위로 트랜잭션을 끊어야 한 명의 저장 실패가 나머지를 롤백시키지 않는다.
      * 메서드 전체를 한 트랜잭션으로 묶으면 예외를 잡아도 rollback-only로 마킹되어
      * 마지막 커밋에서 전부 날아간다.
+     *
+     * 수신자 조회는 이 격리와 무관하므로 앞에서 한 번에 끝낸다. 저장할 때는 id로 만든
+     * 프록시 참조만 넘겨 수신자마다 다시 읽지 않는다.
      */
     override fun sendJobPostNotification(
         receiverUsernames: Collection<String>,
@@ -160,41 +163,84 @@ class NotificationServiceImpl(
     ): List<NotificationResponse> {
 
         val sentAt = Instant.now()
+        val distinctUsernames = receiverUsernames.distinct()
+        val receiverIds = memberRepository.findIdsByUsernameIn(distinctUsernames)
+            .associate { row -> (row[0] as String) to (row[1] as Long) }
 
-        return receiverUsernames.distinct()
-            .mapNotNull {
+        return distinctUsernames.mapNotNull {
 
-                receiverUsername ->
-                runCatching {
+            receiverUsername ->
+            val receiverId = receiverIds[receiverUsername]
 
-                    val response = requiresNewTransaction.execute {
+            if (receiverId == null) {
 
-                        save(
-                            type = NotificationType.JOB_POST,
-                            receiverUsername = receiverUsername,
-                            senderUsername = null,
-                            message = message,
-                            sentAt = sentAt,
-                            roomId = null,
-                            postId = postId
-                        )
-                    }!!
+                log.warn(
+                    "구인/구직 알림 수신자를 찾을 수 없습니다: username={}, postId={}",
+                    receiverUsername,
+                    postId
+                )
 
-                    // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
-                    dispatch(receiverUsername) { event(response) }
-
-                    response
-                }.onFailure {
-
-                    throwable ->
-                    log.warn(
-                        "구인/구직 알림 전송 실패: username={}, postId={}",
-                        receiverUsername,
-                        postId,
-                        throwable
-                    )
-                }.getOrNull()
+                return@mapNotNull null
             }
+
+            runCatching {
+
+                val response = requiresNewTransaction.execute {
+
+                    saveJobPostNotification(
+                        receiverId = receiverId,
+                        receiverUsername = receiverUsername,
+                        message = message,
+                        sentAt = sentAt,
+                        postId = postId
+                    )
+                }!!
+
+                // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
+                dispatch(receiverUsername) { event(response) }
+
+                response
+            }.onFailure {
+
+                throwable ->
+                log.warn(
+                    "구인/구직 알림 전송 실패: username={}, postId={}",
+                    receiverUsername,
+                    postId,
+                    throwable
+                )
+            }.getOrNull()
+        }
+    }
+
+    /**
+     * 수신자를 다시 읽지 않고 저장한다. `getReferenceById`는 프록시만 만들어
+     * FK에는 id만 들어가고, 응답의 username은 호출부가 이미 아는 값을 쓴다.
+     */
+    private fun saveJobPostNotification(
+        receiverId: Long,
+        receiverUsername: String,
+        message: String,
+        sentAt: Instant,
+        postId: Long
+    ): NotificationResponse {
+
+        val notification = notificationRepository.save(
+            Notification(
+                type = NotificationType.JOB_POST,
+                receiver = memberRepository.getReferenceById(receiverId),
+                message = message,
+                sentAt = sentAt,
+                sender = null,
+                roomId = null,
+                postId = postId
+            )
+        )
+
+        return NotificationResponse.ofFanout(
+            notification,
+            receiverUsername
+        )
     }
 
     @Transactional(readOnly = true)
