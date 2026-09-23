@@ -61,6 +61,12 @@ class ChatServiceImplMessageQueryTest {
         private const val ROOM_ID = 1L
         private const val USERNAME = "tester"
         private const val CACHE_KEY = "chat:room:$ROOM_ID:messages:v2"
+
+        /**
+         * 구현이 캐시를 뒤에서부터 훑으므로(`ChatServiceImpl.chatMessageCacheScanSize`)
+         * 스텁도 같은 구간으로 맞춘다.
+         */
+        private const val CACHE_SCAN_START = -200L
     }
 
     @BeforeEach
@@ -287,7 +293,7 @@ class ChatServiceImplMessageQueryTest {
         vararg messages: ChatMessageResponse
     ) {
 
-        whenever(listOperations.range(CACHE_KEY, 0, -1))
+        whenever(listOperations.range(CACHE_KEY, CACHE_SCAN_START, -1))
             .thenReturn(messages.map { objectMapper.writeValueAsString(it) })
     }
 

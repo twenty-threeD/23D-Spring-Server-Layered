@@ -108,14 +108,16 @@ spring:
       max-file-size: 25MB
       max-request-size: 30MB
 
+# API 문서는 운영에서 기동 비용과 노출 면적을 늘리므로 기본값을 꺼진 상태로 둔다.
+# 로컬에서 볼 때는 .env에 SWAGGER_ENABLED=true를 넣는다.
 springdoc:
   api-docs:
     path: /v3/api-docs
-    enabled: true # 배포할 때 false로 변경
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
     display-request-duration: true
-    enabled: true # 배포할 때 false로 변경
+    enabled: ${SWAGGER_ENABLED:false}
 
 
 management:

@@ -1,20 +1,4 @@
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
--- PostRepository.searchPostsByTitle / searchPostsByTitleAndCategoryIds
---   조건식: lower(p.title) like lower('%키워드%')
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_post_title_trgm
-ON post USING gin (lower(title) gin_trgm_ops);
-
--- CommunityJobPostRepository.searchJobPostIds
---   조건식: coalesce(lower(p.title), '') like ... (content, username도 같은 형태)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_community_job_post_title_trgm
-ON community_job_post USING gin (coalesce(lower(title), '') gin_trgm_ops);
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_community_job_post_content_trgm
-ON community_job_post USING gin (coalesce(lower(content), '') gin_trgm_ops);
-
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_community_job_post_username_trgm
-ON community_job_post USING gin (coalesce(lower(username), '') gin_trgm_ops);package spring.springserver.domain.community.post.entity
+package spring.springserver.domain.community.post.entity
 
 import jakarta.persistence.*
 import org.hibernate.annotations.UpdateTimestamp
