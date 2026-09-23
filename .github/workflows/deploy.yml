@@ -83,7 +83,9 @@ jobs:
             OWNER="${{ github.repository_owner }}"
             OWNER="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
             IMAGE_NAME="ghcr.io/$OWNER/spring-server:${{ github.sha }}"
-            HEALTH_PATH="/v3/api-docs"
+            # API 문서는 운영에서 꺼지므로 health check로 쓸 수 없다.
+            # actuator의 health는 인증 없이 열려 있고 DB/Redis 연결까지 확인한다.
+            HEALTH_PATH="/actuator/health"
 
             mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
             echo "${{ github.token }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
