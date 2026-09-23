@@ -37,7 +37,7 @@ class PostRetentionService(
 
         if (expiredReviews.isNotEmpty()) postReviewRepository.deleteAll(expiredReviews)
 
-        val expiredPosts = postRepository.findAllByIsDeletedTrueAndDeletedAtBefore(threshold)
+        val expiredPosts = postRepository.findAllWithAttachmentsToPurge(threshold)
 
         if (expiredPosts.isNotEmpty()) {
 
