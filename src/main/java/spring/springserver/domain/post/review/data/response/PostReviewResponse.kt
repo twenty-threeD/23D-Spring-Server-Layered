@@ -7,6 +7,12 @@ import java.time.LocalDateTime
 data class PostReviewResponse(
     val id: Long?,
 
+    val contractId: Long?,
+
+    /**
+     * 계약의 출발점이 된 게시글. 게시글 없이 맺은 계약이거나 게시글이
+     * 보관 기간 만료로 삭제되면 null이다.
+     */
     val postId: Long?,
 
     val rating: Int,
@@ -15,7 +21,15 @@ data class PostReviewResponse(
 
     val isEdited: Boolean,
 
+    /**
+     * 리뷰 작성자(의뢰인).
+     */
     val member: PostMemberResponse,
+
+    /**
+     * 평가 대상(전문가)의 회원 아이디.
+     */
+    val revieweeId: Long?,
 
     val createdAt: LocalDateTime,
 
@@ -31,7 +45,8 @@ data class PostReviewResponse(
 
             return PostReviewResponse(
                 postReview.getId(),
-                postReview.post.getId(),
+                postReview.contract.getId(),
+                postReview.post?.getId(),
                 postReview.rating,
                 postReview.content,
                 postReview.isEdited,
@@ -39,6 +54,7 @@ data class PostReviewResponse(
                     postReview.member,
                     memberImageUrl
                 ),
+                postReview.reviewee.getId(),
                 postReview.getCreatedAt(),
                 postReview.getUpdatedAt(),
             )

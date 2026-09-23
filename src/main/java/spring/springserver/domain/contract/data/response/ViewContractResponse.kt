@@ -36,7 +36,12 @@ data class ViewContractResponse(
      */
     val contractUrl: String,
 
-    val createdAt: LocalDateTime?
+    val createdAt: LocalDateTime?,
+
+    /**
+     * 계약의 출발점이 된 게시글 아이디. 게시글 없이 맺은 계약이면 null이다.
+     */
+    val postId: Long?
 ) {
 
     companion object {
@@ -58,7 +63,8 @@ data class ViewContractResponse(
                 contract.price,
                 contract.servicesDescription,
                 contract.contractUrl,
-                contract.getCreatedAt()
+                contract.getCreatedAt(),
+                contract.post?.getId()
             )
         }
     }

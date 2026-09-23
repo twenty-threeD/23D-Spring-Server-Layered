@@ -43,8 +43,29 @@ interface PostRepository: JpaRepository<Post, Long> {
         @Param("username") username: String
     ): List<Post>
 
-    fun findAllByIsDeletedTrueAndDeletedAtBefore(
-        deletedAt: LocalDateTime
+    /**
+     * 보관 기간이 지난 소프트 삭제 게시글 중 아직 정리할 첨부 파일이 남은 것만 가져온다.
+     * 게시글 자체는 물리 삭제하지 않고 남으므로, 조건을 첨부 기준으로 좁히지 않으면
+     * 지금까지 삭제된 모든 게시글을 매일 밤 다시 로드하게 된다.
+     * 첨부는 곧바로 순회하므로 추가 쿼리가 나가지 않도록 함께 fetch 한다.
+     */
+    @Query(
+        """
+        select distinct p
+        from Post p
+        left join fetch p.attachments
+        where p.isDeleted = true
+          and p.deletedAt < :deletedAt
+          and exists (
+              select 1
+              from PostAttach a
+              where a.post = p
+                and a.fileUrl is not null
+          )
+        """
+    )
+    fun findAllWithAttachmentsToPurge(
+        @Param("deletedAt") deletedAt: LocalDateTime
     ): List<Post>
 
     @Query(

@@ -19,8 +19,13 @@ interface PostReviewService {
         pageable: Pageable
     ): Page<PostReviewResponse>
 
+    fun viewMemberReviews(
+        memberId: Long,
+        pageable: Pageable
+    ): Page<PostReviewResponse>
+
     fun viewReviewSummary(
-        postId: Long
+        memberId: Long
     ): PostReviewSummaryResponse
 
     fun updateReview(

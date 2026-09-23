@@ -3,6 +3,7 @@ package spring.springserver.domain.contract.data.request
 import jakarta.validation.constraints.Min
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
+import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.PositiveOrZero
 import jakarta.validation.constraints.Size
 import java.time.LocalDateTime
@@ -56,5 +57,12 @@ data class CreateContractRequest(
      */
     @field:NotBlank(message = "계약서 URL은 필수입니다.")
     @field:Size(max = 2048, message = "계약서 URL은 2048자 이하로 입력해주세요.")
-    val contractUrl: String?
+    val contractUrl: String?,
+
+    /**
+     * 계약의 출발점이 된 게시글 아이디. 채팅에서 바로 맺은 계약이면 보내지 않아도 된다.
+     * 보내면 해당 게시글의 리뷰 목록에 이 계약의 리뷰가 함께 묶인다.
+     */
+    @field:Positive(message = "게시글 아이디는 1 이상이어야 합니다.")
+    val postId: Long? = null
 )

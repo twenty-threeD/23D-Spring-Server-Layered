@@ -17,6 +17,9 @@ import spring.springserver.domain.contract.service.ContractService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.exception.PostStatusCode
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 import java.util.regex.Pattern
@@ -26,6 +29,7 @@ import java.util.regex.Pattern
 class ContractServiceImpl(
     private val contractRepository: ContractRepository,
     private val memberRepository: MemberRepository,
+    private val postRepository: PostRepository,
     private val tokenService: TokenService
 ): ContractService {
 
@@ -63,7 +67,11 @@ class ContractServiceImpl(
                 price = createContractRequest.price!!, // 계약 대금
                 servicesDescription = createContractRequest.servicesDescription!!.trim(), // 용역 내용
                 writer = writer, // 작성자
-                contractUrl = normalizeUrl(createContractRequest.contractUrl!!)
+                contractUrl = normalizeUrl(createContractRequest.contractUrl!!),
+                post = resolvePost(
+                    createContractRequest.postId,
+                    client
+                )
             )
         )
 
@@ -136,6 +144,36 @@ class ContractServiceImpl(
 
             throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_PERIOD)
         }
+    }
+
+    /**
+     * 게시글을 함께 보낸 계약이면 그 게시글이 살아 있고 의뢰인(갑)이 쓴 글인지 확인한다.
+     * 남의 게시글에 계약을 붙이면 그 게시글의 리뷰 목록이 오염되므로 막는다.
+     */
+    private fun resolvePost(
+        postId: Long?,
+        client: Member
+    ): Post? {
+
+        if (postId == null) {
+
+            return null
+        }
+
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        if (post.member.getId() != client.getId()) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_POST)
+        }
+
+        return post
     }
 
     private fun getMemberEntity(

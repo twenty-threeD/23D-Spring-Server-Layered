@@ -2,6 +2,7 @@ package spring.springserver.domain.contract.entity
 
 import jakarta.persistence.*
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.post.entity.Post
 import java.time.LocalDateTime
 
 @Entity
@@ -57,7 +58,18 @@ class Contract(
 
     // 계약서 주소
     @Column(name = "contract_url", nullable = false, length = 2048)
-    var contractUrl: String
+    var contractUrl: String,
+
+    /**
+     * 계약의 출발점이 된 게시글. 게시글 없이 채팅으로만 맺은 계약도 있어 nullable이다.
+     * 리뷰를 게시글 단위로 묶어 보여줄 때만 쓰고, 평점 집계는 professional 기준으로 한다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+        name = "post_id",
+        foreignKey = ForeignKey(name = "fk_contract_post")
+    )
+    var post: Post? = null
 ) {
 
     @Id
@@ -78,4 +90,8 @@ class Contract(
     fun isParty(
         memberId: Long?
     ): Boolean = client.getId() == memberId || professional.getId() == memberId
+
+    fun isClient(
+        memberId: Long?
+    ): Boolean = client.getId() == memberId
 }
