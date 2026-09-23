@@ -345,7 +345,11 @@ class ChatServiceImpl(
 
         room.updateLastMessageMeta(
             at = createdAt,
-            preview = "새 메시지"
+            // 채팅 목록 미리보기와 거래 완료·취소 판별([거래 완료] 등 접두사)에 원문이 필요하다.
+            // 컬럼 길이(200)를 넘지 않게 자르고, 첨부만 보낸 메시지는 내용이 비어 대체 문구를 둔다
+            preview = normalizedMessage.ifBlank {
+                if (attachmentUrls.isNotEmpty()) "파일을 보냈습니다." else "새 메시지"
+            }.take(200)
         )
 
         reactivateParticipantsOnNewMessage(
