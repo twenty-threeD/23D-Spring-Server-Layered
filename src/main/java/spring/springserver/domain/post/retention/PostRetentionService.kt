@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import spring.springserver.domain.contract.repository.ContractRepository
 import spring.springserver.domain.file.service.FileService
 import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.favorite.repository.PostFavoriteRepository
@@ -18,6 +19,7 @@ class PostRetentionService(
     private val postRepository: PostRepository,
     private val postFavoriteRepository: PostFavoriteRepository,
     private val postReviewRepository: PostReviewRepository,
+    private val contractRepository: ContractRepository,
     private val fileService: FileService,
 ) {
 
@@ -49,6 +51,12 @@ class PostRetentionService(
              * 게시글 참조만 끊고 리뷰 자체는 남긴다.
              */
             postReviewRepository.detachFromPosts(expiredPosts)
+
+            /**
+             * 계약은 거래 자료라 게시글과 함께 지울 수 없다.
+             * fk_contract_post 위반으로 정리 작업 전체가 롤백되지 않도록 참조만 끊는다.
+             */
+            contractRepository.detachFromPosts(expiredPosts)
 
             postRepository.deleteAll(expiredPosts)
         }
