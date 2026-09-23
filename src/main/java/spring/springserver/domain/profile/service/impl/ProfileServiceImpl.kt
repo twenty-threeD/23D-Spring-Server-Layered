@@ -15,6 +15,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.post.review.repository.PostReviewRepository
 import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
@@ -23,6 +24,7 @@ import spring.springserver.domain.profile.exception.ProfileStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
+import kotlin.math.round
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -32,7 +34,8 @@ class ProfileServiceImpl(
     private val locationService: LocationService,
     private val jobCategoryService: JobCategoryService,
     private val tokenService: TokenService,
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val postReviewRepository: PostReviewRepository
 ): ProfileService {
 
     override fun createDefaultProfile(
@@ -170,17 +173,34 @@ class ProfileServiceImpl(
         member: Member
     ): ProfileResponse {
 
+        val memberId = member.getId()
+
         return ProfileResponse.of(
             profile = profile,
-            memberId = member.getId(),
+            memberId = memberId,
             username = member.username,
             email = member.email,
             phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified(),
-            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl)
+            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl),
+            reviewCount = memberId?.let { id -> postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(id) } ?: 0L,
+            averageRating = memberId?.let { id -> averageRating(id) } ?: 0.0
         )
+    }
+
+    /**
+     * 평균 별점은 소수 첫째 자리까지만 내려준다. 리뷰가 없으면 0.0이다.
+     */
+    private fun averageRating(
+        memberId: Long
+    ): Double {
+
+        val averageRating = postReviewRepository.findAverageRatingByRevieweeId(memberId)
+            ?: return 0.0
+
+        return round(averageRating * 10) / 10
     }
 
     private fun getCurrentProfile(

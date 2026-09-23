@@ -27,21 +27,45 @@ class PostReviewController(
         return BaseResponse.ok(postReviewService.createReview(createPostReviewRequest))
     }
 
+    /**
+     * 게시글에서 출발한 계약들의 리뷰 목록.
+     */
     @GetMapping
     fun viewReviews(
         @RequestParam postId: Long,
         @ParameterObject pageable: Pageable
     ): BaseResponse<Page<PostReviewResponse>> {
 
-        return BaseResponse.ok(postReviewService.viewReviews(postId, pageable))
+        return BaseResponse.ok(postReviewService.viewReviews(
+            postId,
+            pageable
+        ))
     }
 
+    /**
+     * 전문가 한 명이 받은 리뷰 목록. 프로필 화면에서 쓴다.
+     */
+    @GetMapping("/member")
+    fun viewMemberReviews(
+        @RequestParam memberId: Long,
+        @ParameterObject pageable: Pageable
+    ): BaseResponse<Page<PostReviewResponse>> {
+
+        return BaseResponse.ok(postReviewService.viewMemberReviews(
+            memberId,
+            pageable
+        ))
+    }
+
+    /**
+     * 전문가 한 명의 평점·리뷰 수 집계.
+     */
     @GetMapping("/summary")
     fun viewReviewSummary(
-        @RequestParam postId: Long
+        @RequestParam memberId: Long
     ): BaseResponse<PostReviewSummaryResponse> {
 
-        return BaseResponse.ok(postReviewService.viewReviewSummary(postId))
+        return BaseResponse.ok(postReviewService.viewReviewSummary(memberId))
     }
 
     @PatchMapping

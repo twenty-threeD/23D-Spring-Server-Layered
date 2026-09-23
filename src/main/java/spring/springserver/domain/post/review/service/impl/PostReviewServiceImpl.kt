@@ -8,9 +8,12 @@ import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
+import spring.springserver.domain.contract.entity.Contract
+import spring.springserver.domain.contract.exception.ContractStatusCode
+import spring.springserver.domain.contract.repository.ContractRepository
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
-import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.review.data.request.CreatePostReviewRequest
@@ -31,6 +34,7 @@ import kotlin.math.round
 @Transactional(rollbackFor = [Exception::class])
 class PostReviewServiceImpl(
     private val postReviewRepository: PostReviewRepository,
+    private val contractRepository: ContractRepository,
     private val postRepository: PostRepository,
     private val memberRepository: MemberRepository,
     private val profileService: ProfileService
@@ -48,19 +52,23 @@ class PostReviewServiceImpl(
 
         val member = getCurrentMember()
 
-        val post = getActivePost(createPostReviewRequest.postId)
+        val contract = contractRepository.findContractById(createPostReviewRequest.contractId)
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
 
         validateRating(createPostReviewRequest.rating)
 
-        validateNotPostAuthor(post, member)
+        validateClient(
+            contract,
+            member
+        )
 
         val content = createPostReviewRequest.content.trim()
 
-        val writtenReview = postReviewRepository.findByMemberAndPost(member, post)
+        val writtenReview = postReviewRepository.findByContract(contract)
 
         if (writtenReview != null) {
 
-            if (writtenReview.deletedAt == null) throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_POST)
+            if (writtenReview.deletedAt == null) throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_CONTRACT)
 
             writtenReview.rewrite(
                 createPostReviewRequest.rating,
@@ -75,15 +83,17 @@ class PostReviewServiceImpl(
 
             postReviewRepository.saveAndFlush(
                 PostReview(
-                    member = member,
-                    post = post,
+                    contract = contract,
+                    member = contract.client,
+                    reviewee = contract.professional,
+                    post = contract.post,
                     rating = createPostReviewRequest.rating,
                     content = content,
                 )
             )
         } catch (exception: DataIntegrityViolationException) {
 
-            throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_POST)
+            throw ApplicationException(PostReviewStatusCode.ALREADY_REVIEWED_CONTRACT)
         }
 
         return toResponse(postReview)
@@ -95,39 +105,51 @@ class PostReviewServiceImpl(
         pageable: Pageable
     ): Page<PostReviewResponse> {
 
-        getActivePost(postId)
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
 
-        val postReviews = postReviewRepository.findActiveReviewsByPostId(
-            postId,
-            pageable.withoutSort()
-        )
+        if (post.isDeleted) {
 
-        val imageUrls = profileService.getImageUrlsByMemberIds(
-            postReviews.content.mapNotNull { postReview -> postReview.member.getId() }
-        )
-
-        return postReviews.map { postReview ->
-
-            PostReviewResponse.of(
-                postReview,
-                imageUrls[postReview.member.getId()]
-            )
+            throw ApplicationException(PostStatusCode.INVALID_POST)
         }
+
+        return toResponses(
+            postReviewRepository.findActiveReviewsByPostId(
+                postId,
+                pageable.withoutSort()
+            )
+        )
+    }
+
+    @Transactional(readOnly = true)
+    override fun viewMemberReviews(
+        memberId: Long,
+        pageable: Pageable
+    ): Page<PostReviewResponse> {
+
+        getMember(memberId)
+
+        return toResponses(
+            postReviewRepository.findActiveReviewsByRevieweeId(
+                memberId,
+                pageable.withoutSort()
+            )
+        )
     }
 
     @Transactional(readOnly = true)
     override fun viewReviewSummary(
-        postId: Long
+        memberId: Long
     ): PostReviewSummaryResponse {
 
-        getActivePost(postId)
+        getMember(memberId)
 
-        val averageRating = postReviewRepository.findAverageRatingByPostId(postId)
+        val averageRating = postReviewRepository.findAverageRatingByRevieweeId(memberId)
             ?: 0.0
 
         return PostReviewSummaryResponse.of(
-            postId,
-            postReviewRepository.countByPostIdAndDeletedAtIsNull(postId),
+            memberId,
+            postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(memberId),
             round(averageRating * 10) / 10
         )
     }
@@ -142,7 +164,10 @@ class PostReviewServiceImpl(
 
         validateRating(updatePostReviewRequest.rating)
 
-        validateReviewAuthor(postReview, member)
+        validateReviewAuthor(
+            postReview,
+            member
+        )
 
         postReview.update(
             updatePostReviewRequest.rating,
@@ -160,11 +185,31 @@ class PostReviewServiceImpl(
 
         val postReview = getActiveReview(reviewId)
 
-        validateReviewAuthor(postReview, member)
+        validateReviewAuthor(
+            postReview,
+            member
+        )
 
         postReview.softDelete(LocalDateTime.now())
 
         return DeletedPostReviewResponse.of("삭제되었습니다.")
+    }
+
+    private fun toResponses(
+        postReviews: Page<PostReview>
+    ): Page<PostReviewResponse> {
+
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            postReviews.content.mapNotNull { postReview -> postReview.member.getId() }
+        )
+
+        return postReviews.map { postReview ->
+
+            PostReviewResponse.of(
+                postReview,
+                imageUrls[postReview.member.getId()]
+            )
+        }
     }
 
     private fun toResponse(
@@ -184,19 +229,12 @@ class PostReviewServiceImpl(
         ?.let { username -> memberRepository.findByUsername(username) }
         ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
-    private fun getActivePost(
-        postId: Long
-    ): Post {
+    private fun getMember(
+        memberId: Long
+    ): Member {
 
-        val post = postRepository.findPostById(postId)
-            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
-
-        if (post.isDeleted) {
-
-            throw ApplicationException(PostStatusCode.INVALID_POST)
-        }
-
-        return post
+        return memberRepository.findMemberById(memberId)
+            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
     }
 
     private fun getActiveReview(
@@ -217,14 +255,18 @@ class PostReviewServiceImpl(
         }
     }
 
-    private fun validateNotPostAuthor(
-        post: Post,
+    /**
+     * 리뷰는 계약의 의뢰인(갑)이 전문가(을)에게 남긴다. 전문가나 제3자가
+     * 쓰려고 하면 막는다. 계약 자체가 거래의 증거이므로 별도 거래 검증은 없다.
+     */
+    private fun validateClient(
+        contract: Contract,
         member: Member
     ) {
 
-        if (post.member.getId() == member.getId()) {
+        if (!contract.isClient(member.getId())) {
 
-            throw ApplicationException(PostReviewStatusCode.SELF_POST_REVIEW_NOT_ALLOWED)
+            throw ApplicationException(PostReviewStatusCode.REVIEW_CLIENT_ONLY)
         }
     }
 

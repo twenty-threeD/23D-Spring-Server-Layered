@@ -43,7 +43,13 @@ class PostRetentionService(
 
             registerAttachedFileCommitCleanup(expiredPosts)
             postFavoriteRepository.deleteAllByPostIn(expiredPosts)
-            postReviewRepository.deleteAllByPostIn(expiredPosts)
+
+            /**
+             * 리뷰는 전문가의 평판이라 게시글 수명에 묶이면 안 된다.
+             * 게시글 참조만 끊고 리뷰 자체는 남긴다.
+             */
+            postReviewRepository.detachFromPosts(expiredPosts)
+
             postRepository.deleteAll(expiredPosts)
         }
     }

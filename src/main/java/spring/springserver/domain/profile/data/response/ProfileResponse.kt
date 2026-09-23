@@ -33,6 +33,16 @@ data class ProfileResponse(
 
     val posts: List<PostResponse>,
 
+    /**
+     * 전문가로서 받은 리뷰 수. 평점은 계약 기준으로 쌓이므로 게시글과 무관하다.
+     */
+    val reviewCount: Long,
+
+    /**
+     * 전문가로서 받은 평균 별점(소수 첫째 자리). 리뷰가 없으면 0.0이다.
+     */
+    val averageRating: Double,
+
     val updatedAt: LocalDateTime?
 ) {
 
@@ -47,7 +57,9 @@ data class ProfileResponse(
             locationName: String?,
             jobCategoryName: String?,
             phoneVerified: Boolean,
-            posts: List<PostResponse>
+            posts: List<PostResponse>,
+            reviewCount: Long,
+            averageRating: Double
         ): ProfileResponse {
 
             return ProfileResponse(
@@ -65,6 +77,8 @@ data class ProfileResponse(
                 jobCategoryName,
                 phoneVerified,
                 posts,
+                reviewCount,
+                averageRating,
                 profile.getUpdatedAt()
             )
         }
