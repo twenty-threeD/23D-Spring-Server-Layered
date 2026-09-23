@@ -14,6 +14,12 @@ import java.time.LocalDateTime
             name = "uk_post_review_member_post",
             columnNames = ["member_id", "post_id"]
         )
+    ],
+    indexes = [
+        /**
+         * 글 상세의 리뷰 목록·평점 집계가 post_id 단독으로 조회한다.
+         */
+        Index(name = "idx_post_review_post", columnList = "post_id")
     ]
 )
 class PostReview(
