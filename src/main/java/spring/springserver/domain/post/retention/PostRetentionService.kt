@@ -37,12 +37,13 @@ class PostRetentionService(
 
         if (expiredReviews.isNotEmpty()) postReviewRepository.deleteAll(expiredReviews)
 
+        postFavoriteRepository.deleteAllByExpiredPosts(threshold)
+
         val expiredPosts = postRepository.findAllWithAttachmentsToPurge(threshold)
 
         if (expiredPosts.isNotEmpty()) {
 
             registerAttachedFileCommitCleanup(expiredPosts)
-            postFavoriteRepository.deleteAllByPostIn(expiredPosts)
 
             /**
              * 게시글은 채팅방·견적이 NOT NULL로 참조하고 계약·리뷰의 출발점이라 물리 삭제할 수 없다.
