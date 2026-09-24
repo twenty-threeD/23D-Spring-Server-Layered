@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.post.repository
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
@@ -10,11 +12,12 @@ import java.time.LocalDateTime
 
 interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
 
+    @EntityGraph(attributePaths = ["member"])
     @Query(
-        """
+        value = """
         select c
         from CommunityPost c
-        left join fetch c.member m
+        left join c.member m
         where c.deletedAt is null
           and (
               :keyword = ''
@@ -23,11 +26,24 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
               or coalesce(lower(m.username), '') like lower(concat('%', :keyword, '%'))
           )
         order by c.updatedAt desc
+        """,
+        countQuery = """
+        select count(c)
+        from CommunityPost c
+        left join c.member m
+        where c.deletedAt is null
+          and (
+              :keyword = ''
+              or coalesce(lower(c.title), '') like lower(concat('%', :keyword, '%'))
+              or coalesce(lower(c.username), '') like lower(concat('%', :keyword, '%'))
+              or coalesce(lower(m.username), '') like lower(concat('%', :keyword, '%'))
+          )
         """
     )
     fun searchPosts(
-        @Param("keyword") keyword: String
-    ): List<CommunityPost>
+        @Param("keyword") keyword: String,
+        pageable: Pageable
+    ): Page<CommunityPost>
 
     @EntityGraph(attributePaths = ["member"])
     @Query(
@@ -40,8 +56,9 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         """
     )
     fun searchPostsByCategory(
-        @Param("category") category: Category
-    ): List<CommunityPost>
+        @Param("category") category: Category,
+        pageable: Pageable
+    ): Page<CommunityPost>
 
     @EntityGraph(attributePaths = ["member"])
     fun findByIdAndDeletedAtIsNull(
@@ -49,7 +66,9 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
     ): CommunityPost?
 
     @EntityGraph(attributePaths = ["member"])
-    fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(): List<CommunityPost>
+    fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(
+        pageable: Pageable
+    ): Page<CommunityPost>
 
     fun findAllByDeletedAtBefore(
         deletedAt: LocalDateTime

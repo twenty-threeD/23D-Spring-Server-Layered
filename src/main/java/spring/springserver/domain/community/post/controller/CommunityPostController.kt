@@ -1,6 +1,8 @@
 package spring.springserver.domain.community.post.controller
 
 import jakarta.validation.Valid
+import org.springdoc.core.annotations.ParameterObject
+import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.post.data.request.CreatePostRequest
@@ -11,6 +13,7 @@ import spring.springserver.domain.community.post.data.response.UpdatePostRespons
 import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.service.CommunityPostService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.data.PageResponse
 
 @RestController
 @RequestMapping("/api/community/post")
@@ -43,9 +46,11 @@ class CommunityPostController(
     }
 
     @GetMapping
-    fun getPosts(): BaseResponse<List<CommunityPostResponse>> {
+    fun getPosts(
+        @ParameterObject pageable: Pageable
+    ): BaseResponse<PageResponse<CommunityPostResponse>> {
 
-        return BaseResponse.ok(communityPostService.getPosts())
+        return BaseResponse.ok(communityPostService.getPosts(pageable))
     }
 
     @GetMapping("/{postId}")
@@ -58,17 +63,29 @@ class CommunityPostController(
 
     @GetMapping("/search")
     fun searchPosts(
-        @RequestParam keyword: String
-    ): BaseResponse<List<CommunityPostResponse>> {
+        @RequestParam keyword: String,
+        @ParameterObject pageable: Pageable
+    ): BaseResponse<PageResponse<CommunityPostResponse>> {
 
-        return BaseResponse.ok(communityPostService.searchPosts(keyword))
+        return BaseResponse.ok(
+            communityPostService.searchPosts(
+                keyword,
+                pageable
+            )
+        )
     }
 
     @GetMapping("/category")
     fun searchCategories(
-        @RequestParam category: Category
-    ): BaseResponse<List<CommunityPostResponse>> {
+        @RequestParam category: Category,
+        @ParameterObject pageable: Pageable
+    ): BaseResponse<PageResponse<CommunityPostResponse>> {
 
-        return BaseResponse.ok(communityPostService.searchPostsByCategory(category))
+        return BaseResponse.ok(
+            communityPostService.searchPostsByCategory(
+                category,
+                pageable
+            )
+        )
     }
 }

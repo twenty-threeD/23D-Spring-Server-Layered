@@ -246,10 +246,8 @@ class SecurityConfig(
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/community/post/",
-                        "/api/community/post/{postId}",
-                        "/api/community/post/search",
-                        "/api/community/post/category"
+                        "/api/community/post",
+                        "/api/community/post/*",
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
