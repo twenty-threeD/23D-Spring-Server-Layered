@@ -66,6 +66,10 @@ interface MemberService {
         httpServletResponse: HttpServletResponse
     ): ChangePhoneResponse
 
+    fun getMemberLocation(
+        username: String
+    ): MemberLocationResponse
+
     fun assertEmailAvailableForChange(
         email: String,
         httpServletRequest: HttpServletRequest

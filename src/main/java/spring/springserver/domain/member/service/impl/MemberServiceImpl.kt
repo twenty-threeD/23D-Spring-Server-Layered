@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.email.service.EmailService
+import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
@@ -22,6 +23,7 @@ import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.member.retention.MemberRetentionService
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.phone.service.PhoneVerifyService
+import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import spring.springserver.global.util.PhoneNormalizer
@@ -34,8 +36,28 @@ class MemberServiceImpl(
     private val emailService: EmailService,
     private val phoneVerifyService: PhoneVerifyService,
     private val passwordEncoder: PasswordEncoder,
-    private val memberRetentionService: MemberRetentionService
+    private val memberRetentionService: MemberRetentionService,
+    private val profileRepository: ProfileRepository,
+    private val locationService: LocationService
 ) : MemberService {
+
+    @Transactional(readOnly = true)
+    override fun getMemberLocation(
+        username: String
+    ): MemberLocationResponse {
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        val sig = profileRepository.findByMember(member)?.sig
+            ?: throw ApplicationException(MemberStatusCode.LOCATION_NOT_SET)
+
+        return MemberLocationResponse.of(
+            sig.getSigCd(),
+            sig.getCtprvnCd(),
+            locationService.getFullName(sig)
+        )
+    }
 
     override fun deleteAccount(
         httpServletRequest: HttpServletRequest,

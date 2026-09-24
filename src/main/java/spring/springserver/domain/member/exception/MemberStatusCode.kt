@@ -14,7 +14,8 @@ enum class MemberStatusCode(
     SOCIAL_ACCOUNT_CANNOT_CHANGE("SOCIAL_ACCOUNT_CANNOT_CHANGE", "소셜 로그인 계정은 이메일·전화번호를 변경할 수 없습니다.", HttpStatus.FORBIDDEN),
     SOCIAL_ACCOUNT_CANNOT_RESET_PASSWORD("SOCIAL_ACCOUNT_CANNOT_RESET_PASSWORD", "소셜 로그인 계정은 비밀번호를 재설정할 수 없습니다.", HttpStatus.FORBIDDEN),
     VERIFICATION_REQUIRED("VERIFICATION_REQUIRED", "휴대폰 또는 이메일 인증이 필요합니다.", HttpStatus.BAD_REQUEST),
-    VERIFICATION_TARGET_MISMATCH("VERIFICATION_TARGET_MISMATCH", "본인 확인 정보가 계정 정보와 일치하지 않습니다.", HttpStatus.FORBIDDEN);
+    VERIFICATION_TARGET_MISMATCH("VERIFICATION_TARGET_MISMATCH", "본인 확인 정보가 계정 정보와 일치하지 않습니다.", HttpStatus.FORBIDDEN),
+    LOCATION_NOT_SET("LOCATION_NOT_SET", "설정된 지역이 없습니다.", HttpStatus.NOT_FOUND);
 
     override fun getCode(): String = code
     override fun getMessage(): String = message

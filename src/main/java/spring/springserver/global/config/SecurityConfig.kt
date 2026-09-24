@@ -136,6 +136,10 @@ class SecurityConfig(
                         "/api/member/password/reset/check"
                     ).hasRole("USER")
                     .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/member/location"
+                    ).hasRole("USER")
+                    .requestMatchers(
                         HttpMethod.PATCH,
                         "/api/member/email",
                         "/api/member/phone"
