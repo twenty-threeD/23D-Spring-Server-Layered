@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.post.service.impl
 
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
@@ -16,6 +18,7 @@ import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.community.post.repository.CommunityPostRepository
 import spring.springserver.domain.community.post.service.CommunityPostService
 import spring.springserver.domain.profile.service.ProfileService
+import spring.springserver.global.data.PageResponse
 import java.time.LocalDateTime
 
 @Service
@@ -81,9 +84,11 @@ class CommunityPostServiceImpl(
     }
 
     @Transactional(readOnly = true)
-    override fun getPosts(): List<CommunityPostResponse> {
+    override fun getPosts(
+        pageable: Pageable
+    ): PageResponse<CommunityPostResponse> {
 
-        return toResponses(communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc())
+        return toPageResponse(communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc(pageable))
     }
 
     @Transactional(readOnly = true)
@@ -105,20 +110,42 @@ class CommunityPostServiceImpl(
 
     @Transactional(readOnly = true)
     override fun searchPosts(
-        keyword: String
-    ): List<CommunityPostResponse> {
+        keyword: String,
+        pageable: Pageable
+    ): PageResponse<CommunityPostResponse> {
 
         val normalizedKeyword = keyword.trim()
 
-        return toResponses(communityPostRepository.searchPosts(normalizedKeyword))
+        return toPageResponse(
+            communityPostRepository.searchPosts(
+                normalizedKeyword,
+                pageable
+            )
+        )
     }
 
     @Transactional(readOnly = true)
     override fun searchPostsByCategory(
-        category: Category
-    ): List<CommunityPostResponse> {
+        category: Category,
+        pageable: Pageable
+    ): PageResponse<CommunityPostResponse> {
 
-        return toResponses(communityPostRepository.searchPostsByCategory(category))
+        return toPageResponse(
+            communityPostRepository.searchPostsByCategory(
+                category,
+                pageable
+            )
+        )
+    }
+
+    private fun toPageResponse(
+        communityPostPage: Page<CommunityPost>
+    ): PageResponse<CommunityPostResponse> {
+
+        return PageResponse.of(
+            communityPostPage,
+            toResponses(communityPostPage.content)
+        )
     }
 
     /**
