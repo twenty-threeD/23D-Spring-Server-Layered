@@ -133,6 +133,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/member/password",
                         "/api/member/password/reset/check"
                     ).hasRole("USER")
                     .requestMatchers(

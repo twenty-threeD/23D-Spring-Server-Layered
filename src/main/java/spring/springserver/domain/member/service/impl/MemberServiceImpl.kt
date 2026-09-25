@@ -15,6 +15,7 @@ import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.request.SetPasswordRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
@@ -101,7 +102,11 @@ class MemberServiceImpl(
             throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
         }
 
-        if (member.provider != Provider.AUTH) {
+        /**
+         * 소셜 회원도 비밀번호를 직접 설정한 뒤에는 재설정할 수 있다.
+         * 비밀번호가 없는 소셜 회원은 재설정이 아니라 로그인 후 최초 설정을 써야 한다.
+         */
+        if (member.password.isNullOrBlank()) {
 
             throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_RESET_PASSWORD)
         }
@@ -128,7 +133,7 @@ class MemberServiceImpl(
          */
         val member = getAuthenticatedMember(httpServletRequest)
 
-        ensureLocalAndVerifyPassword(
+        verifyCurrentPassword(
             member,
             passwordChangeRequest.currentPassword
         )
@@ -141,6 +146,23 @@ class MemberServiceImpl(
         )
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.")
+    }
+
+    override fun setPassword(
+        setPasswordRequest: SetPasswordRequest,
+        httpServletRequest: HttpServletRequest
+    ): PasswordResetResponse {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        if (!member.password.isNullOrBlank()) {
+
+            throw ApplicationException(MemberStatusCode.PASSWORD_ALREADY_SET)
+        }
+
+        member.password = passwordEncoder.encode(setPasswordRequest.newPassword)
+
+        return PasswordResetResponse.of("비밀번호가 설정되었습니다.")
     }
 
     override fun findUsername(
@@ -403,6 +425,23 @@ class MemberServiceImpl(
         }
     }
 
+    /**
+     * 비밀번호 변경은 provider와 무관하게 현재 비밀번호를 아는지만 본다.
+     * 비밀번호가 없는 소셜 회원은 여기서 걸리며 최초 설정 API를 써야 한다.
+     */
+    private fun verifyCurrentPassword(
+        member: Member,
+        rawPassword: String
+    ) {
+
+        val encodedPassword = member.password
+
+        if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
+        }
+    }
+
     private fun ensureLocalAndVerifyPassword(
         member: Member,
         rawPassword: String
@@ -413,11 +452,9 @@ class MemberServiceImpl(
             throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_CHANGE)
         }
 
-        val encodedPassword = member.password
-
-        if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
-        }
+        verifyCurrentPassword(
+            member,
+            rawPassword
+        )
     }
 }
