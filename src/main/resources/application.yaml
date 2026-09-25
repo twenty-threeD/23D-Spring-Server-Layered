@@ -145,6 +145,9 @@ app:
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth/success}
     failure-redirect-uri: ${OAUTH2_FAILURE_REDIRECT_URI:http://localhost:3000/oauth/fail}
+    # 로그인 시작 시 redirect_uri로 넘길 수 있는 프론트 origin. scheme·host·port가 정확히 일치해야 한다.
+    # 목록에 없거나 값이 없으면 위의 기본 주소로 보낸다.
+    allowed-origins: ${OAUTH2_ALLOWED_ORIGINS:https://idta.store,http://localhost:3000}
   # 프론트와 서버가 서브도메인으로 갈려 있어 크로스 사이트로 쿠키가 오간다.
   # 상위 도메인 지정과 SameSite=None, Secure는 셋이 함께여야 refreshToken이 실린다.
   # 로컬(http://localhost)에서는 이 조합으로 쿠키가 심기지 않으므로

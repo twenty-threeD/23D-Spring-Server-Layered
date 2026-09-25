@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
+import spring.springserver.domain.auth.data.request.OAuthExchangeRequest
 import spring.springserver.domain.auth.data.request.SignInRequest
 import spring.springserver.domain.auth.data.request.SignUpRequest
 import spring.springserver.domain.auth.data.request.VerifyPasswordRequest
@@ -52,6 +53,20 @@ class AuthController(
         return BaseResponse.ok(authService.signOut(
             httpServletRequest,
             httpServletResponse
+            )
+        )
+    }
+
+    @PostMapping("/oauth/exchange")
+    fun exchangeOAuthCode(
+        @Valid @RequestBody oAuthExchangeRequest: OAuthExchangeRequest,
+        httpServletResponse: HttpServletResponse
+    ): BaseResponse<SignInResponse> {
+
+        return BaseResponse.ok(
+            authService.exchangeOAuthCode(
+                oAuthExchangeRequest,
+                httpServletResponse
             )
         )
     }

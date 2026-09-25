@@ -10,6 +10,7 @@ import org.springframework.http.ResponseCookie
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest
 import org.springframework.stereotype.Component
+import spring.springserver.domain.auth.handler.OAuth2RedirectResolver
 import java.util.Base64
 
 /**
@@ -26,7 +27,8 @@ class CookieOAuth2AuthorizationRequestRepository(
     @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
     @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean,
     @param:Value($$"${app.cookie.domain}") private val cookieDomain: String,
-    private val objectMapper: ObjectMapper
+    private val objectMapper: ObjectMapper,
+    private val oAuth2RedirectResolver: OAuth2RedirectResolver
 ): AuthorizationRequestRepository<OAuth2AuthorizationRequest> {
 
     companion object {
@@ -79,6 +81,11 @@ class CookieOAuth2AuthorizationRequestRepository(
         writeCookie(
             serialize(authorizationRequest),
             COOKIE_MAX_AGE,
+            httpServletResponse
+        )
+
+        oAuth2RedirectResolver.saveRedirectOrigin(
+            httpServletRequest,
             httpServletResponse
         )
     }
