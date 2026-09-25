@@ -13,6 +13,7 @@ import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.request.SetPasswordRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
@@ -24,6 +25,20 @@ import spring.springserver.global.jwt.MemberDetails
 class MemberController(
     private val memberService: MemberService
 ) {
+
+    @PostMapping("/password")
+    fun setPassword(
+        @Valid @RequestBody setPasswordRequest: SetPasswordRequest,
+        httpServletRequest: HttpServletRequest
+    ): BaseResponse<PasswordResetResponse> {
+
+        return BaseResponse.ok(
+            memberService.setPassword(
+                setPasswordRequest,
+                httpServletRequest
+            )
+        )
+    }
 
     @PostMapping("/password/reset")
     fun resetPasswordWithoutAuth(

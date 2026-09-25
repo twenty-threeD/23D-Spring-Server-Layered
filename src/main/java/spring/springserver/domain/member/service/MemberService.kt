@@ -7,6 +7,7 @@ import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
 import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.request.SetPasswordRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.entity.Member
 
@@ -25,6 +26,15 @@ interface MemberService {
         passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
+    ): PasswordResetResponse
+
+    /**
+     * 비밀번호 없이 가입한 소셜 회원이 처음으로 비밀번호를 설정한다.
+     * 이미 비밀번호가 있으면 거절한다.
+     */
+    fun setPassword(
+        setPasswordRequest: SetPasswordRequest,
+        httpServletRequest: HttpServletRequest
     ): PasswordResetResponse
 
     fun findUsername(

@@ -1,5 +1,6 @@
 package spring.springserver.domain.auth.service.oauth
 
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
@@ -9,6 +10,7 @@ import org.springframework.security.oauth2.core.user.DefaultOAuth2User
 import org.springframework.security.oauth2.core.user.OAuth2User
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import spring.springserver.domain.auth.event.SocialMemberSignedUpEvent
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.entity.Member
@@ -26,7 +28,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 class CustomOAuthUserService(
     private val memberRepository: MemberRepository,
     private val keyService: KeyService,
-    private val profileService: ProfileService
+    private val profileService: ProfileService,
+    private val eventPublisher: ApplicationEventPublisher
 ): DefaultOAuth2UserService() {
 
     @Transactional(rollbackFor = [Exception::class])
@@ -158,6 +161,8 @@ class CustomOAuthUserService(
             )
 
             profileService.createDefaultProfile(member)
+
+            eventPublisher.publishEvent(SocialMemberSignedUpEvent(member.username))
         }
 
         customAttributes["username"] = member.username
