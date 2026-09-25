@@ -184,6 +184,7 @@ class ProfileServiceImpl(
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified(),
+            hasPassword = !member.password.isNullOrBlank(),
             posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl),
             reviewCount = memberId?.let { id -> postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(id) } ?: 0L,
             averageRating = memberId?.let { id -> averageRating(id) } ?: 0.0

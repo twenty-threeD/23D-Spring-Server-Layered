@@ -31,6 +31,11 @@ data class ProfileResponse(
 
     val phoneVerified: Boolean,
 
+    /**
+     * 비밀번호 설정 여부. 소셜 가입 회원은 직접 설정하기 전까지 false다.
+     */
+    val hasPassword: Boolean,
+
     val posts: List<PostResponse>,
 
     /**
@@ -57,6 +62,7 @@ data class ProfileResponse(
             locationName: String?,
             jobCategoryName: String?,
             phoneVerified: Boolean,
+            hasPassword: Boolean,
             posts: List<PostResponse>,
             reviewCount: Long,
             averageRating: Double
@@ -76,6 +82,7 @@ data class ProfileResponse(
                 profile.jobCategory?.getId(),
                 jobCategoryName,
                 phoneVerified,
+                hasPassword,
                 posts,
                 reviewCount,
                 averageRating,
