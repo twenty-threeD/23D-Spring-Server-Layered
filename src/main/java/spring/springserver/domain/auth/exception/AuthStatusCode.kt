@@ -22,6 +22,7 @@ enum class AuthStatusCode (
     PHONE_ALREADY_EXIST("PHONE_ALREADY_EXIST", "해당 전화번호로 이미 가입된 계정이 존재합니다.", HttpStatus.BAD_REQUEST),
     COMPANY_ALREADY_EXIST("COMPANY_ALREADY_EXIST", "중복된 사업자 입니다.", HttpStatus.BAD_REQUEST),
     UNKNOWN_REGISTRATION_ID("UNKNOWN_REGISTRATION_ID", "잘못된 소셜로그인 시도입니다.", HttpStatus.BAD_REQUEST),
+    INVALID_OAUTH_EXCHANGE_CODE("INVALID_OAUTH_EXCHANGE_CODE", "유효하지 않거나 만료된 로그인 코드입니다.", HttpStatus.UNAUTHORIZED),
     OAUTH_LOGIN_FAILED("OAUTH_LOGIN_FAILED", "소셜로그인에 실패했습니다.", HttpStatus.UNAUTHORIZED),
     OAUTH_EMAIL_NOT_PROVIDED("OAUTH_EMAIL_NOT_PROVIDED", "소셜 계정의 이메일 제공에 동의해야 합니다.", HttpStatus.BAD_REQUEST),
     WITHDRAWN_ACCOUNT("WITHDRAWN_ACCOUNT", "탈퇴한 계정입니다.", HttpStatus.UNAUTHORIZED),

@@ -2,10 +2,12 @@ package spring.springserver.domain.auth.service.auth.impl
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
+import spring.springserver.domain.auth.data.request.OAuthExchangeRequest
 import spring.springserver.domain.auth.data.request.SignInRequest
 import spring.springserver.domain.auth.data.request.SignUpRequest
 import spring.springserver.domain.auth.data.response.SignInResponse
@@ -22,6 +24,9 @@ import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.PhoneNormalizer
+import java.security.SecureRandom
+import java.util.Base64
+import java.util.concurrent.TimeUnit
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -32,8 +37,18 @@ class AuthServiceImpl(
     private val keyService: KeyService,
     private val profileService: ProfileService,
     private val phoneVerifyService: PhoneVerifyService,
-    private val memberRetentionService: MemberRetentionService
+    private val memberRetentionService: MemberRetentionService,
+    private val redisTemplate: RedisTemplate<String, String>
 ): AuthService {
+
+    companion object {
+
+        private const val OAUTH_EXCHANGE_CODE_PREFIX = "oauthExchangeCode:"
+
+        private const val OAUTH_EXCHANGE_CODE_TTL_SECONDS = 60L
+
+        private val secureRandom = SecureRandom()
+    }
 
     override fun signUp(
         signUpRequest: SignUpRequest
@@ -169,6 +184,63 @@ class AuthServiceImpl(
         }
 
         throw ApplicationException(duplicateStatusCode)
+    }
+
+    override fun issueOAuthExchangeCode(
+        generateTokenRequest: GenerateTokenRequest
+    ): String {
+
+        val bytes = ByteArray(32)
+
+        secureRandom.nextBytes(bytes)
+
+        val code = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+
+        redisTemplate.opsForValue().set(
+            OAUTH_EXCHANGE_CODE_PREFIX + code,
+            generateTokenRequest.username,
+            OAUTH_EXCHANGE_CODE_TTL_SECONDS,
+            TimeUnit.SECONDS
+        )
+
+        return code
+    }
+
+    /**
+     * 코드는 꺼내는 즉시 지워 한 번만 쓸 수 있다.
+     * 역할은 코드를 만든 시점이 아니라 교환 시점의 회원 정보로 다시 읽는다.
+     */
+    override fun exchangeOAuthCode(
+        oAuthExchangeRequest: OAuthExchangeRequest,
+        httpServletResponse: HttpServletResponse
+    ): SignInResponse {
+
+        val username = redisTemplate.opsForValue().getAndDelete(OAUTH_EXCHANGE_CODE_PREFIX + oAuthExchangeRequest.code)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_OAUTH_EXCHANGE_CODE)
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_OAUTH_EXCHANGE_CODE)
+
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_OAUTH_EXCHANGE_CODE)
+        }
+
+        val generateTokenRequest = GenerateTokenRequest(
+            member.username,
+            member.role
+        )
+
+        return SignInResponse.of(
+            tokenService.generateAccessToken(
+                generateTokenRequest,
+                httpServletResponse
+            ),
+            tokenService.generateRefreshToken(
+                generateTokenRequest,
+                httpServletResponse
+            )
+        )
     }
 
     override fun verifyPassword(
