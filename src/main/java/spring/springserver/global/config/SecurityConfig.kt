@@ -111,7 +111,6 @@ class SecurityConfig(
                         HttpMethod.POST,
                         "/api/auth/signup",
                         "/api/auth/signin",
-                        "/api/auth/signout",
                         "/api/auth/oauth/exchange",
                         "/api/member/password/reset",
                         "/api/auth/verify/password"
