@@ -7,11 +7,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
+import spring.springserver.domain.auth.service.token.TokenService
 
 @Component
 class JwtAuthFilter(
     private val tokenProvider: TokenProvider,
-    private val memberDetailsService: MemberDetailsService
+    private val memberDetailsService: MemberDetailsService,
+    private val tokenService: TokenService
 ): OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -22,7 +24,12 @@ class JwtAuthFilter(
 
         val token = tokenProvider.resolveToken(httpServletRequest)
 
-        if (token == null || tokenProvider.isNotValidToken(token) || tokenProvider.isNotAccessToken(token)) {
+        if (
+            token == null
+            || tokenProvider.isNotValidToken(token)
+            || tokenProvider.isNotAccessToken(token)
+            || tokenService.isRevokedAccessToken(token)
+        ) {
 
             filterChain.doFilter(
                 httpServletRequest,

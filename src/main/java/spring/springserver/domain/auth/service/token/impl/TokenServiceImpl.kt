@@ -18,9 +18,11 @@ import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.JwtProvider
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -36,6 +38,11 @@ class TokenServiceImpl(
     @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean,
     @param:Value($$"${app.cookie.domain}") private val cookieDomain: String
 ): TokenService {
+
+    companion object {
+
+        private const val REVOKED_ACCESS_TOKEN_PREFIX = "revokedAccessToken:"
+    }
 
     override fun generateAccessToken(
         generateTokenRequest: GenerateTokenRequest,
@@ -200,6 +207,40 @@ class TokenServiceImpl(
 
         redisTemplate.delete("accessToken:$username")
         refreshTokenRepository.deleteByMemberId(member.getId()!!)
+
+        revokeAccessToken(accessToken)
+    }
+
+    override fun isRevokedAccessToken(
+        accessToken: String
+    ): Boolean {
+
+        return redisTemplate.hasKey(REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken))
+    }
+
+    /**
+     * 토큰이 만료되면 어차피 거부되므로 거부 목록은 accessToken 수명만큼만 남긴다.
+     * 토큰 원문 대신 해시를 키로 써서 Redis에 토큰이 그대로 남지 않게 한다.
+     */
+    private fun revokeAccessToken(
+        accessToken: String
+    ) {
+
+        redisTemplate.opsForValue().set(
+            REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken),
+            "",
+            accessTokenExpiration,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun hash(
+        value: String
+    ): String {
+
+        return HexFormat.of().formatHex(
+            MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+        )
     }
 
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {

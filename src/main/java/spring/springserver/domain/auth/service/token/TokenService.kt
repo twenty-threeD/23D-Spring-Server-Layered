@@ -29,6 +29,14 @@ interface TokenService {
         httpServletResponse: HttpServletResponse
     )
 
+    /**
+     * 로그아웃 등으로 무효화된 accessToken인지 확인한다.
+     * JWT는 만료 전까지 서명만으로 유효하므로 서버가 거부 목록을 따로 들고 있어야 한다.
+     */
+    fun isRevokedAccessToken(
+        accessToken: String
+    ): Boolean
+
     fun getCurrentUsername(
         httpServletRequest: HttpServletRequest
     ) : String?
