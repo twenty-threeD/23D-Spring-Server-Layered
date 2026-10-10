@@ -26,8 +26,8 @@ import java.security.KeyFactory
 import java.security.MessageDigest
 import java.security.Signature
 import java.util.*
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
 @Service
 class BlockchainService(
@@ -36,27 +36,51 @@ class BlockchainService(
 
     private val log = LoggerFactory.getLogger(BlockchainService::class.java)
     private val restTemplate = RestTemplate()
-    private val sequenceLock = ReentrantLock()
-    @Volatile
-    private var cachedAccountNumber: Long? = null
-    @Volatile
-    private var cachedSequence: Long? = null
-    private val submitterPubKeyBytes: ByteArray by lazy {
+    private val nextSubmitterIndex = AtomicInteger()
+    private val submitters: List<Submitter> by lazy {
 
-        ECNamedCurveTable.getParameterSpec("secp256k1").g
-            .multiply(BigInteger(cosmosProperties.submitterPrivateKey, 16))
-            .normalize()
-            .getEncoded(true)
+        val privateKeys = cosmosProperties.allSubmitterPrivateKeys()
+
+        check(privateKeys.isNotEmpty()) { "결제 기록 서명자 개인키가 설정되지 않았습니다." }
+
+        privateKeys.map { privateKeyHex ->
+
+            val privateKey = BigInteger(
+                privateKeyHex,
+                16
+            )
+            val pubKeyBytes = ECNamedCurveTable.getParameterSpec("secp256k1").g
+                .multiply(privateKey)
+                .normalize()
+                .getEncoded(true)
+
+            Submitter(
+                privateKey,
+                pubKeyBytes,
+                deriveCosmosAddress(pubKeyBytes)
+            )
+        }
     }
 
-    val submitterAddress: String by lazy {
+    /**
+     * 서명자마다 계정 시퀀스가 따로 있으므로 키·주소·캐시·락을 한 묶음으로 관리한다.
+     */
+    private class Submitter(
+        val privateKey: BigInteger,
+        val pubKeyBytes: ByteArray,
+        val address: String
+    ) {
 
-        deriveCosmosAddress(submitterPubKeyBytes)
+        val lock = ReentrantLock()
+        @Volatile
+        var accountNumber: Long? = null
+        @Volatile
+        var sequence: Long? = null
     }
 
     /**
      * itda.payment.v1.MsgRecordPayment 를 브로드캐스트하고 체인에 포함된 트랜잭션 해시를 돌려준다.
-     * authority 는 제네시스에 설정된 주소여야 하며, submitter 개인키가 그 주소를 가리켜야 한다.
+     * 서명자는 체인의 payment authority 이거나 recorders 에 등록된 주소여야 한다.
      */
     fun recordPayment(
         buyerAddress: String,
@@ -68,28 +92,29 @@ class BlockchainService(
         buyerSignature: String
     ): String {
 
-        val msgBytes = buildProto {
-            string(1, submitterAddress)
-            string(2, orderId)
-            string(3, buyerAddress)
-            uint64(4, amount)
-            string(5, paidAt)
-            string(6, contractUrl)
-            string(7, paymentHash)
-            string(8, buyerSignature)
-        }
+        val txHash = broadcastInOrder { submitter ->
 
-        val anyBytes = buildProto {
-            string(1, "/itda.payment.v1.MsgRecordPayment")
-            bytes(2, msgBytes)
-        }
+            val msgBytes = buildProto {
+                string(1, submitter.address)
+                string(2, orderId)
+                string(3, buyerAddress)
+                uint64(4, amount)
+                string(5, paidAt)
+                string(6, contractUrl)
+                string(7, paymentHash)
+                string(8, buyerSignature)
+            }
 
-        val txBodyBytes = buildProto {
-            embedded(1, anyBytes)
-            string(2, "")
-        }
+            val anyBytes = buildProto {
+                string(1, "/itda.payment.v1.MsgRecordPayment")
+                bytes(2, msgBytes)
+            }
 
-        val txHash = broadcastInOrder(txBodyBytes)
+            buildProto {
+                embedded(1, anyBytes)
+                string(2, "")
+            }
+        }
 
         awaitCommit(
             txHash,
@@ -100,43 +125,85 @@ class BlockchainService(
     }
 
     /**
-     * submitter 계정의 시퀀스는 하나뿐이므로 조립·서명·브로드캐스트를 직렬화한다.
+     * 한 서명자의 시퀀스는 하나뿐이므로 서명자 단위로 조립·서명·브로드캐스트를 직렬화한다.
+     * 서명자가 여럿이면 비어 있는 서명자를 골라 동시에 보낸다.
      * 커밋 대기는 락 밖에서 해야 처리량이 블록 생성 시간에 묶이지 않는다.
      */
     private fun broadcastInOrder(
-        txBodyBytes: ByteArray
+        buildTxBody: (Submitter) -> ByteArray
     ): String {
 
-        return sequenceLock.withLock {
+        val submitter = acquireSubmitter()
 
-            try {
+        try {
+
+            val txBodyBytes = buildTxBody(submitter)
+
+            return try {
 
                 signAndBroadcast(
+                    submitter,
                     txBodyBytes,
-                    nextSequence()
+                    nextSequence(submitter)
                 )
             } catch (exception: BlockchainSequenceMismatchException) {
 
-                log.warn("시퀀스가 어긋나 노드에서 재동기화 후 재시도합니다.", exception)
+                log.warn(
+                    "시퀀스가 어긋나 노드에서 재동기화 후 재시도합니다. submitter={}",
+                    submitter.address,
+                    exception
+                )
 
-                resetSequenceCache()
+                resetSequenceCache(submitter)
 
                 signAndBroadcast(
+                    submitter,
                     txBodyBytes,
-                    nextSequence()
+                    nextSequence(submitter)
                 )
             }
+        } finally {
+
+            submitter.lock.unlock()
         }
     }
 
+    /**
+     * 라운드로빈 순서로 돌며 락이 비어 있는 서명자를 먼저 고르고, 모두 사용 중이면 차례인 서명자를 기다린다.
+     */
+    private fun acquireSubmitter(): Submitter {
+
+        val start = Math.floorMod(
+            nextSubmitterIndex.getAndIncrement(),
+            submitters.size
+        )
+
+        for (offset in submitters.indices) {
+
+            val candidate = submitters[(start + offset) % submitters.size]
+
+            if (candidate.lock.tryLock()) {
+
+                return candidate
+            }
+        }
+
+        val submitter = submitters[start]
+
+        submitter.lock.lock()
+
+        return submitter
+    }
+
     private fun signAndBroadcast(
+        submitter: Submitter,
         txBodyBytes: ByteArray,
         sequence: Long
     ): String {
 
         val pubKeyAnyBytes = buildProto {
             string(1, "/cosmos.crypto.secp256k1.PubKey")
-            bytes(2, buildProto { bytes(1, submitterPubKeyBytes) })
+            bytes(2, buildProto { bytes(1, submitter.pubKeyBytes) })
         }
 
         val signerInfoBytes = buildProto {
@@ -154,11 +221,14 @@ class BlockchainService(
             bytes(1, txBodyBytes)
             bytes(2, authInfoBytes)
             string(3, cosmosProperties.chainId)
-            uint64(4, accountNumber())
+            uint64(4, accountNumber(submitter))
             // Sequence intentionally omitted: this fork's GetSignBytes excludes it
         }
 
-        val signature = signBytes(signDocBytes)
+        val signature = signBytes(
+            submitter,
+            signDocBytes
+        )
 
         val txRawBytes = buildProto {
             bytes(1, txBodyBytes)
@@ -168,45 +238,53 @@ class BlockchainService(
 
         val txHash = broadcast(Base64.getEncoder().encodeToString(txRawBytes))
 
-        cachedSequence = sequence + 1
+        submitter.sequence = sequence + 1
 
         return txHash
     }
 
     /**
-     * account_number 는 계정이 만들어진 뒤 바뀌지 않으므로 한 번만 조회한다.
+     * account_number 는 계정이 만들어진 뒤 바뀌지 않으므로 서명자마다 한 번만 조회한다.
      */
-    private fun accountNumber(): Long {
+    private fun accountNumber(
+        submitter: Submitter
+    ): Long {
 
-        cachedAccountNumber?.let { return it }
+        submitter.accountNumber?.let { return it }
 
-        syncFromNode()
+        syncFromNode(submitter)
 
-        return cachedAccountNumber
-            ?: error("account number를 조회하지 못했습니다.")
+        return submitter.accountNumber
+            ?: error("account number를 조회하지 못했습니다. submitter=${submitter.address}")
     }
 
-    private fun nextSequence(): Long {
+    private fun nextSequence(
+        submitter: Submitter
+    ): Long {
 
-        cachedSequence?.let { return it }
+        submitter.sequence?.let { return it }
 
-        syncFromNode()
+        syncFromNode(submitter)
 
-        return cachedSequence
-            ?: error("sequence를 조회하지 못했습니다.")
+        return submitter.sequence
+            ?: error("sequence를 조회하지 못했습니다. submitter=${submitter.address}")
     }
 
-    private fun syncFromNode() {
+    private fun syncFromNode(
+        submitter: Submitter
+    ) {
 
-        val (accountNumber, sequence) = getAccountInfo(submitterAddress)
+        val (accountNumber, sequence) = getAccountInfo(submitter.address)
 
-        cachedAccountNumber = accountNumber
-        cachedSequence = sequence
+        submitter.accountNumber = accountNumber
+        submitter.sequence = sequence
     }
 
-    private fun resetSequenceCache() {
+    private fun resetSequenceCache(
+        submitter: Submitter
+    ) {
 
-        cachedSequence = null
+        submitter.sequence = null
     }
 
     private fun getAccountInfo(address: String): Pair<Long, Long> {
@@ -364,15 +442,17 @@ class BlockchainService(
         error("chain rejected tx (codespace=$codespace, code=$code): $rawLog")
     }
 
-    private fun signBytes(data: ByteArray): ByteArray {
+    private fun signBytes(
+        submitter: Submitter,
+        data: ByteArray
+    ): ByteArray {
 
-        val privInt = BigInteger(cosmosProperties.submitterPrivateKey, 16)
         val privateKey = KeyFactory.getInstance(
             "EC",
             BouncyCastleProvider()
         ).generatePrivate(
             ECPrivateKeySpec(
-                privInt,
+                submitter.privateKey,
                 ECNamedCurveTable.getParameterSpec("secp256k1")
             )
         )
