@@ -11,6 +11,6 @@ data class UpdateEstimateRequest(
     val url: String?,
 
     @field:NotNull(message = "최종 금액은 필수입니다.")
-    @field:Min(value = 0, message = "최종 금액은 0원 이상이어야 합니다.")
+    @field:Min(value = 1000, message = "최종 금액은 1000원 이상이어야 합니다.")
     val totalPay: Long?
 )
