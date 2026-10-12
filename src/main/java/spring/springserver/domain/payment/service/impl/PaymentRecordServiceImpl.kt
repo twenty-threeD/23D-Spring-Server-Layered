@@ -37,15 +37,6 @@ class PaymentRecordServiceImpl(
             contractId = preparePaymentRequest.contractId
         )
 
-        /**
-         * 결제 금액의 기준이 된 견적서를 준비 시점에 박아 둔다.
-         * 승인 때 클라이언트가 보낸 estimateId를 믿지 않고 이 값을 쓴다.
-         */
-        preparePaymentRequest.estimateId?.let { estimateId ->
-
-            payment.linkEstimate(estimateId = estimateId)
-        }
-
         try {
 
             return paymentRepository.saveAndFlush(payment)
@@ -128,14 +119,6 @@ class PaymentRecordServiceImpl(
             paymentHash,
             blockchainTxHash
         )
-    }
-
-    override fun linkEstimate(
-        orderId: String,
-        estimateId: Long
-    ) {
-
-        findByOrderId(orderId = orderId).linkEstimate(estimateId = estimateId)
     }
 
     override fun markCanceledByChainFailure(

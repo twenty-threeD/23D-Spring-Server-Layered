@@ -222,23 +222,6 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/estimate"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.PATCH,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.DELETE,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/estimate",
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.POST,
                         "/api/contract"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(

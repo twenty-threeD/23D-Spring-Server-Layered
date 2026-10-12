@@ -11,7 +11,6 @@ import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.contract.exception.ContractStatusCode
 import spring.springserver.domain.contract.service.ContractService
-import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
@@ -37,7 +36,6 @@ class PaymentServiceImpl(
     private val tossPaymentsClient: TossPaymentsClient,
     private val keyService: KeyService,
     private val blockchainService: BlockchainService,
-    private val estimateService: EstimateService,
     private val paymentRecordService: PaymentRecordService,
     private val chatService: ChatService,
     private val contractUrlHasher: ContractUrlHasher,
@@ -72,37 +70,23 @@ class PaymentServiceImpl(
 
         /**
          * 결제 금액은 클라이언트가 정하는 값이 아니다.
-         * 견적서나 계약서라는 서버 측 금액 원천이 반드시 있어야 하고, 요청 금액은 그 값과 정확히 같아야 한다.
+         * 계약서라는 서버 측 금액 원천이 반드시 있어야 하고, 요청 금액은 그 값과 정확히 같아야 한다.
          */
-        if (preparePaymentRequest.estimateId == null && preparePaymentRequest.contractId == null) {
+        val contractId = preparePaymentRequest.contractId
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_SOURCE_REQUIRED)
 
-            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_SOURCE_REQUIRED)
+        val contractPartyResponse = contractService.findPartyById(contractId = contractId)
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+        if (contractPartyResponse.clientId != memberId
+            && contractPartyResponse.professionalId != memberId) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
         }
 
-        preparePaymentRequest.contractId?.let { contractId ->
+        if (contractPartyResponse.price != preparePaymentRequest.amount) {
 
-            val contractPartyResponse = contractService.findPartyById(contractId = contractId)
-                ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
-
-            if (contractPartyResponse.clientId != memberId
-                && contractPartyResponse.professionalId != memberId) {
-
-                throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
-            }
-
-            if (contractPartyResponse.price != preparePaymentRequest.amount) {
-
-                throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
-            }
-        }
-
-        preparePaymentRequest.estimateId?.let { estimateId ->
-
-            estimateService.validatePayable(
-                estimateId,
-                memberId,
-                preparePaymentRequest.amount
-            )
+            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
         }
 
         /**
@@ -143,21 +127,6 @@ class PaymentServiceImpl(
                 paymentHash = stored.getPaymentHash()
                     ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN),
                 blockchainTxHash = stored.getBlockchainTxHash()
-            )
-        }
-
-        /**
-         * 견적서는 준비 시점에 박아 둔 값만 쓴다.
-         * 클라이언트가 보낸 estimateId를 믿으면 그 값을 빼는 것만으로 금액 검증을 건너뛸 수 있다.
-         */
-        val estimateId = stored.getEstimateId()
-
-        estimateId?.let {
-
-            estimateService.validatePayable(
-                it,
-                memberId,
-                stored.getAmount()
             )
         }
 
@@ -204,15 +173,6 @@ class PaymentServiceImpl(
             hash,
             resolvedTxHash
         )
-
-        estimateId?.let {
-
-            estimateService.markAsPaid(
-                it,
-                memberId,
-                response.totalAmount ?: payment.getAmount()
-            )
-        }
 
         sendPaymentMessage(
             payment,
@@ -493,22 +453,14 @@ class PaymentServiceImpl(
 
         /**
          * 토스에서 환불이 끝났는데 우리 쪽 상태가 그대로면 전문가에게는 여전히 결제 완료로 보인다.
-         * 토스가 돌려준 상태를 기준으로 결제를 취소 상태로 바꾸고, 전액 취소면 견적서도 결제 전으로 되돌린다.
+         * 토스가 돌려준 상태를 기준으로 결제를 취소 상태로 바꾼다.
          */
         try {
 
-            val payment = paymentRecordService.markCanceled(
+            paymentRecordService.markCanceled(
                 paymentKey,
                 response.status
             )
-
-            if (payment.getStatus() == PaymentStatus.CANCELED) {
-
-                payment.getEstimateId()?.let {
-
-                    estimateService.markAsRefunded(estimateId = it)
-                }
-            }
         } catch (exception: Exception) {
 
             /**

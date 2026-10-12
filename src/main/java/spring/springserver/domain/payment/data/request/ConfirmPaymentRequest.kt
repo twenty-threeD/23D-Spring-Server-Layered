@@ -13,11 +13,5 @@ data class ConfirmPaymentRequest(
     val orderId: String,
 
     @field:Min(value = 1, message = "amount는 1 이상이어야 합니다.")
-    val amount: Long,
-
-    /**
-     * 하위 호환을 위해 받기만 하고 쓰지는 않는다.
-     * 결제 대상 견적서는 prepare 시점에 저장된 값을 쓴다.
-     */
-    val estimateId: Long? = null
+    val amount: Long
 )

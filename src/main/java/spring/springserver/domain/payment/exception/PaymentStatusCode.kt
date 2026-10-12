@@ -71,7 +71,7 @@ enum class PaymentStatusCode(
     ),
     PAYMENT_AMOUNT_SOURCE_REQUIRED(
         "PAYMENT_AMOUNT_SOURCE_REQUIRED",
-        "결제 금액의 기준이 되는 견적서 또는 계약서가 필요합니다.",
+        "결제 금액의 기준이 되는 계약서가 필요합니다.",
         HttpStatus.BAD_REQUEST
     ),
     PAYMENT_CONTRACT_FORBIDDEN(
