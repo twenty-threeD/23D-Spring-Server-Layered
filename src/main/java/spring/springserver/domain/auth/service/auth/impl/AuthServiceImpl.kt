@@ -41,11 +41,23 @@ class AuthServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>
 ): AuthService {
 
+    /**
+     * 회원이 없을 때도 같은 비용의 BCrypt 비교를 하기 위한 해시.
+     * 비교를 건너뛰면 응답 시간 차이로 가입된 이메일인지 드러난다.
+     */
+    private val dummyPasswordHash by lazy { passwordEncoder.encode("dummy-password-for-timing") }
+
     companion object {
 
         private const val OAUTH_EXCHANGE_CODE_PREFIX = "oauthExchangeCode:"
 
         private const val OAUTH_EXCHANGE_CODE_TTL_SECONDS = 60L
+
+        private const val SIGN_IN_FAILURE_PREFIX = "signIn:failure:"
+
+        private const val MAX_SIGN_IN_FAILURES = 5L
+
+        private const val SIGN_IN_LOCK_MINUTES = 15L
 
         private val secureRandom = SecureRandom()
     }
@@ -109,22 +121,39 @@ class AuthServiceImpl(
         httpServletResponse: HttpServletResponse
     ): SignInResponse {
 
-        val member = memberRepository.findByEmail(signInRequest.email)
-            ?: throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
+        val failureKey = SIGN_IN_FAILURE_PREFIX + signInRequest.email.trim().lowercase()
 
         /**
-         * 탈퇴한 회원은 행이 남아 있으므로 로그인 단계에서 걸러낸다.
+         * 비밀번호 무차별 대입을 막기 위해 이메일마다 실패 횟수를 센다.
+         * 한도에 닿으면 비밀번호가 맞아도 잠금이 풀릴 때까지 거부한다.
+         */
+        val failures = redisTemplate.opsForValue().get(failureKey)?.toLongOrNull() ?: 0L
+
+        if (failures >= MAX_SIGN_IN_FAILURES) {
+
+            throw ApplicationException(AuthStatusCode.SIGN_IN_ATTEMPTS_EXCEEDED)
+        }
+
+        val member = memberRepository.findByEmail(signInRequest.email)
+
+        /**
+         * 회원이 없어도 BCrypt 비교를 한 번 해서 응답 시간을 맞춘다.
+         * 탈퇴한 회원은 행이 남아 있으므로 로그인 단계에서 걸러내고,
          * 탈퇴 여부를 알려주지 않기 위해 자격 증명 오류와 같은 응답을 준다.
          */
-        if (member.isDeleted()) {
+        val passwordMatches = passwordEncoder.matches(
+            signInRequest.password,
+            member?.password ?: dummyPasswordHash
+        )
+
+        if (member == null || member.isDeleted() || !passwordMatches) {
+
+            recordSignInFailure(failureKey)
 
             throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
         }
 
-        if(!passwordEncoder.matches(signInRequest.password, member.password)) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
-        }
+        redisTemplate.delete(failureKey)
 
         val generateTokenRequest = GenerateTokenRequest(
             member.username,
@@ -141,6 +170,22 @@ class AuthServiceImpl(
                 httpServletResponse
             )
         )
+    }
+
+    private fun recordSignInFailure(
+        failureKey: String
+    ) {
+
+        val failures = redisTemplate.opsForValue().increment(failureKey)
+
+        if (failures == 1L) {
+
+            redisTemplate.expire(
+                failureKey,
+                SIGN_IN_LOCK_MINUTES,
+                TimeUnit.MINUTES
+            )
+        }
     }
 
     override fun signOut(
