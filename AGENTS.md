@@ -95,20 +95,20 @@ JWT(jjwt) + Spring Security. 새 엔드포인트를 추가하면 **`global/confi
 
 ```
 .agents/convention.md              컨벤션 단일 출처
-.agents/skills/{harness,new-domain,security-review}/SKILL.md
-.agents/commands/{convention,domain,security}.md
+.agents/skills/{harness,new-domain,security-review,git-workflow}/SKILL.md
+.agents/commands/{convention,domain,security,issue,commit,pr}.md
 .claude/skills   -> ../.agents/skills     (심링크, Claude Code가 스캔하는 경로)
 .claude/commands -> ../.agents/commands   (심링크)
 .claude/settings.json                     Claude Code 권한 설정 (도구 전용, 이전 불가)
 .codex/config.toml                        Codex 설정 (도구 전용, 이전 불가)
 ```
 
-`harness`(코드 작성), `new-domain`(도메인·엔드포인트 추가), `security-review`(보안 리뷰) 스킬과
-대응 슬래시 커맨드 `/convention`, `/domain`, `/security`가 있다. 해당 작업이면 그 절차를 따른다.
+`harness`(코드 작성), `new-domain`(도메인·엔드포인트 추가), `security-review`(보안 리뷰), `git-workflow`(이슈→브랜치→커밋→PR) 스킬과
+대응 슬래시 커맨드 `/convention`, `/domain`, `/security`, `/issue`, `/commit`, `/pr`가 있다. 해당 작업이면 그 절차를 따른다.
 스킬·커맨드를 고칠 때는 반드시 `.agents/` 쪽 실체 파일을 고친다.
 
 ## Git
 
 - 기본 브랜치 `main`, 작업 브랜치 `develop` 및 `<이슈번호>-<타입>-<설명>` (예: `130-fix-merge-oauth-package-with-auth`).
-- 커밋 메시지: `feat: `, `fix: `, `refactor: ` 등 + 한국어 설명.
+- 이슈 제목·커밋 메시지·PR 제목은 영어로 쓴다(`feat: `, `fix: `, `refactor: ` 등 + 영어 설명). 템플릿이 있으면 템플릿을 쓰되 본문 내용은 한국어로 채운다.
 - 커밋·푸시는 사용자가 요청할 때만 한다.
