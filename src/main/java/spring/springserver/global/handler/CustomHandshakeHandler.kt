@@ -4,15 +4,16 @@ import org.springframework.http.server.ServerHttpRequest
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.WebSocketHandler
 import org.springframework.web.socket.server.support.DefaultHandshakeHandler
-import org.springframework.web.util.UriComponentsBuilder
-import spring.springserver.global.config.websocket.StompPrincipal
-import spring.springserver.global.jwt.TokenProvider
 import java.security.Principal
 
+/**
+ * WebSocket 연결의 사용자는 핸드셰이크 HTTP 요청에서 JWT 필터가 이미 검증한 로그인 사용자로 정한다.
+ *
+ * 예전에는 `?token=` 쿼리나 헤더의 토큰을 서명만 보고 그대로 썼다. 그러면 본인 토큰으로 핸드셰이크를
+ * 통과한 뒤 쿼리에 남의 토큰(로그아웃·탈퇴 회원·refreshToken 포함)을 넣어 그 사람으로 접속할 수 있었다.
+ */
 @Component
-class CustomHandshakeHandler(
-    private val tokenProvider: TokenProvider
-) : DefaultHandshakeHandler() {
+class CustomHandshakeHandler: DefaultHandshakeHandler() {
 
     override fun determineUser(
         request: ServerHttpRequest,
@@ -20,52 +21,6 @@ class CustomHandshakeHandler(
         attributes: MutableMap<String, Any>
     ): Principal? {
 
-        val token = extractToken(request)
-
-        if (token.isNullOrBlank()) {
-
-            return null
-        }
-
-        if (tokenProvider.isNotValidToken(token)) {
-
-            return null
-        }
-
-        val username = tokenProvider.getUsernameFromToken(token)
-
-        if (username.isNullOrBlank()) {
-
-            return null
-        }
-
-        val role = tokenProvider.getRole(token)
-
-        return StompPrincipal(
-            username = username,
-            role = role?.name
-        )
-    }
-
-    private fun extractToken(
-        request: ServerHttpRequest
-    ): String? {
-
-        val queryParams = UriComponentsBuilder.fromUri(request.uri)
-            .build()
-            .queryParams
-
-        val queryToken = queryParams.getFirst("token")
-
-        if (!queryToken.isNullOrBlank()) {
-
-            return queryToken
-        }
-
-        val authorizationHeader = request.headers.getFirst("Authorization")
-
-        return authorizationHeader
-            ?.takeIf { it.startsWith("Bearer ") }
-            ?.substring(7)
+        return request.principal
     }
 }
