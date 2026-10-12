@@ -17,6 +17,11 @@ interface PaymentRepository: JpaRepository<Payment, Long> {
 
     fun existsByOrderId(orderId: String): Boolean
 
+    fun existsByContractIdAndStatus(
+        contractId: Long,
+        status: PaymentStatus
+    ): Boolean
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select payment from Payment payment where payment.orderId = :orderId")
     fun findByOrderIdForUpdate(@Param("orderId") orderId: String): Payment?

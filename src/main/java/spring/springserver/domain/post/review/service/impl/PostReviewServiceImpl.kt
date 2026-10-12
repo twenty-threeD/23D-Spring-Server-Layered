@@ -14,6 +14,8 @@ import spring.springserver.domain.contract.repository.ContractRepository
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.payment.entity.PaymentStatus
+import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.review.data.request.CreatePostReviewRequest
@@ -37,6 +39,7 @@ class PostReviewServiceImpl(
     private val contractRepository: ContractRepository,
     private val postRepository: PostRepository,
     private val memberRepository: MemberRepository,
+    private val paymentRepository: PaymentRepository,
     private val profileService: ProfileService
 ): PostReviewService {
 
@@ -61,6 +64,8 @@ class PostReviewServiceImpl(
             contract,
             member
         )
+
+        validatePaidContract(contract)
 
         val content = createPostReviewRequest.content.trim()
 
@@ -257,7 +262,7 @@ class PostReviewServiceImpl(
 
     /**
      * 리뷰는 계약의 의뢰인(갑)이 전문가(을)에게 남긴다. 전문가나 제3자가
-     * 쓰려고 하면 막는다. 계약 자체가 거래의 증거이므로 별도 거래 검증은 없다.
+     * 쓰려고 하면 막는다.
      */
     private fun validateClient(
         contract: Contract,
@@ -267,6 +272,28 @@ class PostReviewServiceImpl(
         if (!contract.isClient(member.getId())) {
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_CLIENT_ONLY)
+        }
+    }
+
+    /**
+     * 계약서는 한쪽 당사자가 혼자 만들 수 있으므로 계약 존재만으로는 거래의 증거가 되지
+     * 않는다. 해당 계약에 체인 기록까지 끝난 결제(CHAIN_RECORDED)가 있어야 리뷰를 허용한다.
+     */
+    private fun validatePaidContract(
+        contract: Contract
+    ) {
+
+        val contractId = contract.getId()
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+        if (
+            !paymentRepository.existsByContractIdAndStatus(
+                contractId,
+                PaymentStatus.CHAIN_RECORDED
+            )
+        ) {
+
+            throw ApplicationException(PostReviewStatusCode.REVIEW_PAYMENT_REQUIRED)
         }
     }
 
