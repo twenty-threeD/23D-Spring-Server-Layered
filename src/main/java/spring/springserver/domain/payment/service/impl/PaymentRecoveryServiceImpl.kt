@@ -127,6 +127,17 @@ class PaymentRecoveryServiceImpl(
                     response.status
                 )
 
+                /**
+                 * markCanceled는 토스 상태가 취소가 아니면 아무것도 바꾸지 않고 반환한다.
+                 * 실제로 취소 상태가 반영된 건만 대상에서 빼야 다음 주기에 다시 시도할 수 있다.
+                 */
+                if (payment.getStatus() != PaymentStatus.CANCELED && payment.getStatus() != PaymentStatus.PARTIAL_CANCELED) {
+
+                    log.warn("토스 상태가 취소가 아니어서 반영하지 못했습니다. 다음 주기에 다시 시도합니다. paymentKey={}, tossStatus={}", paymentKey, response.status)
+
+                    return@forEach
+                }
+
                 if (payment.getStatus() == PaymentStatus.CANCELED) {
 
                     payment.getEstimateId()?.let {
