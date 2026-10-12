@@ -3,7 +3,6 @@ package spring.springserver.domain.payment.service.impl
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
-import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.entity.Payment
@@ -18,7 +17,6 @@ class PaymentRecoveryServiceImpl(
     private val paymentRepository: PaymentRepository,
     private val paymentRecordService: PaymentRecordService,
     private val tossPaymentsClient: TossPaymentsClient,
-    private val estimateService: EstimateService,
     private val redisTemplate: RedisTemplate<String, String>
 ): PaymentRecoveryService {
 
@@ -136,14 +134,6 @@ class PaymentRecoveryServiceImpl(
                     log.warn("토스 상태가 취소가 아니어서 반영하지 못했습니다. 다음 주기에 다시 시도합니다. paymentKey={}, tossStatus={}", paymentKey, response.status)
 
                     return@forEach
-                }
-
-                if (payment.getStatus() == PaymentStatus.CANCELED) {
-
-                    payment.getEstimateId()?.let {
-
-                        estimateService.markAsRefunded(estimateId = it)
-                    }
                 }
 
                 redisTemplate.opsForSet().remove(

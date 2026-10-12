@@ -57,9 +57,6 @@ class Payment(
     @Column(nullable = false)
     private var updatedAt: LocalDateTime = LocalDateTime.now()
 
-    @Column(name = "estimate_id")
-    private var estimateId: Long? = null
-
     fun getId() = id
     fun getOrderId() = orderId
     fun getAmount() = amount
@@ -76,14 +73,6 @@ class Payment(
     fun getStatus() = status
     fun getCreatedAt() = createdAt
     fun getUpdatedAt() = updatedAt
-    fun getEstimateId() = estimateId
-
-    fun linkEstimate(
-        estimateId: Long
-    ) {
-
-        this.estimateId = estimateId
-    }
 
     fun markInProgress() {
 
