@@ -28,9 +28,9 @@ import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.ContractUrlHasher
+import spring.springserver.global.util.RedisLockExecutor
 import java.security.MessageDigest
-import java.util.UUID
-import java.util.concurrent.TimeUnit
+import java.time.Duration
 
 @Service
 class PaymentServiceImpl(
@@ -42,7 +42,8 @@ class PaymentServiceImpl(
     private val chatService: ChatService,
     private val contractUrlHasher: ContractUrlHasher,
     private val contractService: ContractService,
-    private val redisTemplate: RedisTemplate<String, String>
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val redisLockExecutor: RedisLockExecutor
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -438,39 +439,19 @@ class PaymentServiceImpl(
          * 같은 결제에 취소가 동시에 들어오면 둘 다 취소 가능 상태로 보고 토스를 두 번 부를 수 있다.
          * 결제마다 락을 잡아 한 번에 하나만 처리하고, 락을 잡은 뒤에 상태를 다시 읽어 확인한다.
          */
-        val lockKey = CANCEL_LOCK_PREFIX + paymentKey
-        val lockToken = UUID.randomUUID().toString()
-        val acquired = redisTemplate.opsForValue().setIfAbsent(
-            lockKey,
-            lockToken,
-            CANCEL_LOCK_SECONDS,
-            TimeUnit.SECONDS
-        )
-            ?: false
+        return redisLockExecutor.runWithLock(
+            key = CANCEL_LOCK_PREFIX + paymentKey,
+            ttl = CANCEL_LOCK_TTL
+        ) {
 
-        if (!acquired) {
-
-            throw ApplicationException(PaymentStatusCode.PAYMENT_CANCEL_IN_PROGRESS)
-        }
-
-        try {
-
-            return cancelWithLock(
+            cancelWithLock(
                 cancelPaymentRequest,
                 paymentKey,
                 idempotencyKey,
                 memberId
             )
-        } finally {
-
-            /**
-             * 처리가 락 수명보다 길어지면 다른 요청이 새 락을 잡았을 수 있으므로 내 락일 때만 푼다.
-             */
-            if (redisTemplate.opsForValue().get(lockKey) == lockToken) {
-
-                redisTemplate.delete(lockKey)
-            }
         }
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_CANCEL_IN_PROGRESS)
     }
 
     private fun cancelWithLock(
@@ -599,7 +580,7 @@ class PaymentServiceImpl(
         const val UNSYNCED_CANCEL_KEY = "payment:cancel:unsynced"
 
         private const val CANCEL_LOCK_PREFIX = "payment:cancel:lock:"
-        private const val CANCEL_LOCK_SECONDS = 60L
+        private val CANCEL_LOCK_TTL = Duration.ofSeconds(60)
 
         fun fullCancelIdempotencyKey(
             paymentKey: String
