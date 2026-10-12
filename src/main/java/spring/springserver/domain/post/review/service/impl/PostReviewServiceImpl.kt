@@ -278,6 +278,9 @@ class PostReviewServiceImpl(
     /**
      * 계약서는 한쪽 당사자가 혼자 만들 수 있으므로 계약 존재만으로는 거래의 증거가 되지
      * 않는다. 해당 계약에 체인 기록까지 끝난 결제(CHAIN_RECORDED)가 있어야 리뷰를 허용한다.
+     *
+     * 결제는 계약 당사자 누구나 할 수 있으므로(전문가가 결제한 경우도 있다) 결제자가
+     * 의뢰인인지까지 확인해야 "의뢰인이 돈을 낸 거래"라는 의미가 된다.
      */
     private fun validatePaidContract(
         contract: Contract
@@ -286,9 +289,13 @@ class PostReviewServiceImpl(
         val contractId = contract.getId()
             ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
 
+        val clientId = contract.client.getId()
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
         if (
-            !paymentRepository.existsByContractIdAndStatus(
+            !paymentRepository.existsByContractIdAndMemberIdAndStatus(
                 contractId,
+                clientId,
                 PaymentStatus.CHAIN_RECORDED
             )
         ) {

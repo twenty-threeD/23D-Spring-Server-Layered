@@ -42,7 +42,7 @@ data class CreateContractRequest(
      * 계약 금액(원). 의뢰인(갑)이 전문가(을)에게 지급하기로 한 용역 대금이다.
      */
     @field:NotNull(message = "계약 금액은 필수입니다.")
-    @field:Min(value = 1, message = "계약 금액은 1원 이상이어야 합니다.")
+    @field:Min(value = 1000, message = "계약 금액은 1000원 이상이어야 합니다.")
     val price: Long?,
 
     /**

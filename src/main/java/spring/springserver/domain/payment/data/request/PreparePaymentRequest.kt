@@ -9,7 +9,7 @@ data class PreparePaymentRequest(
     @field:Size(min = 6, max = 64, message = "orderId는 6자 이상 64자 이하여야 합니다.")
     val orderId: String,
 
-    @field:Min(value = 1, message = "amount는 1 이상이어야 합니다.")
+    @field:Min(value = 1000, message = "amount는 1000 이상이어야 합니다.")
     val amount: Long,
 
     @field:NotBlank(message = "contractUrl은 필수입니다.")
