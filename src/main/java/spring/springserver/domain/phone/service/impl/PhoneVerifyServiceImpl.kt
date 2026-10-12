@@ -15,6 +15,7 @@ import spring.springserver.domain.phone.data.response.PhoneVerifyResponse
 import spring.springserver.domain.phone.data.response.SendPhoneVerifyNumberResponse
 import spring.springserver.domain.phone.exception.exception.CannotSendPhoneVerifyNumberException
 import spring.springserver.domain.phone.exception.exception.CannotVerifyPhoneException
+import spring.springserver.domain.phone.exception.status_code.PhoneVerifyStatusCode
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.PhoneNormalizer
@@ -53,6 +54,12 @@ class PhoneVerifyServiceImpl(
         val recipientPhoneNumber = PhoneNormalizer.normalize(phone = recipientNumber)
             ?: throw CannotSendPhoneVerifyNumberException()
 
+        /**
+         * 발송은 로그인 없이 열려 있어 SMS 비용을 무제한으로 소모시킬 수 있다.
+         * 번호마다 재발송 간격과 하루 발송 횟수를 제한한다.
+         */
+        limitSend(recipientPhoneNumber)
+
         message.from = PhoneNormalizer.normalize(phone = senderNumber)
         message.to = recipientPhoneNumber
         message.text = "잇다 본인인증 번호 안내\n [$verifyCode]"
@@ -63,14 +70,18 @@ class PhoneVerifyServiceImpl(
 
             redisTemplate.opsForValue()
                 .set(
-                    "$recipientPhoneNumber:verify",
+                    verifyKey(phone = recipientPhoneNumber),
                     verifyCode,
                     3,
                     TimeUnit.MINUTES
                 )
+
+            redisTemplate.delete(attemptKey(phone = recipientPhoneNumber))
         } catch (e: Exception) {
 
             log.info("오류 :$e")
+
+            redisTemplate.delete(sendCooldownKey(phone = recipientPhoneNumber))
 
             throw CannotSendPhoneVerifyNumberException()
         }
@@ -85,15 +96,11 @@ class PhoneVerifyServiceImpl(
 
         val phoneNumber = PhoneNormalizer.normalize(phone = recipientNumber)
             ?: throw CannotVerifyPhoneException()
-        val saved = redisTemplate.opsForValue().get("$phoneNumber:verify")
-            ?: throw CannotVerifyPhoneException()
 
-        if (saved != code) {
-
-            throw CannotVerifyPhoneException()
-        }
-
-        redisTemplate.delete("$phoneNumber:verify")
+        matchCode(
+            phoneNumber,
+            code
+        )
 
         val member = getCurrentMemberOrNull()
 
@@ -134,15 +141,11 @@ class PhoneVerifyServiceImpl(
 
         val phoneNumber = PhoneNormalizer.normalize(phone = recipientNumber)
             ?: throw CannotVerifyPhoneException()
-        val saved = redisTemplate.opsForValue().get("$phoneNumber:verify")
-            ?: throw CannotVerifyPhoneException()
 
-        if (saved != code) {
-
-            throw CannotVerifyPhoneException()
-        }
-
-        redisTemplate.delete("$phoneNumber:verify")
+        matchCode(
+            phoneNumber,
+            code
+        )
 
         return phoneNumber
     }
@@ -168,6 +171,106 @@ class PhoneVerifyServiceImpl(
             ?.takeIf { username -> username.isNotBlank() && username != "anonymousUser" }
             ?.let { username -> memberRepository.findByUsername(username) }
 
+    /**
+     * 인증번호가 6자리라 시도 횟수를 막지 않으면 3분 안에 전부 대입해 볼 수 있다.
+     * 비교보다 먼저 횟수를 올려야 동시에 몰린 요청도 한도 이상 비교되지 않는다.
+     * 한도에 닿으면 인증번호를 폐기해 다시 발송받게 한다.
+     */
+    private fun matchCode(
+        phoneNumber: String,
+        code: String
+    ) {
+
+        val saved = redisTemplate.opsForValue().get(verifyKey(phone = phoneNumber))
+            ?: throw CannotVerifyPhoneException()
+
+        val attempts = redisTemplate.opsForValue().increment(attemptKey(phone = phoneNumber))
+            ?: throw CannotVerifyPhoneException()
+
+        if (attempts == 1L) {
+
+            redisTemplate.expire(
+                attemptKey(phone = phoneNumber),
+                3,
+                TimeUnit.MINUTES
+            )
+        }
+
+        if (attempts > MAX_VERIFY_ATTEMPTS) {
+
+            redisTemplate.delete(
+                listOf(
+                    verifyKey(phone = phoneNumber),
+                    attemptKey(phone = phoneNumber)
+                )
+            )
+
+            throw ApplicationException(PhoneVerifyStatusCode.VERIFY_ATTEMPTS_EXCEEDED)
+        }
+
+        if (saved != code) {
+
+            throw CannotVerifyPhoneException()
+        }
+
+        redisTemplate.delete(
+            listOf(
+                verifyKey(phone = phoneNumber),
+                attemptKey(phone = phoneNumber)
+            )
+        )
+    }
+
+    private fun limitSend(
+        phoneNumber: String
+    ) {
+
+        val acquired = redisTemplate.opsForValue().setIfAbsent(
+            sendCooldownKey(phone = phoneNumber),
+            "1",
+            SEND_COOLDOWN_SECONDS,
+            TimeUnit.SECONDS
+        ) ?: false
+
+        if (!acquired) {
+
+            throw ApplicationException(PhoneVerifyStatusCode.SEND_TOO_FREQUENT)
+        }
+
+        val sendCount = redisTemplate.opsForValue().increment(sendDailyKey(phone = phoneNumber))
+            ?: throw CannotSendPhoneVerifyNumberException()
+
+        if (sendCount == 1L) {
+
+            redisTemplate.expire(
+                sendDailyKey(phone = phoneNumber),
+                1,
+                TimeUnit.DAYS
+            )
+        }
+
+        if (sendCount > MAX_DAILY_SEND_COUNT) {
+
+            throw ApplicationException(PhoneVerifyStatusCode.SEND_DAILY_LIMIT_EXCEEDED)
+        }
+    }
+
+    private fun verifyKey(
+        phone: String
+    ): String = "$phone:verify"
+
+    private fun attemptKey(
+        phone: String
+    ): String = "$phone:verify:attempts"
+
+    private fun sendCooldownKey(
+        phone: String
+    ): String = "$phone:send:cooldown"
+
+    private fun sendDailyKey(
+        phone: String
+    ): String = "$phone:send:daily"
+
     private fun verifiedKey(
         phone: String
     ): String = "$phone:verified"
@@ -179,6 +282,12 @@ class PhoneVerifyServiceImpl(
     companion object {
 
         private const val VERIFIED_MARK_MINUTES = 30L
+
+        private const val MAX_VERIFY_ATTEMPTS = 5L
+
+        private const val SEND_COOLDOWN_SECONDS = 60L
+
+        private const val MAX_DAILY_SEND_COUNT = 10L
 
         private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
     }
