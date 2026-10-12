@@ -122,6 +122,15 @@ class PaymentServiceImpl(
 
         val stored = paymentRecordService.findByOrderId(confirmPaymentRequest.orderId)
 
+        /**
+         * 이미 기록된 주문은 아래에서 토스 결제 조회 결과를 그대로 돌려준다.
+         * 그 전에 주인을 확인하지 않으면 남의 orderId만으로 결제 정보를 받아볼 수 있다.
+         */
+        validateOwner(
+            stored,
+            memberId
+        )
+
         if (stored.getStatus() == PaymentStatus.CHAIN_RECORDED) {
 
             return ConfirmPaymentResponse.of(
