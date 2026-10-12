@@ -17,11 +17,6 @@ interface PaymentRepository: JpaRepository<Payment, Long> {
 
     fun existsByOrderId(orderId: String): Boolean
 
-    fun existsByContractIdAndStatus(
-        contractId: Long,
-        status: PaymentStatus
-    ): Boolean
-
     fun existsByContractIdAndMemberIdAndStatus(
         contractId: Long,
         memberId: Long,
