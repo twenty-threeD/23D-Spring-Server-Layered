@@ -40,4 +40,13 @@ interface TokenService {
     fun getCurrentUsername(
         httpServletRequest: HttpServletRequest
     ) : String?
+
+    /**
+     * accessToken이 지금 인증에 쓸 수 있는지 확인하고 주인의 username을 돌려준다.
+     * 서명·만료뿐 아니라 토큰 종류, 로그아웃 여부, 탈퇴 여부까지 본다. 쓸 수 없으면 null이다.
+     * JWT 필터를 거치지 않고 토큰을 직접 읽는 곳은 모두 이 기준을 따른다.
+     */
+    fun resolveActiveUsername(
+        accessToken: String
+    ): String?
 }

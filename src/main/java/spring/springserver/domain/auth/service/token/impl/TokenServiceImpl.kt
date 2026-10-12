@@ -246,13 +246,44 @@ class TokenServiceImpl(
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {
 
         val accessToken = jwtProvider.resolveToken(httpServletRequest)
+            ?.takeIf { it.isNotBlank() }
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
-        if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
+        /**
+         * 공개 경로에서도 호출되므로 JWT 필터와 같은 기준으로 다시 확인한다.
+         * 서명만 보면 refreshToken, 로그아웃한 토큰, 탈퇴 회원의 토큰도 통과한다.
+         */
+        return resolveActiveUsername(accessToken)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+    }
 
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+    @Transactional(readOnly = true)
+    override fun resolveActiveUsername(
+        accessToken: String
+    ): String? {
+
+        if (
+            jwtProvider.isNotValidToken(accessToken)
+            || jwtProvider.isNotAccessToken(accessToken)
+            || isRevokedAccessToken(accessToken)
+        ) {
+
+            return null
         }
 
-        return jwtProvider.getUsernameFromToken(accessToken)
+        val username = jwtProvider.getUsernameFromToken(accessToken)
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        val member = memberRepository.findByUsername(username)
+            ?: return null
+
+        if (member.isDeleted()) {
+
+            return null
+        }
+
+        return username
     }
 
     private fun extractTokenFromCookie(
