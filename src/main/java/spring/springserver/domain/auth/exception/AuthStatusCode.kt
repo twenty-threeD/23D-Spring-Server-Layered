@@ -12,6 +12,7 @@ enum class AuthStatusCode (
     INVALID_JWT("INVALID_JWT", "유효하지 않은 JWT입니다.", HttpStatus.UNAUTHORIZED),
     AVAILABLE_ACCESS_TOKEN("AVAILABLE_ACCESS_TOKEN", "사용 가능한 엑세스 토큰이 존재 합니다.", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("INVALID_CREDENTIALS", "아이디 또는 비밀번호가 일치하지 않습니다.", HttpStatus.UNAUTHORIZED),
+    SIGN_IN_ATTEMPTS_EXCEEDED("SIGN_IN_ATTEMPTS_EXCEEDED", "로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.TOO_MANY_REQUESTS),
     ACCOUNT_LOCKED("ACCOUNT_LOCKED", "계정이 비활성화 되어있습니다.", HttpStatus.UNAUTHORIZED),
     ACCOUNT_DISABLED("ACCOUNT_DISABLED", "계정이 비활성화되었습니다.", HttpStatus.UNAUTHORIZED),
     ALREADY_LOGGED_OUT("ALREADY_LOGGED_OUT", "이미 로그아웃 되었습니다.", HttpStatus.BAD_REQUEST),
