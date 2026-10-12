@@ -5,4 +5,6 @@ interface PaymentRecoveryService {
     fun retryPendingCancels()
 
     fun reconcileStuckPayments()
+
+    fun reconcileUnsyncedCancels()
 }

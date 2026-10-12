@@ -26,4 +26,13 @@ class PaymentRecoveryScheduler(
 
         paymentRecoveryService.reconcileStuckPayments()
     }
+
+    /**
+     * 5분마다 토스 취소 후 상태 반영에 실패한 결제를 토스 조회 결과로 정합화한다.
+     */
+    @Scheduled(cron = "30 */5 * * * *")
+    fun reconcileUnsyncedCancels() {
+
+        paymentRecoveryService.reconcileUnsyncedCancels()
+    }
 }
