@@ -430,16 +430,52 @@ class PaymentServiceImpl(
         memberId: Long
     ): PaymentResponse {
 
+        val stored = paymentRecordService.findByPaymentKey(paymentKey)
+
         validateOwner(
-            paymentRecordService.findByPaymentKey(paymentKey),
+            stored,
             memberId
         )
 
-        return tossPaymentsClient.cancel(
+        if (!stored.isCancelable()) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_CANCELABLE)
+        }
+
+        val response = tossPaymentsClient.cancel(
             paymentKey,
             cancelPaymentRequest,
             idempotencyKey
         )
+
+        /**
+         * 토스에서 환불이 끝났는데 우리 쪽 상태가 그대로면 전문가에게는 여전히 결제 완료로 보인다.
+         * 토스가 돌려준 상태를 기준으로 결제를 취소 상태로 바꾸고, 전액 취소면 견적서도 결제 전으로 되돌린다.
+         */
+        try {
+
+            val payment = paymentRecordService.markCanceled(
+                paymentKey,
+                response.status
+            )
+
+            if (payment.getStatus() == PaymentStatus.CANCELED) {
+
+                payment.getEstimateId()?.let {
+
+                    estimateService.markAsRefunded(estimateId = it)
+                }
+            }
+        } catch (exception: Exception) {
+
+            /**
+             * 환불은 이미 끝났으므로 상태 반영이 실패해도 사용자에게 실패로 응답하지 않는다.
+             * 로그로 남겨 수동으로 상태를 맞춘다.
+             */
+            log.error("결제 취소 후 상태를 반영하지 못했습니다. paymentKey = {}, tossStatus = {}", paymentKey, response.status, exception)
+        }
+
+        return response
     }
 
     override fun issueVirtualAccount(

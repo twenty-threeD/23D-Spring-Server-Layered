@@ -52,6 +52,14 @@ interface EstimateService {
         paidAmount: Long
     ): EstimateResponse
 
+    /**
+     * 결제가 전액 취소되면 결제 도메인에서 호출한다.
+     * 견적서를 결제 전 상태로 되돌려 다시 결제하거나 수정할 수 있게 한다.
+     */
+    fun markAsRefunded(
+        estimateId: Long
+    )
+
     fun isProfessional(
         estimateId: Long,
         memberId: Long

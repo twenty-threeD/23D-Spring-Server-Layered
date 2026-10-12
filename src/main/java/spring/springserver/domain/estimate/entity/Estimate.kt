@@ -71,4 +71,9 @@ class Estimate(
 
         this.status = EstimateStatus.PAID
     }
+
+    fun markAsRefunded() {
+
+        this.status = EstimateStatus.PROPOSED
+    }
 }

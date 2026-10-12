@@ -135,6 +135,21 @@ class Payment(
         transitTo(PaymentStatus.CANCEL_FAILED)
     }
 
+    fun markCanceled() {
+
+        transitTo(PaymentStatus.CANCELED)
+    }
+
+    fun markPartialCanceled() {
+
+        transitTo(PaymentStatus.PARTIAL_CANCELED)
+    }
+
+    /**
+     * 의뢰인이 직접 취소할 수 있는 건 체인 기록까지 끝난 결제, 또는 일부만 취소된 결제뿐이다.
+     */
+    fun isCancelable() = status == PaymentStatus.CHAIN_RECORDED || status == PaymentStatus.PARTIAL_CANCELED
+
     fun markAbandoned(
         failureReason: String?
     ) {
