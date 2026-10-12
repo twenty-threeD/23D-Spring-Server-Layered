@@ -174,6 +174,8 @@ class PaymentServiceImpl(
             resolvedTxHash
         )
 
+        completeTrade(payment)
+
         sendPaymentMessage(
             payment,
             response,
@@ -187,6 +189,26 @@ class PaymentServiceImpl(
             paymentHash = hash,
             blockchainTxHash = resolvedTxHash
         )
+    }
+
+    /**
+     * 결제가 체인 기록까지 끝났으므로 결제가 시작된 채팅방의 거래를 완료로 바꾼다.
+     * 결제는 이미 끝났으므로 상태 반영이 실패해도 결제를 되돌리지 않고 기록만 남긴다.
+     */
+    private fun completeTrade(
+        payment: Payment
+    ) {
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.completeTrade(roomId)
+        } catch (exception: Exception) {
+
+            log.warn("거래 완료 상태를 반영하지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
+        }
     }
 
     /**
@@ -457,10 +479,12 @@ class PaymentServiceImpl(
          */
         try {
 
-            paymentRecordService.markCanceled(
+            val payment = paymentRecordService.markCanceled(
                 paymentKey,
                 response.status
             )
+
+            cancelTradeIfFullyCanceled(payment)
         } catch (exception: Exception) {
 
             /**
@@ -482,6 +506,29 @@ class PaymentServiceImpl(
         }
 
         return response
+    }
+
+    /**
+     * 전액 취소는 거래를 되돌린 것이므로 채팅방 거래를 취소로 바꾼다.
+     * 부분 취소는 거래가 유지된 것으로 보고 완료 상태를 그대로 둔다.
+     * 환불은 이미 끝났으므로 상태 반영이 실패해도 예외를 밖으로 내보내지 않는다.
+     */
+    private fun cancelTradeIfFullyCanceled(
+        payment: Payment
+    ) {
+
+        if (payment.getStatus() != PaymentStatus.CANCELED) return
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.cancelTrade(roomId)
+        } catch (exception: Exception) {
+
+            log.warn("거래 취소 상태를 반영하지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
+        }
     }
 
     override fun issueVirtualAccount(

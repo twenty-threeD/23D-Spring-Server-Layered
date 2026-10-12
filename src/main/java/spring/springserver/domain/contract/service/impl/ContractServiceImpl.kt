@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.contract.data.request.CreateContractRequest
 import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
@@ -30,7 +31,8 @@ class ContractServiceImpl(
     private val contractRepository: ContractRepository,
     private val memberRepository: MemberRepository,
     private val postRepository: PostRepository,
-    private val tokenService: TokenService
+    private val tokenService: TokenService,
+    private val chatService: ChatService
 ): ContractService {
 
     override fun createContract(
@@ -74,6 +76,20 @@ class ContractServiceImpl(
                 )
             )
         )
+
+        /**
+         * 같은 게시글로 같은 상대와 새 계약을 맺으면 기존 방을 재사용하므로,
+         * 이전 거래의 완료·취소 상태를 지우고 새 거래를 진행 중으로 시작한다.
+         * 게시글 없이 맺은 계약은 방을 특정할 수 없어 건드리지 않는다.
+         */
+        contract.post?.getId()?.let { postId ->
+
+            chatService.restartTrade(
+                client.getId()!!,
+                professional.getId()!!,
+                postId
+            )
+        }
 
         return CreateContractResponse.of(contract)
     }
