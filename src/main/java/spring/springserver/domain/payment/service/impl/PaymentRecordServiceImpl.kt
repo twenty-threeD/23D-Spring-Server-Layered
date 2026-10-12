@@ -158,11 +158,34 @@ class PaymentRecordServiceImpl(
         findByOrderId(orderId).markCancelFailed()
     }
 
+    override fun markCanceled(
+        paymentKey: String,
+        tossStatus: String?
+    ): Payment {
+
+        val payment = findByPaymentKey(paymentKey)
+
+        when (tossStatus) {
+
+            TOSS_STATUS_CANCELED -> payment.markCanceled()
+            TOSS_STATUS_PARTIAL_CANCELED -> payment.markPartialCanceled()
+            else -> throw ApplicationException(PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED)
+        }
+
+        return payment
+    }
+
     override fun markAbandoned(
         orderId: String,
         failureReason: String?
     ) {
 
         findByOrderId(orderId).markAbandoned(failureReason)
+    }
+
+    companion object {
+
+        private const val TOSS_STATUS_CANCELED = "CANCELED"
+        private const val TOSS_STATUS_PARTIAL_CANCELED = "PARTIAL_CANCELED"
     }
 }

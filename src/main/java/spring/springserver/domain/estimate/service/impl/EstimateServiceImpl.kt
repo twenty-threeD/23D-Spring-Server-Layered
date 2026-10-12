@@ -159,6 +159,13 @@ class EstimateServiceImpl(
         return EstimateResponse.of(estimate)
     }
 
+    override fun markAsRefunded(
+        estimateId: Long
+    ) {
+
+        getEstimateEntity(estimateId).markAsRefunded()
+    }
+
     @Transactional(readOnly = true)
     override fun isProfessional(
         estimateId: Long,

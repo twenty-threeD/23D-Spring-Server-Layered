@@ -78,6 +78,11 @@ enum class PaymentStatusCode(
         "PAYMENT_CONTRACT_FORBIDDEN",
         "계약 당사자가 아닙니다.",
         HttpStatus.FORBIDDEN
+    ),
+    PAYMENT_NOT_CANCELABLE(
+        "PAYMENT_NOT_CANCELABLE",
+        "취소할 수 없는 상태의 결제입니다.",
+        HttpStatus.CONFLICT
     );
 
     override fun getCode(): String = code

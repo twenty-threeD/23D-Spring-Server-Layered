@@ -58,6 +58,14 @@ interface PaymentRecordService {
         orderId: String
     )
 
+    /**
+     * 토스 취소 응답의 결제 상태를 그대로 받아 전액 취소와 부분 취소를 구분해 반영한다.
+     */
+    fun markCanceled(
+        paymentKey: String,
+        tossStatus: String?
+    ): Payment
+
     fun markAbandoned(
         orderId: String,
         failureReason: String?
