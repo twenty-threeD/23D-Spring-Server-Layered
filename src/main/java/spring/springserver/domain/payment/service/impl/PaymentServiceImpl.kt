@@ -1,6 +1,7 @@
 package spring.springserver.domain.payment.service.impl
 
 import org.slf4j.LoggerFactory
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
@@ -27,7 +28,9 @@ import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.ContractUrlHasher
+import spring.springserver.global.util.RedisLockExecutor
 import java.security.MessageDigest
+import java.time.Duration
 
 @Service
 class PaymentServiceImpl(
@@ -38,7 +41,9 @@ class PaymentServiceImpl(
     private val paymentRecordService: PaymentRecordService,
     private val chatService: ChatService,
     private val contractUrlHasher: ContractUrlHasher,
-    private val contractService: ContractService
+    private val contractService: ContractService,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val redisLockExecutor: RedisLockExecutor
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -430,6 +435,32 @@ class PaymentServiceImpl(
         memberId: Long
     ): PaymentResponse {
 
+        /**
+         * 같은 결제에 취소가 동시에 들어오면 둘 다 취소 가능 상태로 보고 토스를 두 번 부를 수 있다.
+         * 결제마다 락을 잡아 한 번에 하나만 처리하고, 락을 잡은 뒤에 상태를 다시 읽어 확인한다.
+         */
+        return redisLockExecutor.runWithLock(
+            key = CANCEL_LOCK_PREFIX + paymentKey,
+            ttl = CANCEL_LOCK_TTL
+        ) {
+
+            cancelWithLock(
+                cancelPaymentRequest,
+                paymentKey,
+                idempotencyKey,
+                memberId
+            )
+        }
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_CANCEL_IN_PROGRESS)
+    }
+
+    private fun cancelWithLock(
+        cancelPaymentRequest: CancelPaymentRequest,
+        paymentKey: String,
+        idempotencyKey: String?,
+        memberId: Long
+    ): PaymentResponse {
+
         val stored = paymentRecordService.findByPaymentKey(paymentKey)
 
         validateOwner(
@@ -442,10 +473,22 @@ class PaymentServiceImpl(
             throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_CANCELABLE)
         }
 
+        /**
+         * 전액 취소는 결제당 한 번뿐이라 서버가 멱등키를 정할 수 있다.
+         * 토스 취소는 끝났는데 응답을 못 받아 다시 요청해도 토스가 같은 결과를 돌려준다.
+         * 부분 취소는 같은 금액을 정상적으로 여러 번 할 수 있어 클라이언트 멱등키에 맡긴다.
+         */
+        val effectiveIdempotencyKey = when {
+
+            idempotencyKey != null -> idempotencyKey
+            cancelPaymentRequest.cancelAmount == null -> fullCancelIdempotencyKey(paymentKey)
+            else -> null
+        }
+
         val response = tossPaymentsClient.cancel(
             paymentKey,
             cancelPaymentRequest,
-            idempotencyKey
+            effectiveIdempotencyKey
         )
 
         /**
@@ -470,9 +513,20 @@ class PaymentServiceImpl(
 
             /**
              * 환불은 이미 끝났으므로 상태 반영이 실패해도 사용자에게 실패로 응답하지 않는다.
-             * 로그로 남겨 수동으로 상태를 맞춘다.
+             * 재처리 대상으로 남겨 스케줄러가 토스 상태를 다시 조회해 맞춘다.
              */
-            log.error("결제 취소 후 상태를 반영하지 못했습니다. paymentKey = {}, tossStatus = {}", paymentKey, response.status, exception)
+            log.error("결제 취소 후 상태를 반영하지 못했습니다. 재처리 대상으로 기록합니다. paymentKey = {}, tossStatus = {}", paymentKey, response.status, exception)
+
+            runCatching {
+
+                redisTemplate.opsForSet().add(
+                    UNSYNCED_CANCEL_KEY,
+                    paymentKey
+                )
+            }.onFailure { recordException ->
+
+                log.error("재처리 대상 기록에도 실패했습니다. 수동 확인이 필요합니다. paymentKey = {}", paymentKey, recordException)
+            }
         }
 
         return response
@@ -522,6 +576,18 @@ class PaymentServiceImpl(
 
         private const val CHAIN_RECORD_MAX_ATTEMPTS = 3
         private const val CHAIN_RECORD_RETRY_DELAY_MILLIS = 500L
+
+        const val UNSYNCED_CANCEL_KEY = "payment:cancel:unsynced"
+
+        private const val CANCEL_LOCK_PREFIX = "payment:cancel:lock:"
+        private val CANCEL_LOCK_TTL = Duration.ofSeconds(60)
+
+        fun fullCancelIdempotencyKey(
+            paymentKey: String
+        ): String {
+
+            return "cancel-$paymentKey-full"
+        }
 
         fun cancelIdempotencyKey(
             orderId: String

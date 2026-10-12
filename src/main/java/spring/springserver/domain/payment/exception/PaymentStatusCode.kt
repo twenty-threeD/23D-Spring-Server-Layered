@@ -83,6 +83,11 @@ enum class PaymentStatusCode(
         "PAYMENT_NOT_CANCELABLE",
         "취소할 수 없는 상태의 결제입니다.",
         HttpStatus.CONFLICT
+    ),
+    PAYMENT_CANCEL_IN_PROGRESS(
+        "PAYMENT_CANCEL_IN_PROGRESS",
+        "이미 처리 중인 취소 요청이 있습니다. 잠시 후 다시 시도해주세요.",
+        HttpStatus.CONFLICT
     );
 
     override fun getCode(): String = code
