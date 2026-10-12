@@ -1,5 +1,6 @@
 package spring.springserver.domain.payment.service.impl
 
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
@@ -17,6 +18,8 @@ import spring.springserver.global.exception.exception.ApplicationException
 class PaymentRecordServiceImpl(
     private val paymentRepository: PaymentRepository
 ): PaymentRecordService {
+
+    private val log = LoggerFactory.getLogger(PaymentRecordServiceImpl::class.java)
 
     override fun create(
         preparePaymentRequest: PreparePaymentRequest,
@@ -169,7 +172,11 @@ class PaymentRecordServiceImpl(
 
             TOSS_STATUS_CANCELED -> payment.markCanceled()
             TOSS_STATUS_PARTIAL_CANCELED -> payment.markPartialCanceled()
-            else -> throw ApplicationException(PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED)
+            /**
+             * 이 시점은 토스 취소가 이미 끝난 뒤라 예외를 던지면 환불된 사용자가 실패 응답을 받는다.
+             * 상태는 그대로 두고 로그로 남겨 수동으로 확인한다.
+             */
+            else -> log.error("예상하지 못한 토스 취소 상태입니다. paymentKey = {}, tossStatus = {}", paymentKey, tossStatus)
         }
 
         return payment
