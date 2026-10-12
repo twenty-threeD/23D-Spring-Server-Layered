@@ -71,7 +71,7 @@ class ProfileServiceImpl(
 
         val profile = getCurrentProfile(member)
 
-        val usernameChanged = applyUsername(
+        val newUsername = resolveNewUsername(
             member,
             updateProfileRequest.username?.trim()
         )
@@ -87,12 +87,19 @@ class ProfileServiceImpl(
             jobCategory = resolveJobCategory(updateProfileRequest.jobCategoryId, profile.jobCategory)
         )
 
-        if (usernameChanged) {
+        if (newUsername != null) {
 
+            /**
+             * deleteTokens는 토큰 속 이전 username으로 회원을 다시 조회한다.
+             * username을 먼저 바꾸면 그 조회 전에 변경이 flush되어 회원을 찾지 못하므로,
+             * 토큰을 정리한 뒤에 바꾼다.
+             */
             tokenService.deleteTokens(
                 httpServletRequest,
                 httpServletResponse
             )
+
+            member.username = newUsername
 
             return UpdateProfileResponse.of("프로필이 수정되었습니다. 다시 로그인 해주세요.")
         }
@@ -122,14 +129,17 @@ class ProfileServiceImpl(
         return profileRepository.findImageUrlByMemberId(memberId)
     }
 
-    private fun applyUsername(
+    /**
+     * 바꿀 username이 있으면 중복을 확인해 돌려주고, 바꿀 필요가 없으면 null을 돌려준다.
+     */
+    private fun resolveNewUsername(
         member: Member,
         username: String?
-    ): Boolean {
+    ): String? {
 
         if (username == null || username == member.username) {
 
-            return false
+            return null
         }
 
         if (memberRepository.existsByUsername(username)) {
@@ -137,9 +147,7 @@ class ProfileServiceImpl(
             throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
         }
 
-        member.username = username
-
-        return true
+        return username
     }
 
     private fun resolveSig(
