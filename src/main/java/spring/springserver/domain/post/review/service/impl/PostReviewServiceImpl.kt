@@ -23,6 +23,7 @@ import spring.springserver.domain.post.review.data.request.UpdatePostReviewReque
 import spring.springserver.domain.post.review.data.response.DeletedPostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewSummaryResponse
+import spring.springserver.domain.post.review.data.response.ReviewableContractResponse
 import spring.springserver.domain.post.review.entity.PostReview
 import spring.springserver.domain.post.review.exception.PostReviewStatusCode
 import spring.springserver.domain.post.review.repository.PostReviewRepository
@@ -102,6 +103,28 @@ class PostReviewServiceImpl(
         }
 
         return toResponse(postReview)
+    }
+
+    @Transactional(readOnly = true)
+    override fun viewReviewableContracts(
+        postId: Long
+    ): List<ReviewableContractResponse> {
+
+        val member = getCurrentMember()
+
+        val memberId = member.getId()
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 의뢰인 조건은 조회 조건(clientId)으로 걸러지고, 결제·리뷰 조건은
+         * createReview와 같은 함수로 판단해 작성 시 검증과 어긋나지 않게 한다.
+         */
+        return contractRepository.findAllByPostIdAndClientIdOrderByCreatedAtDesc(
+            postId,
+            memberId
+        )
+            .filter { contract -> isPaidByClient(contract) && !hasActiveReview(contract) }
+            .map { contract -> ReviewableContractResponse.of(contract) }
     }
 
     @Transactional(readOnly = true)
@@ -286,22 +309,40 @@ class PostReviewServiceImpl(
         contract: Contract
     ) {
 
+        if (!isPaidByClient(contract)) {
+
+            throw ApplicationException(PostReviewStatusCode.REVIEW_PAYMENT_REQUIRED)
+        }
+    }
+
+    private fun isPaidByClient(
+        contract: Contract
+    ): Boolean {
+
         val contractId = contract.getId()
             ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
 
         val clientId = contract.client.getId()
             ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
 
-        if (
-            !paymentRepository.existsByContractIdAndMemberIdAndStatus(
-                contractId,
-                clientId,
-                PaymentStatus.CHAIN_RECORDED
-            )
-        ) {
+        return paymentRepository.existsByContractIdAndMemberIdAndStatus(
+            contractId,
+            clientId,
+            PaymentStatus.CHAIN_RECORDED
+        )
+    }
 
-            throw ApplicationException(PostReviewStatusCode.REVIEW_PAYMENT_REQUIRED)
-        }
+    /**
+     * 삭제된 리뷰는 같은 계약으로 다시 쓸 수 있으므로(createReview의 rewrite) 활성 리뷰로 보지 않는다.
+     */
+    private fun hasActiveReview(
+        contract: Contract
+    ): Boolean {
+
+        val writtenReview = postReviewRepository.findByContract(contract)
+            ?: return false
+
+        return writtenReview.deletedAt == null
     }
 
     private fun validateReviewAuthor(
