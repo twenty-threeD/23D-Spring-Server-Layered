@@ -12,6 +12,7 @@ import spring.springserver.domain.post.review.data.response.PostReviewAnalysisRe
 import spring.springserver.domain.post.review.data.response.PostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewSummaryResponse
 import spring.springserver.domain.post.review.service.PostReviewAnalysisService
+import spring.springserver.domain.post.review.data.response.ReviewableContractResponse
 import spring.springserver.domain.post.review.service.PostReviewService
 import spring.springserver.global.data.BaseResponse
 
@@ -28,6 +29,17 @@ class PostReviewController(
     ): BaseResponse<PostReviewResponse> {
 
         return BaseResponse.ok(postReviewService.createReview(createPostReviewRequest))
+    }
+
+    /**
+     * 이 게시글에서 로그인 회원이 지금 리뷰를 남길 수 있는 계약 목록. 없으면 빈 배열이다.
+     */
+    @GetMapping("/reviewable")
+    fun viewReviewableContracts(
+        @RequestParam postId: Long
+    ): BaseResponse<List<ReviewableContractResponse>> {
+
+        return BaseResponse.ok(postReviewService.viewReviewableContracts(postId))
     }
 
     /**

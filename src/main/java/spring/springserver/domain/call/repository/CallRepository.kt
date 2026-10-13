@@ -82,4 +82,24 @@ interface CallRepository : JpaRepository<Call, Long> {
     fun findAllByRoomId(
         @Param("roomId") roomId: Long
     ): List<Call>
+
+    /**
+     * 회원이 참여 중인 진행 중 통화. 동시 통화를 막으므로 정상이라면 많아야 한 건이다.
+     */
+    @Query(
+        """
+            select c
+            from Call c
+            join fetch c.caller
+            join fetch c.callee
+            join fetch c.room
+            where c.status in :statuses
+              and (c.caller.id = :memberId or c.callee.id = :memberId)
+            order by c.id desc
+            """
+    )
+    fun findAllByStatusInAndParticipant(
+        @Param("statuses") statuses: Collection<CallStatus>,
+        @Param("memberId") memberId: Long
+    ): List<Call>
 }

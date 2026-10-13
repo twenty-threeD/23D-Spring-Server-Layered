@@ -49,4 +49,21 @@ interface CallService {
         username: String,
         roomId: Long
     ): List<CallResponse>
+
+    /**
+     * 내가 참여 중인 진행 중 통화와 다시 접속할 토큰. 없으면 null이다.
+     * 새로고침이나 재접속 후 통화를 복구할 때 쓴다.
+     */
+    fun getActiveCall(
+        username: String
+    ): CallSessionResponse?
+
+    /**
+     * 연결이 끊긴 채 돌아오지 않은 회원의 진행 중 통화를 정리한다.
+     * 연결된 통화는 종료, 아직 받지 않은 통화를 건 쪽이면 취소한다.
+     * 받는 쪽이 끊긴 RINGING 통화는 부재중 처리에 맡긴다.
+     */
+    fun endCallsOnDisconnect(
+        username: String
+    )
 }

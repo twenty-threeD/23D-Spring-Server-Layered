@@ -169,6 +169,14 @@ class SecurityConfig(
                         HttpMethod.PATCH,
                         "/api/post")
                     .hasRole("USER")
+                    /**
+                     * 아래 게시글 GET 공개 규칙보다 먼저 와야 한다.
+                     * 내 계약을 기준으로 답하는 API라 비로그인이면 401로 끝낸다.
+                     */
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/post/review/reviewable"
+                    ).authenticated()
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/post/**",
@@ -220,23 +228,6 @@ class SecurityConfig(
                         HttpMethod.GET,
                         "/api/blockchain/verify/*"
                     ).permitAll()
-                    .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/estimate"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.PATCH,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.DELETE,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/estimate",
-                        "/api/estimate/*"
-                    ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.POST,
                         "/api/contract"
@@ -294,6 +285,7 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/call/*",
+                        "/api/call/active",
                         "/api/call/rooms/*"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(

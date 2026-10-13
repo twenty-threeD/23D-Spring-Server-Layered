@@ -57,7 +57,14 @@ class ChatMessage(
      * Redis 캐시가 만료된 뒤에도 결제 메시지를 그대로 복원하려고 저장한다.
      */
     @Column(name = "payment_payload", length = 1000)
-    var paymentPayload: String? = null
+    var paymentPayload: String? = null,
+
+    /**
+     * 통화 기록 메시지의 상세 페이로드(JSON). CALL 메시지가 아니면 null이다.
+     * Redis 캐시가 만료된 뒤에도 통화 기록을 그대로 복원하려고 저장한다.
+     */
+    @Column(name = "call_payload", length = 500)
+    var callPayload: String? = null
 ) {
 
     @Id

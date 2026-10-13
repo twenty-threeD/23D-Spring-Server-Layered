@@ -261,7 +261,8 @@ class CallServiceImpl(
             agoraTokenResponse = agoraTokenService.issueRtcToken(
                 channelName = call.channelName,
                 uid = call.cameraUidOf(member.getId())
-            )
+            ),
+            imageUrls = callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -273,11 +274,14 @@ class CallServiceImpl(
 
         val member = callAccessSupport.getMemberByUsername(username)
 
+        val call = callAccessSupport.getParticipatingCall(
+            callId = callId,
+            memberId = member.getId()
+        )
+
         return CallResponse.of(
-            callAccessSupport.getParticipatingCall(
-                callId = callId,
-                memberId = member.getId()
-            )
+            call,
+            callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -296,7 +300,86 @@ class CallServiceImpl(
         }
 
         return callRepository.findAllByRoomId(roomId)
-            .map(CallResponse::of)
+            .map { call ->
+
+                CallResponse.of(
+                    call,
+                    callAccessSupport.getImageUrls(call)
+                )
+            }
+    }
+
+    @Transactional(readOnly = true)
+    override fun getActiveCall(
+        username: String
+    ): CallSessionResponse? {
+
+        val member = callAccessSupport.getMemberByUsername(username)
+
+        val call = callRepository.findAllByStatusInAndParticipant(
+            statuses = ACTIVE_STATUSES,
+            memberId = member.getId()!!
+        )
+            .firstOrNull()
+            ?: return null
+
+        return CallSessionResponse.of(
+            call = call,
+            memberId = member.getId(),
+            agoraTokenResponse = agoraTokenService.issueRtcToken(
+                channelName = call.channelName,
+                uid = call.cameraUidOf(member.getId())
+            ),
+            imageUrls = callAccessSupport.getImageUrls(call)
+        )
+    }
+
+    override fun endCallsOnDisconnect(
+        username: String
+    ) {
+
+        val member = callAccessSupport.getMemberByUsername(username)
+        val now = Instant.now()
+
+        callRepository.findAllByStatusInAndParticipant(
+            statuses = ACTIVE_STATUSES,
+            memberId = member.getId()!!
+        ).forEach { call ->
+
+            val signal = when {
+
+                call.status == CallStatus.ACCEPTED -> {
+
+                    call.end(
+                        at = now,
+                        memberId = member.getId()
+                    )
+
+                    CallSignalType.ENDED
+                }
+
+                call.isCaller(member.getId()) -> {
+
+                    call.cancel(
+                        at = now,
+                        memberId = member.getId()
+                    )
+
+                    CallSignalType.CANCELED
+                }
+
+                else -> null
+            }
+
+            signal?.let {
+
+                publish(
+                    call = call,
+                    signal = it,
+                    fromUsername = username
+                )
+            }
+        }
     }
 
     private fun toSessionResponse(
@@ -320,7 +403,8 @@ class CallServiceImpl(
         return CallSessionResponse.of(
             call = call,
             memberId = memberId,
-            agoraTokenResponse = agoraTokenResponse
+            agoraTokenResponse = agoraTokenResponse,
+            imageUrls = callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -333,7 +417,10 @@ class CallServiceImpl(
         fromUsername: String?
     ): CallResponse {
 
-        val callResponse = CallResponse.of(call)
+        val callResponse = CallResponse.of(
+            call,
+            callAccessSupport.getImageUrls(call)
+        )
 
         eventPublisher.publishEvent(
             CallSignalEvent.of(
@@ -352,7 +439,7 @@ class CallServiceImpl(
     ) {
 
         val hasActiveCall = callRepository.existsByStatusInAndParticipantIn(
-            statuses = listOf(CallStatus.RINGING, CallStatus.ACCEPTED),
+            statuses = ACTIVE_STATUSES,
             memberIds = listOf(callerId, calleeId)
         )
 
@@ -386,5 +473,10 @@ class CallServiceImpl(
     companion object {
 
         private const val UID_COUNT = 4
+
+        private val ACTIVE_STATUSES = listOf(
+            CallStatus.RINGING,
+            CallStatus.ACCEPTED
+        )
     }
 }

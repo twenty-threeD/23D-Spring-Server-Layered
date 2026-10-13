@@ -12,17 +12,19 @@ data class ChatMessageResponse(
     val createdAt: Instant,
     val attachedFileUrls: List<String>,
     val type: ChatMessageType = ChatMessageType.TEXT,
-    val payment: ChatPaymentResponse? = null
+    val payment: ChatPaymentResponse? = null,
+    val call: ChatCallLogResponse? = null
 ) {
 
     companion object {
 
         /**
-         * DB에서 복원한 메시지. 결제 상세는 엔티티에 저장된 JSON을 역직렬화해 호출부가 넘긴다.
+         * DB에서 복원한 메시지. 결제·통화 상세는 엔티티에 저장된 JSON을 역직렬화해 호출부가 넘긴다.
          */
         fun of(
             chatMessage: ChatMessage,
-            payment: ChatPaymentResponse?
+            payment: ChatPaymentResponse?,
+            call: ChatCallLogResponse?
         ): ChatMessageResponse =
             ChatMessageResponse(
                 messageId = chatMessage.getId(),
@@ -33,7 +35,8 @@ data class ChatMessageResponse(
                 createdAt = chatMessage.createdAt,
                 attachedFileUrls = chatMessage.attachmentUrls(),
                 type = chatMessage.messageType,
-                payment = payment
+                payment = payment,
+                call = call
             )
     }
 }

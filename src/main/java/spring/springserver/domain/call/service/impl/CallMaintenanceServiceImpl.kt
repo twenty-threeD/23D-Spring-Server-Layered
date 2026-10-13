@@ -10,6 +10,7 @@ import spring.springserver.domain.call.entity.CallStatus
 import spring.springserver.domain.call.event.CallSignalEvent
 import spring.springserver.domain.call.repository.CallRepository
 import spring.springserver.domain.call.service.CallMaintenanceService
+import spring.springserver.domain.call.support.CallAccessSupport
 import spring.springserver.global.config.AgoraProperties
 import java.time.Instant
 
@@ -18,7 +19,8 @@ import java.time.Instant
 class CallMaintenanceServiceImpl(
     private val callRepository: CallRepository,
     private val agoraProperties: AgoraProperties,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
+    private val callAccessSupport: CallAccessSupport
 ): CallMaintenanceService {
 
     override fun expireStaleCalls() {
@@ -73,7 +75,10 @@ class CallMaintenanceServiceImpl(
         eventPublisher.publishEvent(
             CallSignalEvent.of(
                 signal = signal,
-                call = CallResponse.of(call),
+                call = CallResponse.of(
+                    call,
+                    callAccessSupport.getImageUrls(call)
+                ),
                 fromUsername = null
             )
         )

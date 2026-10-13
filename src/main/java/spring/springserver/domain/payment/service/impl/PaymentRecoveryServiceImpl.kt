@@ -1,7 +1,9 @@
 package spring.springserver.domain.payment.service.impl
 
 import org.slf4j.LoggerFactory
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.entity.Payment
@@ -15,7 +17,9 @@ import java.time.LocalDateTime
 class PaymentRecoveryServiceImpl(
     private val paymentRepository: PaymentRepository,
     private val paymentRecordService: PaymentRecordService,
-    private val tossPaymentsClient: TossPaymentsClient
+    private val tossPaymentsClient: TossPaymentsClient,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val chatService: ChatService
 ): PaymentRecoveryService {
 
     private val log = LoggerFactory.getLogger(PaymentRecoveryServiceImpl::class.java)
@@ -100,6 +104,58 @@ class PaymentRecoveryServiceImpl(
             } catch (exception: Exception) {
 
                 log.warn("중단 결제 정합화 실패. 다음 주기에 다시 시도합니다. orderId={}", payment.getOrderId(), exception)
+            }
+        }
+    }
+
+    /**
+     * 토스 취소는 끝났는데 DB 반영이 실패한 결제를 토스 상태 기준으로 다시 반영한다.
+     * 반영에 성공한 건만 대상에서 빼고, 실패하면 다음 주기에 다시 시도한다.
+     */
+    override fun reconcileUnsyncedCancels() {
+
+        val paymentKeys = redisTemplate.opsForSet().members(PaymentServiceImpl.UNSYNCED_CANCEL_KEY)
+            ?: return
+
+        paymentKeys.forEach { paymentKey ->
+
+            try {
+
+                val response = tossPaymentsClient.findByPaymentKey(paymentKey)
+                val payment = paymentRecordService.markCanceled(
+                    paymentKey,
+                    response.status,
+                    response.balanceAmount
+                )
+
+                /**
+                 * markCanceled는 토스 상태가 취소가 아니면 아무것도 바꾸지 않고 반환한다.
+                 * 실제로 취소 상태가 반영된 건만 대상에서 빼야 다음 주기에 다시 시도할 수 있다.
+                 */
+                if (payment.getStatus() != PaymentStatus.CANCELED && payment.getStatus() != PaymentStatus.PARTIAL_CANCELED) {
+
+                    log.warn("토스 상태가 취소가 아니어서 반영하지 못했습니다. 다음 주기에 다시 시도합니다. paymentKey={}, tossStatus={}", paymentKey, response.status)
+
+                    return@forEach
+                }
+
+                /**
+                 * 전액 취소면 채팅방 거래도 취소로 맞춘다. 실패하면 대상에 남겨 다음 주기에 다시 시도한다.
+                 */
+                if (payment.getStatus() == PaymentStatus.CANCELED) {
+
+                    payment.getRoomId()?.let { roomId -> chatService.cancelTrade(roomId) }
+                }
+
+                redisTemplate.opsForSet().remove(
+                    PaymentServiceImpl.UNSYNCED_CANCEL_KEY,
+                    paymentKey
+                )
+
+                log.info("취소 상태 정합화 성공. paymentKey={}, tossStatus={}", paymentKey, response.status)
+            } catch (exception: Exception) {
+
+                log.warn("취소 상태 정합화 실패. 다음 주기에 다시 시도합니다. paymentKey={}", paymentKey, exception)
             }
         }
     }

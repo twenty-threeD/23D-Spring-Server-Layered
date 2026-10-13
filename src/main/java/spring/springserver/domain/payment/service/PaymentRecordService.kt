@@ -58,13 +58,19 @@ interface PaymentRecordService {
         orderId: String
     )
 
+    /**
+     * 토스 취소 응답을 받아 전액 취소와 부분 취소를 구분해 반영한다.
+     * 환불 때 수수료는 돌려주지 않으므로, 토스에 수수료만큼 잔액이 남아 있어도
+     * 환불할 수 있는 금액을 모두 돌려줬다면 전액 취소로 본다.
+     */
+    fun markCanceled(
+        paymentKey: String,
+        tossStatus: String?,
+        balanceAmount: Long?
+    ): Payment
+
     fun markAbandoned(
         orderId: String,
         failureReason: String?
-    )
-
-    fun linkEstimate(
-        orderId: String,
-        estimateId: Long
     )
 }

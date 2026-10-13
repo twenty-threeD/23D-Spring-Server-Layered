@@ -70,6 +70,12 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
     private fun sendAndCache(email: String,
                              redisKey: String): SendVerifyCodeResponse {
 
+        /**
+         * 발송은 로그인 없이 열려 있어 같은 주소로 메일을 퍼부을 수 있다.
+         * 수신 주소마다 재발송 간격을 둔다.
+         */
+        limitSend(redisKey)
+
         val verifyCode = makeRandomCode()
 
         val context = Context().apply {
@@ -93,8 +99,12 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
             javaMailSender.send(sendMessage)
         } catch (_: MessagingException) {
 
+            redisConfig.redisTemplate().delete(sendCooldownKey(redisKey))
+
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
         } catch (_: UnsupportedEncodingException) {
+
+            redisConfig.redisTemplate().delete(sendCooldownKey(redisKey))
 
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
         }
@@ -108,25 +118,92 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
                 TimeUnit.MINUTES
             )
 
+        redisConfig.redisTemplate().delete(attemptKey(redisKey))
+
         return SendVerifyCodeResponse.of("${email}로 인증코드를 전송했습니다.")
     }
 
+    /**
+     * 틀린 코드를 무제한으로 받으면 TTL 안에 대입해 볼 수 있다.
+     * 비교보다 먼저 횟수를 올려야 동시에 몰린 요청도 한도 이상 비교되지 않는다.
+     * 한도에 닿으면 인증코드를 폐기해 다시 발송받게 한다.
+     */
     private fun checkAndConsume(code: String,
                                 redisKey: String): CheckVerifyCodeResponse {
 
-        val savedCode = redisConfig.redisTemplate().opsForValue().get(redisKey)
+        val redisTemplate = redisConfig.redisTemplate()
+        val savedCode = redisTemplate.opsForValue().get(redisKey)
+            ?: throw ApplicationException(EmailException.EMAIL_CANNOT_VERIFY)
 
-        if (savedCode == code) {
+        val attempts = redisTemplate.opsForValue().increment(attemptKey(redisKey))
+            ?: throw ApplicationException(EmailException.EMAIL_CANNOT_VERIFY)
 
-            redisConfig.redisTemplate().delete(redisKey)
+        if (attempts == 1L) {
 
-            return CheckVerifyCodeResponse.of("이메일이 인증되었습니다.")
+            redisTemplate.expire(
+                attemptKey(redisKey),
+                3,
+                TimeUnit.MINUTES
+            )
         }
 
-        throw ApplicationException(EmailException.EMAIL_CANNOT_VERIFY)
+        if (attempts > MAX_VERIFY_ATTEMPTS) {
+
+            redisTemplate.delete(
+                listOf(
+                    redisKey,
+                    attemptKey(redisKey)
+                )
+            )
+
+            throw ApplicationException(EmailException.EMAIL_VERIFY_ATTEMPTS_EXCEEDED)
+        }
+
+        if (savedCode != code) {
+
+            throw ApplicationException(EmailException.EMAIL_CANNOT_VERIFY)
+        }
+
+        redisTemplate.delete(
+            listOf(
+                redisKey,
+                attemptKey(redisKey)
+            )
+        )
+
+        return CheckVerifyCodeResponse.of("이메일이 인증되었습니다.")
+    }
+
+    private fun limitSend(redisKey: String) {
+
+        val acquired = redisConfig.redisTemplate()
+            .opsForValue()
+            .setIfAbsent(
+                sendCooldownKey(redisKey),
+                "1",
+                SEND_COOLDOWN_SECONDS,
+                TimeUnit.SECONDS
+            )
+            ?: false
+
+        if (!acquired) {
+
+            throw ApplicationException(EmailException.EMAIL_SEND_TOO_FREQUENT)
+        }
     }
 
     private fun signupKey(email: String): String = "email:signup:$email"
 
     private fun changeEmailKey(email: String): String = "email:change:$email"
+
+    private fun attemptKey(redisKey: String): String = "$redisKey:attempts"
+
+    private fun sendCooldownKey(redisKey: String): String = "$redisKey:send:cooldown"
+
+    companion object {
+
+        private const val MAX_VERIFY_ATTEMPTS = 5L
+
+        private const val SEND_COOLDOWN_SECONDS = 10L
+    }
 }

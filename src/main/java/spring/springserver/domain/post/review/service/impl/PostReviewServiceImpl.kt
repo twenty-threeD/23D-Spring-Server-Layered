@@ -14,6 +14,8 @@ import spring.springserver.domain.contract.repository.ContractRepository
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.payment.entity.PaymentStatus
+import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.review.data.request.CreatePostReviewRequest
@@ -21,6 +23,7 @@ import spring.springserver.domain.post.review.data.request.UpdatePostReviewReque
 import spring.springserver.domain.post.review.data.response.DeletedPostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewSummaryResponse
+import spring.springserver.domain.post.review.data.response.ReviewableContractResponse
 import spring.springserver.domain.post.review.entity.PostReview
 import spring.springserver.domain.post.review.exception.PostReviewStatusCode
 import spring.springserver.domain.post.review.repository.PostReviewRepository
@@ -37,6 +40,7 @@ class PostReviewServiceImpl(
     private val contractRepository: ContractRepository,
     private val postRepository: PostRepository,
     private val memberRepository: MemberRepository,
+    private val paymentRepository: PaymentRepository,
     private val profileService: ProfileService
 ): PostReviewService {
 
@@ -61,6 +65,8 @@ class PostReviewServiceImpl(
             contract,
             member
         )
+
+        validatePaidContract(contract)
 
         val content = createPostReviewRequest.content.trim()
 
@@ -97,6 +103,28 @@ class PostReviewServiceImpl(
         }
 
         return toResponse(postReview)
+    }
+
+    @Transactional(readOnly = true)
+    override fun viewReviewableContracts(
+        postId: Long
+    ): List<ReviewableContractResponse> {
+
+        val member = getCurrentMember()
+
+        val memberId = member.getId()
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 의뢰인 조건은 조회 조건(clientId)으로 걸러지고, 결제·리뷰 조건은
+         * createReview와 같은 함수로 판단해 작성 시 검증과 어긋나지 않게 한다.
+         */
+        return contractRepository.findAllByPostIdAndClientIdOrderByCreatedAtDesc(
+            postId,
+            memberId
+        )
+            .filter { contract -> isPaidByClient(contract) && !hasActiveReview(contract) }
+            .map { contract -> ReviewableContractResponse.of(contract) }
     }
 
     @Transactional(readOnly = true)
@@ -257,7 +285,7 @@ class PostReviewServiceImpl(
 
     /**
      * 리뷰는 계약의 의뢰인(갑)이 전문가(을)에게 남긴다. 전문가나 제3자가
-     * 쓰려고 하면 막는다. 계약 자체가 거래의 증거이므로 별도 거래 검증은 없다.
+     * 쓰려고 하면 막는다.
      */
     private fun validateClient(
         contract: Contract,
@@ -268,6 +296,53 @@ class PostReviewServiceImpl(
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_CLIENT_ONLY)
         }
+    }
+
+    /**
+     * 계약서는 한쪽 당사자가 혼자 만들 수 있으므로 계약 존재만으로는 거래의 증거가 되지
+     * 않는다. 해당 계약에 체인 기록까지 끝난 결제(CHAIN_RECORDED)가 있어야 리뷰를 허용한다.
+     *
+     * 결제는 계약 당사자 누구나 할 수 있으므로(전문가가 결제한 경우도 있다) 결제자가
+     * 의뢰인인지까지 확인해야 "의뢰인이 돈을 낸 거래"라는 의미가 된다.
+     */
+    private fun validatePaidContract(
+        contract: Contract
+    ) {
+
+        if (!isPaidByClient(contract)) {
+
+            throw ApplicationException(PostReviewStatusCode.REVIEW_PAYMENT_REQUIRED)
+        }
+    }
+
+    private fun isPaidByClient(
+        contract: Contract
+    ): Boolean {
+
+        val contractId = contract.getId()
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+        val clientId = contract.client.getId()
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+        return paymentRepository.existsByContractIdAndMemberIdAndStatus(
+            contractId,
+            clientId,
+            PaymentStatus.CHAIN_RECORDED
+        )
+    }
+
+    /**
+     * 삭제된 리뷰는 같은 계약으로 다시 쓸 수 있으므로(createReview의 rewrite) 활성 리뷰로 보지 않는다.
+     */
+    private fun hasActiveReview(
+        contract: Contract
+    ): Boolean {
+
+        val writtenReview = postReviewRepository.findByContract(contract)
+            ?: return false
+
+        return writtenReview.deletedAt == null
     }
 
     private fun validateReviewAuthor(
