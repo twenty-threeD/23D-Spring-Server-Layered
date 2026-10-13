@@ -334,6 +334,54 @@ class CallServiceImpl(
         )
     }
 
+    override fun endCallsOnDisconnect(
+        username: String
+    ) {
+
+        val member = callAccessSupport.getMemberByUsername(username)
+        val now = Instant.now()
+
+        callRepository.findAllByStatusInAndParticipant(
+            statuses = ACTIVE_STATUSES,
+            memberId = member.getId()!!
+        ).forEach { call ->
+
+            val signal = when {
+
+                call.status == CallStatus.ACCEPTED -> {
+
+                    call.end(
+                        at = now,
+                        memberId = member.getId()
+                    )
+
+                    CallSignalType.ENDED
+                }
+
+                call.isCaller(member.getId()) -> {
+
+                    call.cancel(
+                        at = now,
+                        memberId = member.getId()
+                    )
+
+                    CallSignalType.CANCELED
+                }
+
+                else -> null
+            }
+
+            signal?.let {
+
+                publish(
+                    call = call,
+                    signal = it,
+                    fromUsername = username
+                )
+            }
+        }
+    }
+
     private fun toSessionResponse(
         call: Call,
         memberId: Long?,
