@@ -129,10 +129,13 @@ class ReviewAnalysisClient(
 
         /**
          * 키가 없으면 어차피 401이 돌아온다. 외부 호출과 에러 로그를 아끼려고 먼저 끊는다.
+         *
+         * 설정 누락은 기동 로그에서 이미 경고로 알렸다. 여기서 error로 남기면
+         * 키를 빠뜨린 배포에서 요청 수만큼 에러 알림이 쏟아지므로 warn으로 둔다.
          */
         if (!anthropicProperties.isConfigured()) {
 
-            log.error("ANTHROPIC_API_KEY가 없어 리뷰 분석을 건너뜁니다.")
+            log.warn("ANTHROPIC_API_KEY가 없어 리뷰 분석을 건너뜁니다.")
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_NOT_CONFIGURED)
         }
