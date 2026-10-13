@@ -19,8 +19,9 @@ class AgoraProperties {
 
     /**
      * 발급한 RTC 토큰의 유효 시간(초). 통화가 길어지면 클라이언트가 갱신 API로 재발급받는다.
+     * 통화가 끝나도 이미 받은 토큰은 회수할 수 없으므로 재사용할 수 있는 시간을 짧게 둔다.
      */
-    var tokenExpirationSeconds: Int = 3600
+    var tokenExpirationSeconds: Int = 600
 
     /**
      * 수신자가 응답하지 않은 통화를 부재중으로 정리하기까지의 시간(초).

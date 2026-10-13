@@ -4,6 +4,8 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.call.data.request.StartCallRequest
+import spring.springserver.domain.call.data.response.ActiveCallResponse
+import spring.springserver.domain.call.data.response.CallConnectionResponse
 import spring.springserver.domain.call.data.response.CallResponse
 import spring.springserver.domain.call.data.response.CallSessionResponse
 import spring.springserver.domain.call.data.response.CallSignalType
@@ -257,7 +259,7 @@ class CallServiceImpl(
             memberId = member.getId()
         )
 
-        if (call.status.isFinished()) {
+        if (!call.canJoinChannel(member.getId())) {
 
             throw ApplicationException(CallStatusCode.CALL_INVALID_STATUS)
         }
@@ -319,7 +321,7 @@ class CallServiceImpl(
     @Transactional(readOnly = true)
     override fun getActiveCall(
         username: String
-    ): CallSessionResponse? {
+    ): ActiveCallResponse? {
 
         val member = callAccessSupport.getMemberByUsername(username)
 
@@ -330,14 +332,27 @@ class CallServiceImpl(
             .firstOrNull()
             ?: return null
 
-        return CallSessionResponse.of(
-            call = call,
-            memberId = member.getId(),
-            agoraTokenResponse = agoraTokenService.issueRtcToken(
+        val connection = if (call.canJoinChannel(member.getId())) {
+
+            CallConnectionResponse.of(
                 channelName = call.channelName,
-                uid = call.cameraUidOf(member.getId())
+                uid = call.cameraUidOf(member.getId()),
+                agoraTokenResponse = agoraTokenService.issueRtcToken(
+                    channelName = call.channelName,
+                    uid = call.cameraUidOf(member.getId())
+                )
+            )
+        } else {
+
+            null
+        }
+
+        return ActiveCallResponse.of(
+            call = CallResponse.of(
+                call,
+                callAccessSupport.getImageUrls(call)
             ),
-            imageUrls = callAccessSupport.getImageUrls(call)
+            connection = connection
         )
     }
 
