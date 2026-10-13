@@ -22,7 +22,17 @@ class Payment(
     @Column(name = "room_id")
     private val roomId: Long? = null,
     @Column(name = "contract_id")
-    private val contractId: Long? = null
+    private val contractId: Long? = null,
+    /**
+     * 결제 금액에서 떼는 플랫폼 수수료. 수수료 정책이 생기기 전의 결제는 null이다.
+     */
+    @Column(name = "fee_amount")
+    private val feeAmount: Long? = null,
+    /**
+     * 전문가에게 정산될 금액(결제 금액 - 수수료). 수수료 정책이 생기기 전의 결제는 null이다.
+     */
+    @Column(name = "settlement_amount")
+    private val settlementAmount: Long? = null
 ) {
 
     @Id
@@ -63,6 +73,8 @@ class Payment(
     fun getMemberId() = memberId
     fun getContractUrl() = contractUrl
     fun getContractId() = contractId
+    fun getFeeAmount() = feeAmount
+    fun getSettlementAmount() = settlementAmount
     fun getOrderName() = orderName
     fun getRoomId() = roomId
     fun getPaymentKey() = paymentKey

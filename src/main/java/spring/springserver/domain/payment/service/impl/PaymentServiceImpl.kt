@@ -126,7 +126,9 @@ class PaymentServiceImpl(
                 payment = tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId),
                 paymentHash = stored.getPaymentHash()
                     ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN),
-                blockchainTxHash = stored.getBlockchainTxHash()
+                blockchainTxHash = stored.getBlockchainTxHash(),
+                feeAmount = stored.getFeeAmount(),
+                settlementAmount = stored.getSettlementAmount()
             )
         }
 
@@ -187,7 +189,9 @@ class PaymentServiceImpl(
         return ConfirmPaymentResponse.of(
             payment = response,
             paymentHash = hash,
-            blockchainTxHash = resolvedTxHash
+            blockchainTxHash = resolvedTxHash,
+            feeAmount = payment.getFeeAmount(),
+            settlementAmount = payment.getSettlementAmount()
         )
     }
 
@@ -456,6 +460,26 @@ class PaymentServiceImpl(
         }
 
         /**
+         * 환불 때 수수료는 돌려주지 않는다. 환불 가능 금액은 토스에 남은 잔액에서 수수료를 뺀 값이고,
+         * 금액 없이 요청하면 그 전부를 돌려준다. 잔액은 앞선 부분 환불을 반영하려고 토스에서 다시 읽는다.
+         */
+        val refundableAmount = calculateRefundableAmount(stored)
+
+        if (refundableAmount <= 0) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_NOTHING_TO_REFUND)
+        }
+
+        val requestedAmount = cancelPaymentRequest.cancelAmount
+
+        if (requestedAmount != null && requestedAmount > refundableAmount) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED)
+        }
+
+        val refundRequest = cancelPaymentRequest.copy(cancelAmount = requestedAmount ?: refundableAmount)
+
+        /**
          * 전액 취소는 결제당 한 번뿐이라 서버가 멱등키를 정할 수 있다.
          * 토스 취소는 끝났는데 응답을 못 받아 다시 요청해도 토스가 같은 결과를 돌려준다.
          * 부분 취소는 같은 금액을 정상적으로 여러 번 할 수 있어 클라이언트 멱등키에 맡긴다.
@@ -469,7 +493,7 @@ class PaymentServiceImpl(
 
         val response = tossPaymentsClient.cancel(
             paymentKey,
-            cancelPaymentRequest,
+            refundRequest,
             effectiveIdempotencyKey
         )
 
@@ -481,7 +505,8 @@ class PaymentServiceImpl(
 
             val payment = paymentRecordService.markCanceled(
                 paymentKey,
-                response.status
+                response.status,
+                response.balanceAmount
             )
 
             cancelTradeIfFullyCanceled(payment)
@@ -506,6 +531,16 @@ class PaymentServiceImpl(
         }
 
         return response
+    }
+
+    private fun calculateRefundableAmount(
+        payment: Payment
+    ): Long {
+
+        val balanceAmount = tossPaymentsClient.findByPaymentKey(payment.getPaymentKey()!!).balanceAmount
+            ?: payment.getAmount()
+
+        return balanceAmount - (payment.getFeeAmount() ?: 0L)
     }
 
     /**

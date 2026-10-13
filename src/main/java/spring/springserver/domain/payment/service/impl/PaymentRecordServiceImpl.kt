@@ -9,6 +9,7 @@ import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
+import spring.springserver.domain.payment.policy.PaymentFeePolicy
 import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -34,7 +35,9 @@ class PaymentRecordServiceImpl(
             contractUrl = contractUrl,
             orderName = preparePaymentRequest.orderName,
             roomId = preparePaymentRequest.roomId,
-            contractId = preparePaymentRequest.contractId
+            contractId = preparePaymentRequest.contractId,
+            feeAmount = PaymentFeePolicy.calculateFee(preparePaymentRequest.amount),
+            settlementAmount = PaymentFeePolicy.calculateSettlement(preparePaymentRequest.amount)
         )
 
         try {
@@ -146,15 +149,18 @@ class PaymentRecordServiceImpl(
 
     override fun markCanceled(
         paymentKey: String,
-        tossStatus: String?
+        tossStatus: String?,
+        balanceAmount: Long?
     ): Payment {
 
         val payment = findByPaymentKey(paymentKey)
+        val feeAmount = payment.getFeeAmount() ?: 0L
+        val onlyFeeRemains = balanceAmount != null && balanceAmount <= feeAmount
 
         when (tossStatus) {
 
             TOSS_STATUS_CANCELED -> payment.markCanceled()
-            TOSS_STATUS_PARTIAL_CANCELED -> payment.markPartialCanceled()
+            TOSS_STATUS_PARTIAL_CANCELED -> if (onlyFeeRemains) payment.markCanceled() else payment.markPartialCanceled()
             /**
              * 이 시점은 토스 취소가 이미 끝난 뒤라 예외를 던지면 환불된 사용자가 실패 응답을 받는다.
              * 상태는 그대로 두고 로그로 남겨 수동으로 확인한다.
