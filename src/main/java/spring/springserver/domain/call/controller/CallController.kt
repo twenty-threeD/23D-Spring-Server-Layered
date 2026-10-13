@@ -143,6 +143,18 @@ class CallController(
             )
         )
 
+    /**
+     * 내가 참여 중인 진행 중 통화. 새로고침 후 통화 화면과 채널 접속을 복구할 때 쓴다.
+     * 없으면 data가 null이다.
+     */
+    @GetMapping("/active")
+    fun getActiveCall(
+        principal: Principal
+    ): BaseResponse<CallSessionResponse?> =
+        BaseResponse.ok(
+            callService.getActiveCall(username = principal.name)
+        )
+
     @GetMapping("/rooms/{roomId}")
     fun getRoomCalls(
         @PathVariable roomId: Long,

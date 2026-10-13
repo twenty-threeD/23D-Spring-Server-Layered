@@ -309,6 +309,31 @@ class CallServiceImpl(
             }
     }
 
+    @Transactional(readOnly = true)
+    override fun getActiveCall(
+        username: String
+    ): CallSessionResponse? {
+
+        val member = callAccessSupport.getMemberByUsername(username)
+
+        val call = callRepository.findAllByStatusInAndParticipant(
+            statuses = ACTIVE_STATUSES,
+            memberId = member.getId()!!
+        )
+            .firstOrNull()
+            ?: return null
+
+        return CallSessionResponse.of(
+            call = call,
+            memberId = member.getId(),
+            agoraTokenResponse = agoraTokenService.issueRtcToken(
+                channelName = call.channelName,
+                uid = call.cameraUidOf(member.getId())
+            ),
+            imageUrls = callAccessSupport.getImageUrls(call)
+        )
+    }
+
     private fun toSessionResponse(
         call: Call,
         memberId: Long?,
@@ -366,7 +391,7 @@ class CallServiceImpl(
     ) {
 
         val hasActiveCall = callRepository.existsByStatusInAndParticipantIn(
-            statuses = listOf(CallStatus.RINGING, CallStatus.ACCEPTED),
+            statuses = ACTIVE_STATUSES,
             memberIds = listOf(callerId, calleeId)
         )
 
@@ -400,5 +425,10 @@ class CallServiceImpl(
     companion object {
 
         private const val UID_COUNT = 4
+
+        private val ACTIVE_STATUSES = listOf(
+            CallStatus.RINGING,
+            CallStatus.ACCEPTED
+        )
     }
 }

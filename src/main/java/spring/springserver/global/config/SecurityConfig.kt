@@ -285,6 +285,7 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/call/*",
+                        "/api/call/active",
                         "/api/call/rooms/*"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
