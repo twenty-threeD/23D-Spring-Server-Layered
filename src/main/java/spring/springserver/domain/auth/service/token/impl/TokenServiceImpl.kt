@@ -218,6 +218,21 @@ class TokenServiceImpl(
         return redisTemplate.hasKey(REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken))
     }
 
+    override fun deleteTokensByUsername(
+        username: String
+    ) {
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        /**
+         * 쿠키를 지울 응답이 없는 경로에서 쓰므로 서버가 들고 있는 흔적만 지운다.
+         * 이미 발급된 accessToken은 원문을 모르면 거부 목록에 넣을 수 없어 만료까지 유효하다.
+         */
+        redisTemplate.delete("accessToken:$username")
+        refreshTokenRepository.deleteByMemberId(member.getId()!!)
+    }
+
     /**
      * 토큰이 만료되면 어차피 거부되므로 거부 목록은 accessToken 수명만큼만 남긴다.
      * 토큰 원문 대신 해시를 키로 써서 Redis에 토큰이 그대로 남지 않게 한다.

@@ -30,6 +30,14 @@ interface TokenService {
     )
 
     /**
+     * 요청·응답 없이 해당 회원의 저장된 세션을 모두 끊는다.
+     * 비밀번호 재설정처럼 로그인 상태가 아닌 경로에서 기존 refreshToken을 남기지 않기 위해 쓴다.
+     */
+    fun deleteTokensByUsername(
+        username: String
+    )
+
+    /**
      * 로그아웃 등으로 무효화된 accessToken인지 확인한다.
      * JWT는 만료 전까지 서명만으로 유효하므로 서버가 거부 목록을 따로 들고 있어야 한다.
      */
