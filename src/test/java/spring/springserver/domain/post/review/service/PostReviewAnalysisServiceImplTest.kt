@@ -236,6 +236,28 @@ class PostReviewAnalysisServiceImplTest {
         verify(reviewAnalysisClient, times(1)).analyze(any())
     }
 
+    /**
+     * GlobalExceptionHandler는 StatusCode의 HttpStatus를 그대로 응답에 붙이면서
+     * 본문은 BaseResponse.error로 내린다. 2xx를 쓰면 프론트가 성공으로 읽고 data를 뒤져
+     * 화면이 깨지므로, 실패 코드에 2xx가 섞이는 일을 막는다.
+     */
+    @Test
+    @DisplayName("리뷰 분석 실패 상태 코드는 2xx를 쓰지 않는다")
+    fun analysisFailureStatusCodesAreNotSuccessful() {
+
+        listOf(
+            PostReviewStatusCode.NOT_ENOUGH_REVIEWS_TO_ANALYZE,
+            PostReviewStatusCode.REVIEW_ANALYSIS_FAILED,
+            PostReviewStatusCode.REVIEW_ANALYSIS_IN_PROGRESS,
+            PostReviewStatusCode.REVIEW_ANALYSIS_NOT_CONFIGURED
+        ).forEach { statusCode ->
+
+            assertThat(statusCode.getHttpStatus().isError)
+                .`as`("%s", statusCode.getCode())
+                .isTrue()
+        }
+    }
+
     @Test
     @DisplayName("잠금을 못 잡으면 Claude를 호출하지 않고 저장본을 돌려준다")
     fun returnsSavedAnalysisWhenLockIsHeld() {

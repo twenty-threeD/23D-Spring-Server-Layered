@@ -9,6 +9,7 @@ import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.OutputConfig
 import com.anthropic.models.messages.StopReason
 import com.fasterxml.jackson.databind.ObjectMapper
+import jakarta.annotation.PreDestroy
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import spring.springserver.domain.post.review.entity.PostReview
@@ -125,6 +126,16 @@ class ReviewAnalysisClient(
     fun analyze(
         postReviews: List<PostReview>
     ): ReviewAnalysisResult {
+
+        /**
+         * 키가 없으면 어차피 401이 돌아온다. 외부 호출과 에러 로그를 아끼려고 먼저 끊는다.
+         */
+        if (!anthropicProperties.isConfigured()) {
+
+            log.error("ANTHROPIC_API_KEY가 없어 리뷰 분석을 건너뜁니다.")
+
+            throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_NOT_CONFIGURED)
+        }
 
         val params = MessageCreateParams.builder()
             .model(anthropicProperties.model)
@@ -262,6 +273,20 @@ class ReviewAnalysisClient(
             summary.take(MAX_SUMMARY_LENGTH),
             keywords
         )
+    }
+
+    /**
+     * OkHttp 커넥션 풀과 유휴 스레드를 쥐고 있어 종료 시 정리한다.
+     */
+    @PreDestroy
+    fun close() {
+
+        runCatching {
+            anthropicClient.close()
+        }.onFailure { throwable ->
+
+            log.warn("Anthropic 클라이언트 종료 실패", throwable)
+        }
     }
 
     /**

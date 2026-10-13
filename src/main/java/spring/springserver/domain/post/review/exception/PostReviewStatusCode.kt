@@ -17,7 +17,12 @@ enum class PostReviewStatusCode(
     FORBIDDEN_POST_REVIEW_ACCESS("FORBIDDEN_POST_REVIEW_ACCESS", "본인이 작성한 리뷰만 수정 또는 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
     NOT_ENOUGH_REVIEWS_TO_ANALYZE("NOT_ENOUGH_REVIEWS_TO_ANALYZE", "분석할 리뷰가 충분하지 않습니다.", HttpStatus.BAD_REQUEST),
     REVIEW_ANALYSIS_FAILED("REVIEW_ANALYSIS_FAILED", "리뷰 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.BAD_GATEWAY),
-    REVIEW_ANALYSIS_IN_PROGRESS("REVIEW_ANALYSIS_IN_PROGRESS", "리뷰를 분석하고 있습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.ACCEPTED);
+    /**
+     * 202로 내리면 BaseResponse.error 본문에 2xx가 붙어 프론트가 성공으로 읽는다.
+     * 재시도하면 풀리는 일시적 충돌이라 409로 내린다.
+     */
+    REVIEW_ANALYSIS_IN_PROGRESS("REVIEW_ANALYSIS_IN_PROGRESS", "리뷰를 분석하고 있습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.CONFLICT),
+    REVIEW_ANALYSIS_NOT_CONFIGURED("REVIEW_ANALYSIS_NOT_CONFIGURED", "리뷰 분석 기능이 설정되지 않았습니다.", HttpStatus.SERVICE_UNAVAILABLE);
 
     override fun getCode() = code
     override fun getMessage() = message
