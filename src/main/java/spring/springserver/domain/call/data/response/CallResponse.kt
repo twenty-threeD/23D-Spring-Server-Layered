@@ -26,8 +26,12 @@ data class CallResponse(
 
     companion object {
 
+        /**
+         * [imageUrls]는 회원 id → 프로필 이미지. 두 참여자를 한 번에 조회해 넘긴다.
+         */
         fun of(
-            call: Call
+            call: Call,
+            imageUrls: Map<Long, String?>
         ): CallResponse =
             CallResponse(
                 callId = call.getId(),
@@ -36,11 +40,13 @@ data class CallResponse(
                 status = call.status,
                 caller = CallParticipantResponse.of(
                     call = call,
-                    member = call.caller
+                    member = call.caller,
+                    imageUrl = call.caller.getId()?.let { imageUrls[it] }
                 ),
                 callee = CallParticipantResponse.of(
                     call = call,
-                    member = call.callee
+                    member = call.callee,
+                    imageUrl = call.callee.getId()?.let { imageUrls[it] }
                 ),
                 createdAt = call.getCreatedAt(),
                 startedAt = call.startedAt,

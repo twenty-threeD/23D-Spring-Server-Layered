@@ -23,10 +23,14 @@ data class ScreenShareTokenResponse(
         fun of(
             call: Call,
             memberId: Long?,
-            agoraTokenResponse: AgoraTokenResponse
+            agoraTokenResponse: AgoraTokenResponse,
+            imageUrls: Map<Long, String?>
         ): ScreenShareTokenResponse =
             ScreenShareTokenResponse(
-                call = CallResponse.of(call),
+                call = CallResponse.of(
+                    call,
+                    imageUrls
+                ),
                 appId = agoraTokenResponse.appId,
                 channelName = call.channelName,
                 screenUid = call.screenUidOf(memberId),

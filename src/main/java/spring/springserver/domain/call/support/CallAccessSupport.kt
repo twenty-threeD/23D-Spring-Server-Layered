@@ -10,6 +10,7 @@ import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 
 /**
@@ -24,7 +25,8 @@ class CallAccessSupport(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val chatService: ChatService,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val profileService: ProfileService
 ) {
 
     fun getMemberByUsername(
@@ -89,4 +91,17 @@ class CallAccessSupport(
             .firstOrNull { it.member.getId() != memberId }
             ?.member
             ?: throw ApplicationException(CallStatusCode.CALL_ROOM_NOT_FOUND)
+
+    /**
+     * 통화 응답에 실을 두 참여자의 프로필 이미지를 한 번의 조회로 가져온다.
+     */
+    fun getImageUrls(
+        call: Call
+    ): Map<Long, String?> =
+        profileService.getImageUrlsByMemberIds(
+            listOfNotNull(
+                call.caller.getId(),
+                call.callee.getId()
+            )
+        )
 }

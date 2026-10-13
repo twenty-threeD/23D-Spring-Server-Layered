@@ -84,7 +84,8 @@ class CallMediaServiceImpl(
         return ScreenShareTokenResponse.of(
             call = call,
             memberId = member.getId(),
-            agoraTokenResponse = agoraTokenResponse
+            agoraTokenResponse = agoraTokenResponse,
+            imageUrls = callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -117,7 +118,10 @@ class CallMediaServiceImpl(
         fromUsername: String?
     ): CallResponse {
 
-        val callResponse = CallResponse.of(call)
+        val callResponse = CallResponse.of(
+            call,
+            callAccessSupport.getImageUrls(call)
+        )
 
         eventPublisher.publishEvent(
             CallSignalEvent.of(
