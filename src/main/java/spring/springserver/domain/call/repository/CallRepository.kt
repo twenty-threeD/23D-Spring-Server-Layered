@@ -116,4 +116,23 @@ interface CallRepository : JpaRepository<Call, Long> {
         @Param("statuses") statuses: Collection<CallStatus>,
         @Param("memberId") memberId: Long
     ): List<Call>
+
+    /**
+     * 잠그기 전에 대상만 고르는 용도라 id만 가져온다.
+     * 엔티티를 먼저 읽어 두면 같은 영속성 컨텍스트에서 [findByIdForUpdate]가
+     * 행은 잠그되 이미 올라온 오래된 상태를 그대로 돌려준다.
+     */
+    @Query(
+        """
+            select c.id
+            from Call c
+            where c.status in :statuses
+              and (c.caller.id = :memberId or c.callee.id = :memberId)
+            order by c.id desc
+            """
+    )
+    fun findIdsByStatusInAndParticipant(
+        @Param("statuses") statuses: Collection<CallStatus>,
+        @Param("memberId") memberId: Long
+    ): List<Long>
 }

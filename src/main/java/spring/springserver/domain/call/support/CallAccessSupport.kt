@@ -97,9 +97,8 @@ class CallAccessSupport(
         memberIds.distinct().sorted().forEach { memberId ->
 
             jdbcTemplate.queryForList(
-                "select pg_advisory_xact_lock(?, ?)",
-                CALL_LOCK_NAMESPACE,
-                memberId.toInt()
+                "select pg_advisory_xact_lock(?)",
+                CALL_LOCK_NAMESPACE or memberId
             )
         }
     }
@@ -151,8 +150,9 @@ class CallAccessSupport(
     companion object {
 
         /**
-         * advisory lock 키의 앞자리. 다른 기능이 같은 회원 id로 잠금을 잡아도 겹치지 않게 구분한다.
+         * advisory lock 키의 상위 16비트. 다른 기능이 같은 회원 id로 잠금을 잡아도 겹치지 않게 구분한다.
+         * 하위 48비트에 회원 id를 그대로 넣으므로 int로 자를 때처럼 다른 회원과 키가 겹치지 않는다.
          */
-        private const val CALL_LOCK_NAMESPACE = 2301
+        private const val CALL_LOCK_NAMESPACE = 2301L shl 48
     }
 }

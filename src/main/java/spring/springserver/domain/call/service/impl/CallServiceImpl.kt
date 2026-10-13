@@ -348,15 +348,16 @@ class CallServiceImpl(
         val member = callAccessSupport.getMemberByUsername(username)
         val now = Instant.now()
 
-        callRepository.findAllByStatusInAndParticipant(
+        callRepository.findIdsByStatusInAndParticipant(
             statuses = ACTIVE_STATUSES,
             memberId = member.getId()!!
-        ).forEach { found ->
+        ).forEach { callId ->
 
             /**
              * 목록을 읽은 뒤 상대가 먼저 끊었을 수 있으므로 잠근 뒤 상태를 다시 본다.
+             * 목록은 id만 읽었으므로 여기서 처음 로드되는 엔티티가 잠금 이후의 최신 상태다.
              */
-            val call = callRepository.findByIdForUpdate(found.getId()!!)
+            val call = callRepository.findByIdForUpdate(callId)
                 ?: return@forEach
 
             val signal = when {
