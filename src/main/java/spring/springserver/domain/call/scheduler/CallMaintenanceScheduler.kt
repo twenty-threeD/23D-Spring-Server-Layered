@@ -1,16 +1,24 @@
 package spring.springserver.domain.call.scheduler
 
+import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import spring.springserver.domain.call.service.CallMaintenanceService
+import spring.springserver.domain.call.service.CallService
+import spring.springserver.domain.call.support.CallDisconnectTracker
 import spring.springserver.global.util.RedisLockExecutor
 import java.time.Duration
+import java.time.Instant
 
 @Component
 class CallMaintenanceScheduler(
     private val callMaintenanceService: CallMaintenanceService,
-    private val redisLockExecutor: RedisLockExecutor
+    private val redisLockExecutor: RedisLockExecutor,
+    private val callDisconnectTracker: CallDisconnectTracker,
+    private val callService: CallService
 ) {
+
+    private val log = LoggerFactory.getLogger(javaClass)
 
     /**
      * 10초마다 방치된 통화를 정리한다.
@@ -28,6 +36,27 @@ class CallMaintenanceScheduler(
         ) {
 
             callMaintenanceService.expireStaleCalls()
+        }
+    }
+
+    /**
+     * 5초마다 연결이 끊긴 채 유예 시간이 지난 회원의 통화를 정리한다.
+     *
+     * 세션 기록이 인스턴스 메모리에 있으므로 잠금 없이 인스턴스마다 자기 기록만 처리한다.
+     * 한 회원 처리가 실패해도 나머지는 계속한다.
+     */
+    @Scheduled(fixedDelay = 5_000)
+    fun endCallsOfDisconnectedMembers() {
+
+        callDisconnectTracker.drainExpired(Instant.now()).forEach { username ->
+
+            runCatching {
+
+                callService.endCallsOnDisconnect(username)
+            }.onFailure { exception ->
+
+                log.warn("연결이 끊긴 회원의 통화를 정리하지 못했습니다. username = {}", username, exception)
+            }
         }
     }
 
