@@ -126,7 +126,9 @@ class PaymentServiceImpl(
                 payment = tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId),
                 paymentHash = stored.getPaymentHash()
                     ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN),
-                blockchainTxHash = stored.getBlockchainTxHash()
+                blockchainTxHash = stored.getBlockchainTxHash(),
+                feeAmount = stored.getFeeAmount(),
+                settlementAmount = stored.getSettlementAmount()
             )
         }
 
@@ -187,7 +189,9 @@ class PaymentServiceImpl(
         return ConfirmPaymentResponse.of(
             payment = response,
             paymentHash = hash,
-            blockchainTxHash = resolvedTxHash
+            blockchainTxHash = resolvedTxHash,
+            feeAmount = payment.getFeeAmount(),
+            settlementAmount = payment.getSettlementAmount()
         )
     }
 

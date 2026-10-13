@@ -9,6 +9,7 @@ import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
+import spring.springserver.domain.payment.policy.PaymentFeePolicy
 import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -34,7 +35,9 @@ class PaymentRecordServiceImpl(
             contractUrl = contractUrl,
             orderName = preparePaymentRequest.orderName,
             roomId = preparePaymentRequest.roomId,
-            contractId = preparePaymentRequest.contractId
+            contractId = preparePaymentRequest.contractId,
+            feeAmount = PaymentFeePolicy.calculateFee(preparePaymentRequest.amount),
+            settlementAmount = PaymentFeePolicy.calculateSettlement(preparePaymentRequest.amount)
         )
 
         try {
