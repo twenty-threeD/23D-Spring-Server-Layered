@@ -13,7 +13,9 @@ enum class PostReviewStatusCode(
     INVALID_POST_REVIEW_RATING("INVALID_POST_REVIEW_RATING", "별점은 1점 이상 5점 이하여야 합니다.", HttpStatus.BAD_REQUEST),
     REVIEW_CLIENT_ONLY("REVIEW_CLIENT_ONLY", "계약의 의뢰인(갑)만 리뷰를 남길 수 있습니다.", HttpStatus.FORBIDDEN),
     ALREADY_REVIEWED_CONTRACT("ALREADY_REVIEWED_CONTRACT", "이미 리뷰를 작성한 계약입니다.", HttpStatus.CONFLICT),
-    FORBIDDEN_POST_REVIEW_ACCESS("FORBIDDEN_POST_REVIEW_ACCESS", "본인이 작성한 리뷰만 수정 또는 삭제할 수 있습니다.", HttpStatus.FORBIDDEN);
+    FORBIDDEN_POST_REVIEW_ACCESS("FORBIDDEN_POST_REVIEW_ACCESS", "본인이 작성한 리뷰만 수정 또는 삭제할 수 있습니다.", HttpStatus.FORBIDDEN),
+    NOT_ENOUGH_REVIEWS_TO_ANALYZE("NOT_ENOUGH_REVIEWS_TO_ANALYZE", "분석할 리뷰가 충분하지 않습니다.", HttpStatus.BAD_REQUEST),
+    REVIEW_ANALYSIS_FAILED("REVIEW_ANALYSIS_FAILED", "리뷰 분석에 실패했습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.BAD_GATEWAY);
 
     override fun getCode() = code
     override fun getMessage() = message
