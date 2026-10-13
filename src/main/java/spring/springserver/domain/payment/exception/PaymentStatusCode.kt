@@ -88,6 +88,16 @@ enum class PaymentStatusCode(
         "PAYMENT_CANCEL_IN_PROGRESS",
         "이미 처리 중인 취소 요청이 있습니다. 잠시 후 다시 시도해주세요.",
         HttpStatus.CONFLICT
+    ),
+    PAYMENT_NOTHING_TO_REFUND(
+        "PAYMENT_NOTHING_TO_REFUND",
+        "수수료를 제외하고 환불할 수 있는 금액이 남아 있지 않습니다.",
+        HttpStatus.CONFLICT
+    ),
+    PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED(
+        "PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED",
+        "환불 요청 금액이 수수료를 제외한 환불 가능 금액보다 큽니다.",
+        HttpStatus.BAD_REQUEST
     );
 
     override fun getCode(): String = code

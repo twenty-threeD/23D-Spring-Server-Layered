@@ -149,15 +149,18 @@ class PaymentRecordServiceImpl(
 
     override fun markCanceled(
         paymentKey: String,
-        tossStatus: String?
+        tossStatus: String?,
+        balanceAmount: Long?
     ): Payment {
 
         val payment = findByPaymentKey(paymentKey)
+        val feeAmount = payment.getFeeAmount() ?: 0L
+        val onlyFeeRemains = balanceAmount != null && balanceAmount <= feeAmount
 
         when (tossStatus) {
 
             TOSS_STATUS_CANCELED -> payment.markCanceled()
-            TOSS_STATUS_PARTIAL_CANCELED -> payment.markPartialCanceled()
+            TOSS_STATUS_PARTIAL_CANCELED -> if (onlyFeeRemains) payment.markCanceled() else payment.markPartialCanceled()
             /**
              * 이 시점은 토스 취소가 이미 끝난 뒤라 예외를 던지면 환불된 사용자가 실패 응답을 받는다.
              * 상태는 그대로 두고 로그로 남겨 수동으로 확인한다.

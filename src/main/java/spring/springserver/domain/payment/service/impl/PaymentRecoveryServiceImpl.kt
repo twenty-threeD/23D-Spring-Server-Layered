@@ -124,7 +124,8 @@ class PaymentRecoveryServiceImpl(
                 val response = tossPaymentsClient.findByPaymentKey(paymentKey)
                 val payment = paymentRecordService.markCanceled(
                     paymentKey,
-                    response.status
+                    response.status,
+                    response.balanceAmount
                 )
 
                 /**
