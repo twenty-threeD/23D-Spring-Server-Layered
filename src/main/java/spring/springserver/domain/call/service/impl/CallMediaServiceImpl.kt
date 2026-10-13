@@ -39,7 +39,7 @@ class CallMediaServiceImpl(
             ?: throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -63,7 +63,7 @@ class CallMediaServiceImpl(
     ): ScreenShareTokenResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -95,7 +95,7 @@ class CallMediaServiceImpl(
     ): CallResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )

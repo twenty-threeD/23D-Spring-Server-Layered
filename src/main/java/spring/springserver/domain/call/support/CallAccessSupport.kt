@@ -1,5 +1,6 @@
 package spring.springserver.domain.call.support
 
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 import spring.springserver.domain.call.entity.Call
 import spring.springserver.domain.call.exception.CallStatusCode
@@ -26,7 +27,8 @@ class CallAccessSupport(
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
     private val chatService: ChatService,
     private val memberRepository: MemberRepository,
-    private val profileService: ProfileService
+    private val profileService: ProfileService,
+    private val jdbcTemplate: JdbcTemplate
 ) {
 
     fun getMemberByUsername(
@@ -59,6 +61,46 @@ class CallAccessSupport(
         }
 
         return call
+    }
+
+    /**
+     * 상태를 바꾸는 요청용. 통화 행을 잠근 뒤 참여자인지 확인한다.
+     * 조회 전용 트랜잭션에서는 쓰지 않는다(읽기 전용 트랜잭션에서 FOR UPDATE는 실패한다).
+     */
+    fun getParticipatingCallForUpdate(
+        callId: Long,
+        memberId: Long?
+    ): Call {
+
+        val call = callRepository.findByIdForUpdate(callId)
+            ?: throw ApplicationException(CallStatusCode.CALL_NOT_FOUND)
+
+        if (!call.isParticipant(memberId)) {
+
+            throw ApplicationException(CallStatusCode.CALL_FORBIDDEN)
+        }
+
+        return call
+    }
+
+    /**
+     * 새 통화를 만들기 전에 두 회원 단위로 트랜잭션 잠금을 잡는다.
+     *
+     * 진행 중 통화 확인 후 저장하는 사이에 A→B, B→A가 동시에 들어오면 둘 다 통과한다.
+     * 아직 없는 행은 행 잠금으로 막을 수 없어 PostgreSQL advisory lock을 쓴다.
+     * 교착을 피하려고 항상 회원 id 오름차순으로 잡고, 트랜잭션이 끝나면 자동으로 풀린다.
+     */
+    fun lockMembersForNewCall(
+        memberIds: Collection<Long>
+    ) {
+
+        memberIds.distinct().sorted().forEach { memberId ->
+
+            jdbcTemplate.queryForList(
+                "select pg_advisory_xact_lock(?)",
+                CALL_LOCK_NAMESPACE or memberId
+            )
+        }
     }
 
     /**
@@ -104,4 +146,13 @@ class CallAccessSupport(
                 call.callee.getId()
             )
         )
+
+    companion object {
+
+        /**
+         * advisory lock 키의 상위 16비트. 다른 기능이 같은 회원 id로 잠금을 잡아도 겹치지 않게 구분한다.
+         * 하위 48비트에 회원 id를 그대로 넣으므로 int로 자를 때처럼 다른 회원과 키가 겹치지 않는다.
+         */
+        private const val CALL_LOCK_NAMESPACE = 2301L shl 48
+    }
 }
