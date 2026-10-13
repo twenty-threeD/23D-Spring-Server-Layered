@@ -8,11 +8,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.request.UpdateTradeStatusRequest
+import spring.springserver.domain.chat.data.response.ChatCallLogResponse
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatMessageType
 import spring.springserver.domain.chat.data.response.ChatParticipantResponse
@@ -557,6 +559,77 @@ class ChatServiceImpl(
     }
 
     /**
+     * 통화 정리 트랜잭션이 커밋된 뒤(AFTER_COMMIT) 호출된다. 그 시점에는 끝난 트랜잭션이 스레드에
+     * 남아 있어 기본 전파로는 저장이 커밋되지 않으므로 새 트랜잭션을 연다.
+     */
+    @Transactional(
+        rollbackFor = [Exception::class],
+        propagation = Propagation.REQUIRES_NEW
+    )
+    override fun sendCallLogMessage(
+        roomId: Long,
+        senderUsername: String,
+        callLog: ChatCallLogResponse
+    ): ChatMessageResponse {
+
+        val senderParticipant = findParticipant(
+            roomId = roomId,
+            username = senderUsername
+        )
+            ?: throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
+
+        val room = senderParticipant.room
+        val sender = senderParticipant.member
+        val createdAt = Instant.now()
+        val preview = callLog.toPreview()
+
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = preview,
+                createdAt = createdAt,
+                messageType = ChatMessageType.CALL,
+                callPayload = objectMapper.writeValueAsString(callLog)
+            )
+        )
+
+        val response = ChatMessageResponse(
+            messageId = chatMessage.getId(),
+            roomId = roomId,
+            senderUsername = sender.username,
+            senderName = sender.name,
+            message = preview,
+            createdAt = createdAt,
+            attachedFileUrls = emptyList(),
+            type = ChatMessageType.CALL,
+            call = callLog
+        )
+
+        room.updateLastMessageMeta(
+            at = createdAt,
+            preview = preview
+        )
+
+        reactivateParticipantsOnNewMessage(
+            room = room,
+            senderId = sender.getId()
+        )
+
+        appendRoomMessage(
+            roomId = roomId,
+            message = response
+        )
+
+        messagingTemplate.convertAndSend(
+            "/topic/chat/rooms/$roomId",
+            response
+        )
+
+        return response
+    }
+
+    /**
      * 1:1 방만 만든다. 참여자를 두 명으로 제한하는 책임은 스키마가 아니라 이 서비스 계층에 있다.
      * 방과 참여자 row는 같은 트랜잭션에서 저장해 참여자 없는 방이 남지 않게 한다.
      */
@@ -865,9 +938,17 @@ class ChatServiceImpl(
             }.getOrNull()
         }
 
+        val call = chatMessage.callPayload?.let {
+
+            runCatching {
+                objectMapper.readValue(it, ChatCallLogResponse::class.java)
+            }.getOrNull()
+        }
+
         return ChatMessageResponse.of(
             chatMessage = chatMessage,
-            payment = payment
+            payment = payment,
+            call = call
         )
     }
 

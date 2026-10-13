@@ -3,6 +3,7 @@ package spring.springserver.domain.chat.service
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
 import spring.springserver.domain.chat.data.request.UpdateTradeStatusRequest
+import spring.springserver.domain.chat.data.response.ChatCallLogResponse
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatParticipantResponse
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
@@ -98,4 +99,13 @@ interface ChatService {
         professionalId: Long,
         postId: Long
     )
+
+    /**
+     * 통화가 끝나면 통화 도메인에서 호출해 발신자 이름으로 통화 기록 메시지를 남긴다.
+     */
+    fun sendCallLogMessage(
+        roomId: Long,
+        senderUsername: String,
+        callLog: ChatCallLogResponse
+    ): ChatMessageResponse
 }
