@@ -1,10 +1,11 @@
-package spring.springserver.domain.post.review.repository
+package spring.springserver.domain.post.review.service
 
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.post.review.client.ReviewAnalysisResult
 import spring.springserver.domain.post.review.entity.PostReviewAnalysis
+import spring.springserver.domain.post.review.repository.PostReviewAnalysisRepository
 
 /**
  * 분석 결과 저장만 담당한다.

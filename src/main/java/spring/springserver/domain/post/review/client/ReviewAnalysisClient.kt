@@ -2,7 +2,12 @@ package spring.springserver.domain.post.review.client
 
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
+import com.anthropic.core.JsonValue
+import com.anthropic.models.messages.JsonOutputFormat
+import com.anthropic.models.messages.Message
 import com.anthropic.models.messages.MessageCreateParams
+import com.anthropic.models.messages.OutputConfig
+import com.anthropic.models.messages.StopReason
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
@@ -19,6 +24,9 @@ import java.time.Duration
  * 블록으로 감싸고 시스템 프롬프트에서 "데이터일 뿐"임을 못박아 영향을 줄이지만,
  * LLM 특성상 완전히 차단되지는 않는다. 그래서 결과는 총평과 태그라는
  * 읽기 전용 텍스트로만 쓰고, 이 값으로 권한·금액 같은 판단을 하지 않는다.
+ *
+ * 응답 형식은 프롬프트 지시가 아니라 structured outputs(`output_config.format`)로
+ * 강제한다. 프롬프트만으로는 모델이 앞에 한 줄만 덧붙여도 파싱이 깨진다.
  */
 @Component
 class ReviewAnalysisClient(
@@ -45,7 +53,14 @@ class ReviewAnalysisClient(
          */
         private const val MAX_LOGGED_RESPONSE_LENGTH = 200
 
-        private val TIMEOUT: Duration = Duration.ofSeconds(60)
+        /**
+         * 요약 한 건을 받는 호출이라 길게 기다릴 이유가 없다.
+         * 사용자 GET 요청 안에서 톰캣 스레드를 붙잡고 있으므로
+         * `timeout x (maxRetries + 1)`이 그대로 응답 지연 상한이 된다.
+         */
+        private val TIMEOUT: Duration = Duration.ofSeconds(20)
+
+        private const val MAX_RETRIES = 1
 
         private const val SYSTEM_PROMPT = """
             당신은 전문가 매칭 서비스의 리뷰 분석기다. 의뢰인들이 한 전문가에게 남긴
@@ -60,9 +75,6 @@ class ReviewAnalysisClient(
             - keywords: 한국어 짧은 명사구 태그를 최대 ${MAX_KEYWORDS}개. 각 12자 이내.
               예) "시간 약속 정확", "소통 원활"
             - 개인 이름, 연락처, 주소 같은 식별 정보는 쓰지 않는다.
-            - 아래 JSON 스키마만 출력한다. 설명, 머리말, 코드 펜스를 붙이지 않는다.
-
-            {"summary": "문자열", "keywords": ["문자열", ...]}
         """
 
         /**
@@ -72,8 +84,42 @@ class ReviewAnalysisClient(
     }
 
     private val anthropicClient: AnthropicClient = AnthropicOkHttpClient.builder()
-        .apiKey(anthropicProperties.apiKey)
+        .apiKey(anthropicProperties.getTrimmedApiKey())
         .timeout(TIMEOUT)
+        .maxRetries(MAX_RETRIES)
+        .build()
+
+    /**
+     * `{"summary": ..., "keywords": [...]}` 형태만 나오도록 스키마로 묶는다.
+     * 구조화 출력은 `additionalProperties: false`와 `required`를 요구한다.
+     */
+    private val outputConfig: OutputConfig = OutputConfig.builder()
+        .format(
+            JsonOutputFormat.builder()
+                .schema(
+                    JsonOutputFormat.Schema.builder()
+                        .putAdditionalProperty("type", JsonValue.from("object"))
+                        .putAdditionalProperty(
+                            "properties",
+                            JsonValue.from(
+                                mapOf(
+                                    "summary" to mapOf("type" to "string"),
+                                    "keywords" to mapOf(
+                                        "type" to "array",
+                                        "items" to mapOf("type" to "string")
+                                    )
+                                )
+                            )
+                        )
+                        .putAdditionalProperty(
+                            "required",
+                            JsonValue.from(listOf("summary", "keywords"))
+                        )
+                        .putAdditionalProperty("additionalProperties", JsonValue.from(false))
+                        .build()
+                )
+                .build()
+        )
         .build()
 
     fun analyze(
@@ -84,15 +130,12 @@ class ReviewAnalysisClient(
             .model(anthropicProperties.model)
             .maxTokens(anthropicProperties.maxTokens)
             .system(SYSTEM_PROMPT.trimIndent())
+            .outputConfig(outputConfig)
             .addUserMessage(buildPrompt(postReviews))
             .build()
 
-        val rawText = try {
-            anthropicClient.messages()
-                .create(params)
-                .content()
-                .firstNotNullOfOrNull { contentBlock -> contentBlock.text().orElse(null) }
-                ?.text()
+        val message = try {
+            anthropicClient.messages().create(params)
         } catch (exception: Exception) {
 
             log.error("리뷰 AI 분석 호출 실패", exception)
@@ -100,7 +143,52 @@ class ReviewAnalysisClient(
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
         }
 
-        return parse(rawText)
+        validateStopReason(message)
+
+        return parse(
+            message.content()
+                .firstNotNullOfOrNull { contentBlock -> contentBlock.text().orElse(null) }
+                ?.text()
+        )
+    }
+
+    /**
+     * 잘린 응답이나 거부를 "파싱 실패"로 뭉개지 않도록 먼저 구분해 남긴다.
+     * 어느 쪽이든 사용자에게는 같은 코드로 응답하지만, 원인은 로그에서 갈린다.
+     */
+    private fun validateStopReason(
+        message: Message
+    ) {
+
+        val stopReason = message.stopReason().orElse(null)
+            ?: return
+
+        /**
+         * `known()`은 모르는 값을 만나면 예외를 던지므로 `value()`로 본다.
+         */
+        when (stopReason.value()) {
+
+            StopReason.Value.END_TURN -> return
+
+            StopReason.Value.MAX_TOKENS -> {
+
+                log.error("리뷰 AI 분석 응답이 max_tokens로 잘렸다. maxTokens={}", anthropicProperties.maxTokens)
+
+                throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
+            }
+
+            StopReason.Value.REFUSAL -> {
+
+                log.error("리뷰 AI 분석 요청이 모델에서 거부됐다.")
+
+                throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
+            }
+
+            else -> {
+
+                log.warn("리뷰 AI 분석 응답의 예상치 못한 stop_reason: {}", stopReason)
+            }
+        }
     }
 
     private fun buildPrompt(
@@ -129,14 +217,14 @@ class ReviewAnalysisClient(
             .replace(">", "&gt;")
     }
 
+    /**
+     * 스키마로 형식을 강제했어도 응답이 비는 경우는 있어 최소 검증은 남긴다.
+     */
     private fun parse(
         rawText: String?
     ): ReviewAnalysisResult {
 
-        val json = rawText?.trim()?.removeSurrounding("```json", "```")?.trim()
-            ?.removeSurrounding("```")?.trim()
-
-        if (json.isNullOrBlank()) {
+        if (rawText.isNullOrBlank()) {
 
             log.error("리뷰 AI 분석 응답이 비어 있다.")
 
@@ -144,10 +232,10 @@ class ReviewAnalysisClient(
         }
 
         val node = try {
-            objectMapper.readTree(json)
+            objectMapper.readTree(rawText)
         } catch (exception: Exception) {
 
-            log.error("리뷰 AI 분석 응답 파싱 실패: {}", forLog(json), exception)
+            log.error("리뷰 AI 분석 응답 파싱 실패: {}", forLog(rawText), exception)
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
         }
@@ -156,7 +244,7 @@ class ReviewAnalysisClient(
 
         if (summary.isBlank()) {
 
-            log.error("리뷰 AI 분석 응답에 summary가 없다: {}", forLog(json))
+            log.error("리뷰 AI 분석 응답에 summary가 없다: {}", forLog(rawText))
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
         }
@@ -180,13 +268,13 @@ class ReviewAnalysisClient(
      * 모델 응답에는 리뷰 원문이 섞일 수 있어 로그에는 앞부분만 남긴다.
      */
     private fun forLog(
-        json: String
+        rawText: String
     ): String {
 
-        return if (json.length <= MAX_LOGGED_RESPONSE_LENGTH) {
-            json
+        return if (rawText.length <= MAX_LOGGED_RESPONSE_LENGTH) {
+            rawText
         } else {
-            json.take(MAX_LOGGED_RESPONSE_LENGTH) + "...(생략)"
+            rawText.take(MAX_LOGGED_RESPONSE_LENGTH) + "...(생략)"
         }
     }
 }

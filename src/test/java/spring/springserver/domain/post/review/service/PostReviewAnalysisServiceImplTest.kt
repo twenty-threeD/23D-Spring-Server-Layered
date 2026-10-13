@@ -23,10 +23,11 @@ import spring.springserver.domain.post.review.entity.PostReview
 import spring.springserver.domain.post.review.entity.PostReviewAnalysis
 import spring.springserver.domain.post.review.exception.PostReviewStatusCode
 import spring.springserver.domain.post.review.repository.PostReviewAnalysisRepository
-import spring.springserver.domain.post.review.repository.PostReviewAnalysisWriter
 import spring.springserver.domain.post.review.repository.PostReviewRepository
 import spring.springserver.domain.post.review.service.impl.PostReviewAnalysisServiceImpl
 import spring.springserver.global.exception.exception.ApplicationException
+import spring.springserver.global.util.RedisLockExecutor
+import java.time.Duration
 import java.time.LocalDateTime
 
 /**
@@ -43,6 +44,7 @@ class PostReviewAnalysisServiceImplTest {
     private val memberRepository = mock<MemberRepository>()
     private val reviewAnalysisClient = mock<ReviewAnalysisClient>()
     private val postReviewAnalysisWriter = mock<PostReviewAnalysisWriter>()
+    private val redisLockExecutor = mock<RedisLockExecutor>()
 
     private lateinit var postReviewAnalysisService: PostReviewAnalysisServiceImpl
 
@@ -59,8 +61,11 @@ class PostReviewAnalysisServiceImplTest {
             postReviewRepository,
             memberRepository,
             reviewAnalysisClient,
-            postReviewAnalysisWriter
+            postReviewAnalysisWriter,
+            redisLockExecutor
         )
+
+        givenLockIsAcquired()
 
         whenever(memberRepository.findMemberById(MEMBER_ID)).thenReturn(mock<Member>())
     }
@@ -232,6 +237,108 @@ class PostReviewAnalysisServiceImplTest {
     }
 
     @Test
+    @DisplayName("잠금을 못 잡으면 Claude를 호출하지 않고 저장본을 돌려준다")
+    fun returnsSavedAnalysisWhenLockIsHeld() {
+
+        givenReviewCount(9L)
+
+        givenSavedAnalysis(
+            summary = "직전 총평",
+            keywords = listOf("태그"),
+            analyzedReviewCount = 5L,
+            analyzedAt = LocalDateTime.now().minusHours(3)
+        )
+
+        givenLockIsNotAcquired()
+
+        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+
+        assertThat(response.summary).isEqualTo("직전 총평")
+
+        verify(reviewAnalysisClient, never()).analyze(any())
+    }
+
+    @Test
+    @DisplayName("잠금도 못 잡고 저장본도 없으면 분석 중으로 응답한다")
+    fun rejectsWhenLockIsHeldAndNothingSaved() {
+
+        givenReviewCount(4L)
+
+        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+
+        givenLockIsNotAcquired()
+
+        assertThatThrownBy { postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID) }
+            .isInstanceOf(ApplicationException::class.java)
+            .hasFieldOrPropertyWithValue(
+                "statusCode",
+                PostReviewStatusCode.REVIEW_ANALYSIS_IN_PROGRESS
+            )
+
+        verify(reviewAnalysisClient, never()).analyze(any())
+    }
+
+    @Test
+    @DisplayName("잠금을 잡은 뒤 앞선 요청이 이미 분석을 끝냈으면 다시 호출하지 않는다")
+    fun rechecksSavedAnalysisAfterAcquiringLock() {
+
+        givenReviewCount(7L)
+
+        /**
+         * 잠금 획득 전에는 저장본이 없고, 획득 후 재확인에서는 최신 분석이 보이는 상황.
+         */
+        val freshAnalysis = mock<PostReviewAnalysis>()
+
+        whenever(freshAnalysis.summary).thenReturn("앞선 요청이 만든 총평")
+        whenever(freshAnalysis.keywords).thenReturn(mutableListOf("태그"))
+        whenever(freshAnalysis.analyzedReviewCount).thenReturn(7L)
+        whenever(freshAnalysis.getUpdatedAt()).thenReturn(LocalDateTime.now())
+
+        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID))
+            .thenReturn(null)
+            .thenReturn(freshAnalysis)
+
+        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+
+        assertThat(response.summary).isEqualTo("앞선 요청이 만든 총평")
+
+        verify(reviewAnalysisClient, never()).analyze(any())
+        verify(postReviewAnalysisWriter, never()).upsert(any(), any(), any())
+    }
+
+    @Test
+    @DisplayName("전문가 단위 키로 잠금을 건다")
+    fun locksPerReviewee() {
+
+        givenReviewCount(4L)
+
+        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+
+        givenReviews(4)
+
+        givenAnalysisResult(
+            summary = "총평",
+            keywords = emptyList()
+        )
+
+        givenWriterReturnsUpsertedAnalysis()
+
+        postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+
+        val keyCaptor = argumentCaptor<String>()
+        val ttlCaptor = argumentCaptor<Duration>()
+
+        verify(redisLockExecutor).runWithLock(
+            keyCaptor.capture(),
+            ttlCaptor.capture(),
+            any<() -> PostReviewAnalysis>()
+        )
+
+        assertThat(keyCaptor.firstValue).isEqualTo("lock:post-review-analysis:$MEMBER_ID")
+        assertThat(ttlCaptor.firstValue).isGreaterThanOrEqualTo(Duration.ofSeconds(40))
+    }
+
+    @Test
     @DisplayName("프롬프트에 넣는 리뷰는 상한 개수로 잘라서 조회한다")
     fun limitsReviewsSentToClaude() {
 
@@ -259,6 +366,36 @@ class PostReviewAnalysisServiceImplTest {
 
         assertThat(pageableCaptor.firstValue.pageSize)
             .isEqualTo(ReviewAnalysisClient.MAX_REVIEWS_IN_PROMPT)
+    }
+
+    /**
+     * 잠금을 잡은 요청만 분석한다. 잡지 못한 요청은 `runWithLock`이 null을 주므로
+     * 저장본이 있으면 그걸, 없으면 "분석 중" 응답으로 끝나야 한다.
+     */
+    private fun givenLockIsAcquired() {
+
+        whenever(
+            redisLockExecutor.runWithLock(
+                any(),
+                any(),
+                any<() -> PostReviewAnalysis>()
+            )
+        ).thenAnswer { invocation ->
+
+            @Suppress("UNCHECKED_CAST")
+            (invocation.arguments[2] as () -> PostReviewAnalysis).invoke()
+        }
+    }
+
+    private fun givenLockIsNotAcquired() {
+
+        whenever(
+            redisLockExecutor.runWithLock(
+                any(),
+                any(),
+                any<() -> PostReviewAnalysis>()
+            )
+        ).thenReturn(null)
     }
 
     private fun givenReviewCount(
