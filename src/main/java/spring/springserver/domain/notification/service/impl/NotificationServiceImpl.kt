@@ -146,6 +146,34 @@ class NotificationServiceImpl(
     }
 
     /**
+     * AFTER_COMMIT 리스너에서 호출되므로, 기본 전파(REQUIRED)로는 이미 끝난 트랜잭션에 참여해
+     * 저장이 커밋되지 않는다. 그래서 REQUIRES_NEW로 저장하고, 커밋된 뒤에 SSE로 보낸다.
+     */
+    override fun sendMissedCallNotification(
+        receiverUsername: String,
+        callerUsername: String,
+        message: String,
+        roomId: Long?
+    ): NotificationResponse {
+
+        val response = requiresNewTransaction.execute {
+
+            save(
+                type = NotificationType.CALL_MISSED,
+                receiverUsername = receiverUsername,
+                senderUsername = callerUsername,
+                message = message,
+                sentAt = Instant.now(),
+                roomId = roomId
+            )
+        }!!
+
+        dispatch(receiverUsername) { event(response) }
+
+        return response
+    }
+
+    /**
      * 이 메서드는 AFTER_COMMIT 리스너에서 호출된다. 그 시점에는 방금 커밋된 트랜잭션의
      * 리소스가 아직 스레드에 바인딩돼 있어, 기본 전파(REQUIRED)로는 새 트랜잭션이 열리지 않고
      * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 REQUIRES_NEW로 연다.
