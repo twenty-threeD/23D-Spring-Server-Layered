@@ -171,11 +171,13 @@ class SecurityConfig(
                     .hasRole("USER")
                     /**
                      * 아래 게시글 GET 공개 규칙보다 먼저 와야 한다.
-                     * 내 계약을 기준으로 답하는 API라 비로그인이면 401로 끝낸다.
+                     * reviewable은 내 계약을 기준으로 답하는 API라 비로그인이면 401로 끝낸다.
+                     * analysis는 유료 외부 API(Claude)를 태우므로 공개하지 않는다.
                      */
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/post/review/reviewable"
+                        "/api/post/review/reviewable",
+                        "/api/post/review/analysis"
                     ).authenticated()
                     .requestMatchers(
                         HttpMethod.GET,

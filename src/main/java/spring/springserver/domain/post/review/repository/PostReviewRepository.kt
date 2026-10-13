@@ -71,6 +71,23 @@ interface PostReviewRepository: JpaRepository<PostReview, Long> {
         pageable: Pageable
     ): Page<PostReview>
 
+    /**
+     * AI 분석에 넣을 리뷰 본문. 프롬프트 길이를 제한하려고 페이징으로 최근 것만 가져온다.
+     */
+    @Query(
+        """
+        select pr
+        from PostReview pr
+        where pr.reviewee.id = :revieweeId
+          and pr.deletedAt is null
+        order by pr.createdAt desc
+        """
+    )
+    fun findRecentActiveReviewsByRevieweeId(
+        @Param("revieweeId") revieweeId: Long,
+        pageable: Pageable
+    ): List<PostReview>
+
     @Query(
         """
         select avg(pr.rating)

@@ -97,6 +97,9 @@ dependencies {
     // Agora (RTC 토큰 발급)
     implementation("io.agora:authentication:2.1.3")
 
+    // Anthropic (Claude API, 리뷰 AI 분석)
+    implementation("com.anthropic:anthropic-java:2.34.0")
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

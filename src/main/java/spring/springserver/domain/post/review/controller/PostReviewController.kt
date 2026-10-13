@@ -8,16 +8,19 @@ import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.post.review.data.request.CreatePostReviewRequest
 import spring.springserver.domain.post.review.data.request.UpdatePostReviewRequest
 import spring.springserver.domain.post.review.data.response.DeletedPostReviewResponse
+import spring.springserver.domain.post.review.data.response.PostReviewAnalysisResponse
 import spring.springserver.domain.post.review.data.response.PostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewSummaryResponse
 import spring.springserver.domain.post.review.data.response.ReviewableContractResponse
+import spring.springserver.domain.post.review.service.PostReviewAnalysisService
 import spring.springserver.domain.post.review.service.PostReviewService
 import spring.springserver.global.data.BaseResponse
 
 @RestController
 @RequestMapping("/api/post/review")
 class PostReviewController(
-    private val postReviewService: PostReviewService
+    private val postReviewService: PostReviewService,
+    private val postReviewAnalysisService: PostReviewAnalysisService
 ) {
 
     @PostMapping
@@ -78,6 +81,17 @@ class PostReviewController(
     ): BaseResponse<PostReviewSummaryResponse> {
 
         return BaseResponse.ok(postReviewService.viewReviewSummary(memberId))
+    }
+
+    /**
+     * 전문가 한 명이 받은 리뷰의 AI 분석(한줄 총평·키워드).
+     */
+    @GetMapping("/analysis")
+    fun viewReviewAnalysis(
+        @RequestParam memberId: Long
+    ): BaseResponse<PostReviewAnalysisResponse> {
+
+        return BaseResponse.ok(postReviewAnalysisService.viewReviewAnalysis(memberId))
     }
 
     @PatchMapping
