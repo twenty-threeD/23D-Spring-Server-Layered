@@ -11,8 +11,8 @@ import spring.springserver.domain.post.review.data.response.DeletedPostReviewRes
 import spring.springserver.domain.post.review.data.response.PostReviewAnalysisResponse
 import spring.springserver.domain.post.review.data.response.PostReviewResponse
 import spring.springserver.domain.post.review.data.response.PostReviewSummaryResponse
-import spring.springserver.domain.post.review.service.PostReviewAnalysisService
 import spring.springserver.domain.post.review.data.response.ReviewableContractResponse
+import spring.springserver.domain.post.review.service.PostReviewAnalysisService
 import spring.springserver.domain.post.review.service.PostReviewService
 import spring.springserver.global.data.BaseResponse
 

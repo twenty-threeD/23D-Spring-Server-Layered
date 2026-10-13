@@ -8,6 +8,6 @@ import org.springframework.stereotype.Component
 class AnthropicProperties {
 
     lateinit var apiKey: String
-    var model: String = "claude-opus-5"
+    var model: String = "claude-haiku-4-5"
     var maxTokens: Long = 2048
 }

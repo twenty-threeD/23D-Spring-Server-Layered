@@ -10,6 +10,7 @@ import spring.springserver.domain.post.review.entity.PostReview
 import spring.springserver.domain.post.review.exception.PostReviewStatusCode
 import spring.springserver.global.config.AnthropicProperties
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.Duration
 
 /**
  * 리뷰 묶음을 Claude에 보내 한줄 총평과 키워드 태그를 받아온다.
@@ -30,6 +31,21 @@ class ReviewAnalysisClient(
         private val log = LoggerFactory.getLogger(ReviewAnalysisClient::class.java)
 
         private const val MAX_KEYWORDS = 5
+
+        /**
+         * 엔티티 컬럼이 50자라 그대로 넣으면 저장 단계에서 터진다.
+         * 프롬프트로도 12자를 요구하지만, 모델 응답은 믿지 않고 여기서 자른다.
+         */
+        private const val MAX_KEYWORD_LENGTH = 12
+
+        private const val MAX_SUMMARY_LENGTH = 500
+
+        /**
+         * 모델 응답에는 리뷰 원문 일부가 섞일 수 있어 로그에는 앞부분만 남긴다.
+         */
+        private const val MAX_LOGGED_RESPONSE_LENGTH = 200
+
+        private val TIMEOUT: Duration = Duration.ofSeconds(60)
 
         private const val SYSTEM_PROMPT = """
             당신은 전문가 매칭 서비스의 리뷰 분석기다. 의뢰인들이 한 전문가에게 남긴
@@ -57,6 +73,7 @@ class ReviewAnalysisClient(
 
     private val anthropicClient: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(anthropicProperties.apiKey)
+        .timeout(TIMEOUT)
         .build()
 
     fun analyze(
@@ -92,11 +109,24 @@ class ReviewAnalysisClient(
 
         val reviewBlocks = postReviews.withIndex().joinToString("\n") { (index, postReview) ->
             "<review index=\"${index + 1}\" rating=\"${postReview.rating}\">" +
-                postReview.content +
+                escape(postReview.content) +
                 "</review>"
         }
 
         return "<reviews>\n$reviewBlocks\n</reviews>"
+    }
+
+    /**
+     * 리뷰 본문에 꺾쇠가 들어 있으면 블록 경계가 무너져 본문이 지시문처럼 읽힐 수 있다.
+     */
+    private fun escape(
+        content: String
+    ): String {
+
+        return content
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
     }
 
     private fun parse(
@@ -117,7 +147,7 @@ class ReviewAnalysisClient(
             objectMapper.readTree(json)
         } catch (exception: Exception) {
 
-            log.error("리뷰 AI 분석 응답 파싱 실패: {}", json, exception)
+            log.error("리뷰 AI 분석 응답 파싱 실패: {}", forLog(json), exception)
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
         }
@@ -126,19 +156,37 @@ class ReviewAnalysisClient(
 
         if (summary.isBlank()) {
 
-            log.error("리뷰 AI 분석 응답에 summary가 없다: {}", json)
+            log.error("리뷰 AI 분석 응답에 summary가 없다: {}", forLog(json))
 
             throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_FAILED)
         }
 
         val keywords = node.path("keywords")
-            .mapNotNull { keywordNode -> keywordNode.asText("").trim().takeIf { it.isNotBlank() } }
+            .mapNotNull { keywordNode ->
+                keywordNode.asText("").trim()
+                    .take(MAX_KEYWORD_LENGTH)
+                    .takeIf { it.isNotBlank() }
+            }
             .distinct()
             .take(MAX_KEYWORDS)
 
         return ReviewAnalysisResult(
-            summary.take(500),
+            summary.take(MAX_SUMMARY_LENGTH),
             keywords
         )
+    }
+
+    /**
+     * 모델 응답에는 리뷰 원문이 섞일 수 있어 로그에는 앞부분만 남긴다.
+     */
+    private fun forLog(
+        json: String
+    ): String {
+
+        return if (json.length <= MAX_LOGGED_RESPONSE_LENGTH) {
+            json
+        } else {
+            json.take(MAX_LOGGED_RESPONSE_LENGTH) + "...(생략)"
+        }
     }
 }
