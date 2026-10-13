@@ -49,4 +49,12 @@ interface CallService {
         username: String,
         roomId: Long
     ): List<CallResponse>
+
+    /**
+     * 내가 참여 중인 진행 중 통화와 다시 접속할 토큰. 없으면 null이다.
+     * 새로고침이나 재접속 후 통화를 복구할 때 쓴다.
+     */
+    fun getActiveCall(
+        username: String
+    ): CallSessionResponse?
 }
