@@ -77,8 +77,7 @@ class ProfileServiceImpl(
         )
 
         profile.update(
-            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() }
-                ?: profile.imageUrl,
+            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() },
             sig = resolveSig(updateProfileRequest.sigCd, profile.sig),
             movableDistance = updateProfileRequest.movableDistance
                 ?: profile.movableDistance,
