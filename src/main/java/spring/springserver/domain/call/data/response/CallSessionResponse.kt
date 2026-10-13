@@ -24,10 +24,14 @@ data class CallSessionResponse(
         fun of(
             call: Call,
             memberId: Long?,
-            agoraTokenResponse: AgoraTokenResponse
+            agoraTokenResponse: AgoraTokenResponse,
+            imageUrls: Map<Long, String?>
         ): CallSessionResponse =
             CallSessionResponse(
-                call = CallResponse.of(call),
+                call = CallResponse.of(
+                    call,
+                    imageUrls
+                ),
                 appId = agoraTokenResponse.appId,
                 channelName = call.channelName,
                 uid = call.cameraUidOf(memberId),

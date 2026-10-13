@@ -261,7 +261,8 @@ class CallServiceImpl(
             agoraTokenResponse = agoraTokenService.issueRtcToken(
                 channelName = call.channelName,
                 uid = call.cameraUidOf(member.getId())
-            )
+            ),
+            imageUrls = callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -273,11 +274,14 @@ class CallServiceImpl(
 
         val member = callAccessSupport.getMemberByUsername(username)
 
+        val call = callAccessSupport.getParticipatingCall(
+            callId = callId,
+            memberId = member.getId()
+        )
+
         return CallResponse.of(
-            callAccessSupport.getParticipatingCall(
-                callId = callId,
-                memberId = member.getId()
-            )
+            call,
+            callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -296,7 +300,13 @@ class CallServiceImpl(
         }
 
         return callRepository.findAllByRoomId(roomId)
-            .map(CallResponse::of)
+            .map { call ->
+
+                CallResponse.of(
+                    call,
+                    callAccessSupport.getImageUrls(call)
+                )
+            }
     }
 
     private fun toSessionResponse(
@@ -320,7 +330,8 @@ class CallServiceImpl(
         return CallSessionResponse.of(
             call = call,
             memberId = memberId,
-            agoraTokenResponse = agoraTokenResponse
+            agoraTokenResponse = agoraTokenResponse,
+            imageUrls = callAccessSupport.getImageUrls(call)
         )
     }
 
@@ -333,7 +344,10 @@ class CallServiceImpl(
         fromUsername: String?
     ): CallResponse {
 
-        val callResponse = CallResponse.of(call)
+        val callResponse = CallResponse.of(
+            call,
+            callAccessSupport.getImageUrls(call)
+        )
 
         eventPublisher.publishEvent(
             CallSignalEvent.of(

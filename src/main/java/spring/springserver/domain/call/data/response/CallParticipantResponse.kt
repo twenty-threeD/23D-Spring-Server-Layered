@@ -12,6 +12,10 @@ import spring.springserver.domain.member.entity.Member
 data class CallParticipantResponse(
     val username: String,
     val name: String,
+    /**
+     * 프로필 이미지. 설정하지 않았으면 null이다.
+     */
+    val imageUrl: String?,
     val uid: Int,
     val screenUid: Int,
     val audioEnabled: Boolean,
@@ -23,7 +27,8 @@ data class CallParticipantResponse(
 
         fun of(
             call: Call,
-            member: Member
+            member: Member,
+            imageUrl: String?
         ): CallParticipantResponse {
 
             val memberId = member.getId()
@@ -32,6 +37,7 @@ data class CallParticipantResponse(
             return CallParticipantResponse(
                 username = member.username,
                 name = member.name,
+                imageUrl = imageUrl,
                 uid = call.cameraUidOf(memberId),
                 screenUid = call.screenUidOf(memberId),
                 audioEnabled = media.audioEnabled,
