@@ -229,6 +229,17 @@ class Call(
         screenSharingMemberId = null
     }
 
+    /**
+     * 이 회원이 지금 Agora 채널에 접속(토큰 발급)해도 되는지.
+     * 연결된 통화는 두 사람 모두, 받기 전 통화는 건 사람만 가능하다.
+     * 수신자가 수락 전에 접속하면 발신자가 이미 송출 중인 음성·영상을 들을 수 있다.
+     */
+    fun canJoinChannel(
+        memberId: Long?
+    ): Boolean =
+        status == CallStatus.ACCEPTED
+                || (status == CallStatus.RINGING && isCaller(memberId))
+
     fun isCaller(
         memberId: Long?
     ): Boolean = caller.getId() == memberId

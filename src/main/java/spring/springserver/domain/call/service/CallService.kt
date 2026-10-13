@@ -1,6 +1,7 @@
 package spring.springserver.domain.call.service
 
 import spring.springserver.domain.call.data.request.StartCallRequest
+import spring.springserver.domain.call.data.response.ActiveCallResponse
 import spring.springserver.domain.call.data.response.CallResponse
 import spring.springserver.domain.call.data.response.CallSessionResponse
 
@@ -51,12 +52,12 @@ interface CallService {
     ): List<CallResponse>
 
     /**
-     * 내가 참여 중인 진행 중 통화와 다시 접속할 토큰. 없으면 null이다.
-     * 새로고침이나 재접속 후 통화를 복구할 때 쓴다.
+     * 내가 참여 중인 진행 중 통화와 다시 접속할 정보. 없으면 null이다.
+     * 새로고침이나 재접속 후 통화를 복구할 때 쓴다. 수락 전 수신자에게는 접속 정보를 주지 않는다.
      */
     fun getActiveCall(
         username: String
-    ): CallSessionResponse?
+    ): ActiveCallResponse?
 
     /**
      * 연결이 끊긴 채 돌아오지 않은 회원의 진행 중 통화를 정리한다.

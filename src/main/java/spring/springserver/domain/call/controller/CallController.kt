@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import spring.springserver.domain.call.data.request.StartCallRequest
 import spring.springserver.domain.call.data.request.UpdateCallMediaRequest
+import spring.springserver.domain.call.data.response.ActiveCallResponse
 import spring.springserver.domain.call.data.response.CallResponse
 import spring.springserver.domain.call.data.response.CallSessionResponse
 import spring.springserver.domain.call.data.response.ScreenShareTokenResponse
@@ -150,7 +151,7 @@ class CallController(
     @GetMapping("/active")
     fun getActiveCall(
         principal: Principal
-    ): BaseResponse<CallSessionResponse?> =
+    ): BaseResponse<ActiveCallResponse?> =
         BaseResponse.ok(
             callService.getActiveCall(username = principal.name)
         )
