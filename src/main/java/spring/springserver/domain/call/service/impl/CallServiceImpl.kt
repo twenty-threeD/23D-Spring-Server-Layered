@@ -55,6 +55,13 @@ class CallServiceImpl(
             throw ApplicationException(CallStatusCode.CALL_SELF_NOT_ALLOWED)
         }
 
+        callAccessSupport.lockMembersForNewCall(
+            listOf(
+                caller.getId()!!,
+                callee.getId()!!
+            )
+        )
+
         ensureNoActiveCall(
             callerId = caller.getId()!!,
             calleeId = callee.getId()!!
@@ -90,7 +97,7 @@ class CallServiceImpl(
     ): CallSessionResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -119,7 +126,7 @@ class CallServiceImpl(
     ): CallResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -150,7 +157,7 @@ class CallServiceImpl(
     ): CallResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -187,7 +194,7 @@ class CallServiceImpl(
     ): CallResponse {
 
         val member = callAccessSupport.getMemberByUsername(username)
-        val call = callAccessSupport.getParticipatingCall(
+        val call = callAccessSupport.getParticipatingCallForUpdate(
             callId = callId,
             memberId = member.getId()
         )
@@ -344,7 +351,13 @@ class CallServiceImpl(
         callRepository.findAllByStatusInAndParticipant(
             statuses = ACTIVE_STATUSES,
             memberId = member.getId()!!
-        ).forEach { call ->
+        ).forEach { found ->
+
+            /**
+             * 목록을 읽은 뒤 상대가 먼저 끊었을 수 있으므로 잠근 뒤 상태를 다시 본다.
+             */
+            val call = callRepository.findByIdForUpdate(found.getId()!!)
+                ?: return@forEach
 
             val signal = when {
 
@@ -358,7 +371,7 @@ class CallServiceImpl(
                     CallSignalType.ENDED
                 }
 
-                call.isCaller(member.getId()) -> {
+                call.status == CallStatus.RINGING && call.isCaller(member.getId()) -> {
 
                     call.cancel(
                         at = now,
