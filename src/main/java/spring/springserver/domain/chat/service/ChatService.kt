@@ -61,6 +61,10 @@ interface ChatService {
         memberId: Long
     ): Boolean
 
+    fun isTradableRoom(
+        roomId: Long
+    ): Boolean
+
     fun sendPaymentMessage(
         roomId: Long,
         senderMemberId: Long,

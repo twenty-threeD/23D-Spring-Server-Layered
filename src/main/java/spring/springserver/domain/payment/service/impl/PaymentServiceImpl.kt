@@ -8,6 +8,7 @@ import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecorded
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
+import spring.springserver.domain.chat.exception.ChatStatusCode
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.contract.exception.ContractStatusCode
 import spring.springserver.domain.contract.service.ContractService
@@ -65,6 +66,11 @@ class PaymentServiceImpl(
             if (!participant) {
 
                 throw ApplicationException(PaymentStatusCode.PAYMENT_CHAT_ROOM_FORBIDDEN)
+            }
+
+            if (!chatService.isTradableRoom(roomId)) {
+
+                throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
             }
         }
 
