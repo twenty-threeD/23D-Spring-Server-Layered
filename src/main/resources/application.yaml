@@ -44,12 +44,17 @@ spring:
     refreshTokenExpiration: ${REFRESH_EXPIRATION}
 
   mail:
-    host: smtp.gmail.com
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
     username: ${EMAIL}
     password: ${EMAIL_PASSWORD}
     properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
+      mail.transport.protocol: smtp
+      mail.debug: ${MAIL_DEBUG:false}
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.ssl.trust: ${MAIL_SSL_TRUST:${MAIL_HOST:smtp.gmail.com}}
+      mail.smtp.ssl.protocols: ${MAIL_SSL_PROTOCOLS:TLSv1.3 TLSv1.2}
 
   data:
     redis:
