@@ -64,6 +64,8 @@ class CustomOAuthUserService(
         val email: String
         val name: String
         val nameAttributeKey: String
+        val providerId: String
+        val emailVerified: Boolean
 
         when (provider) {
 
@@ -83,6 +85,13 @@ class CustomOAuthUserService(
                 )
 
                 nameAttributeKey = "id"
+                providerId = attributes.getRequiredId("id")
+
+                /**
+                 * 카카오는 인증되지 않았거나 더 이상 유효하지 않은 이메일도 내려준다.
+                 */
+                emailVerified = kakaoAccount["is_email_verified"] == true
+                        && kakaoAccount["is_email_valid"] == true
             }
 
             Provider.GOOGLE -> {
@@ -95,6 +104,8 @@ class CustomOAuthUserService(
                 )
 
                 nameAttributeKey = "email"
+                providerId = attributes.getRequiredId("sub")
+                emailVerified = attributes["email_verified"] == true
             }
 
             Provider.NAVER -> {
@@ -113,32 +124,23 @@ class CustomOAuthUserService(
                     ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
 
                 nameAttributeKey = "id"
+                providerId = naverResponse.getRequiredId("id")
+
+                /**
+                 * 네이버는 인증 여부 값을 주지 않고, 내려주는 이메일은 네이버 계정에 등록된 연락처 이메일이다.
+                 */
+                emailVerified = true
             }
 
             else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
         }
 
-        /**
-         * 같은 이메일로 이미 가입된 계정이 있으면 가입 경로가 같을 때만 그 계정으로 로그인시킨다.
-         * 이 검사가 없으면 자체 가입(AUTH) 계정이나 다른 소셜로 만든 계정을
-         * 같은 이메일을 가진 소셜 계정으로 그대로 열어버린다.
-         */
-        val existingMember = memberRepository.findByEmail(email)
-            ?.also { member ->
-
-                /**
-                 * 탈퇴 회원도 행이 남아 있어 이 검사가 없으면 소셜 로그인으로 계정이 되살아난다.
-                 */
-                if (member.isDeleted()) {
-
-                    throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT)
-                }
-
-                if (member.provider != provider) {
-
-                    throw ApplicationException(AuthStatusCode.OAUTH_PROVIDER_MISMATCH)
-                }
-            }
+        val existingMember = findExistingMember(
+            provider = provider,
+            providerId = providerId,
+            email = email,
+            emailVerified = emailVerified
+        )
             ?.apply { update(name) }
 
         val member = memberRepository.save(
@@ -151,7 +153,7 @@ class CustomOAuthUserService(
                     password = null,
                     role = Role.USER,
                     provider = provider
-                )
+                ).apply { this.providerId = providerId }
         )
 
         if (existingMember == null) {
@@ -198,6 +200,80 @@ class CustomOAuthUserService(
         }
 
         return "$email-$suffix"
+    }
+
+    /**
+     * 기존 회원은 공급자 고유 id로 찾는다. 이메일은 공급자 쪽에서 바뀌거나 다른 계정에 재사용될 수 있다.
+     *
+     * 고유 id로 못 찾았을 때만 이메일로 찾는데, 이때는 공급자가 인증한 이메일이어야 한다.
+     * 인증되지 않은 이메일로 기존 계정에 연결되면 남의 계정으로 로그인하게 된다.
+     * 이메일로 찾은 계정은 같은 가입 경로이고 아직 고유 id가 없는 경우(이 컬럼 도입 전 가입자)에만 연결한다.
+     */
+    private fun findExistingMember(
+        provider: Provider,
+        providerId: String,
+        email: String,
+        emailVerified: Boolean
+    ): Member? {
+
+        memberRepository.findByProviderAndProviderId(
+            provider,
+            providerId
+        )?.let { member ->
+
+            /**
+             * 탈퇴 회원도 행이 남아 있어 이 검사가 없으면 소셜 로그인으로 계정이 되살아난다.
+             */
+            if (member.isDeleted()) {
+
+                throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT)
+            }
+
+            return member
+        }
+
+        if (!emailVerified) {
+
+            throw ApplicationException(AuthStatusCode.OAUTH_EMAIL_NOT_VERIFIED)
+        }
+
+        val member = memberRepository.findByEmail(email)
+            ?: return null
+
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT)
+        }
+
+        /**
+         * 같은 이메일로 이미 가입된 계정이 있으면 가입 경로가 같을 때만 연결한다.
+         * 이 검사가 없으면 자체 가입(AUTH) 계정이나 다른 소셜로 만든 계정을
+         * 같은 이메일을 가진 소셜 계정으로 그대로 열어버린다.
+         */
+        if (member.provider != provider) {
+
+            throw ApplicationException(AuthStatusCode.OAUTH_PROVIDER_MISMATCH)
+        }
+
+        /**
+         * 같은 공급자인데 다른 고유 id가 이미 연결돼 있으면, 공급자 쪽에서 이메일이 다른 계정으로 넘어간 경우다.
+         */
+        if (member.providerId != null) {
+
+            throw ApplicationException(AuthStatusCode.OAUTH_ACCOUNT_CONFLICT)
+        }
+
+        member.providerId = providerId
+
+        return member
+    }
+
+    private fun Map<*, *>.getRequiredId(
+        key: String
+    ): String {
+
+        return this[key]?.toString()?.takeIf { it.isNotBlank() }
+            ?: throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
     }
 
     private fun Map<*, *>.getRequiredEmail(): String {
