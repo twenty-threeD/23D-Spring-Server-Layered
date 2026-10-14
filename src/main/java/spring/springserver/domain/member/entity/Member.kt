@@ -7,6 +7,14 @@ import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
+@Table(
+    uniqueConstraints = [
+        UniqueConstraint(
+            name = "uk_member_provider_provider_id",
+            columnNames = ["provider", "provider_id"]
+        )
+    ]
+)
 class Member(
     @Column(unique = true)
     var username: String,
@@ -35,6 +43,14 @@ class Member(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
+
+    /**
+     * 소셜 공급자가 주는 회원 고유 id(카카오·네이버 `id`, 구글 `sub`). 자체 가입 회원은 null이다.
+     * 이메일은 공급자 쪽에서 바뀌거나 다른 계정에 재사용될 수 있어 계정 식별은 이 값으로 한다.
+     * 이 컬럼이 생기기 전 소셜 회원은 null이며, 다음 로그인 때 인증된 이메일로 찾아 연결된다.
+     */
+    @Column(name = "provider_id", length = 100)
+    var providerId: String? = null
 
     @Column(
         nullable = false,
