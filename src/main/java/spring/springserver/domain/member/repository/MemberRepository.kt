@@ -12,8 +12,13 @@ interface MemberRepository: JpaRepository<Member, Long> {
     fun findByUsername(
         username: String?
     ): Member?
+
+    /**
+     * 이메일은 대소문자를 구분하지 않는다. 소문자로 저장하기 전에 가입한 회원도 찾을 수 있도록 비교할 때 양쪽을 소문자로 맞춘다.
+     */
+    @Query("select m from Member m where lower(m.email) = lower(:email)")
     fun findByEmail(
-        email: String
+        @Param("email") email: String
     ): Member?
 
     fun findByPhone(
@@ -28,9 +33,12 @@ interface MemberRepository: JpaRepository<Member, Long> {
     fun existsByUsername(
         username: String
     ): Boolean
+
+    @Query("select count(m) > 0 from Member m where lower(m.email) = lower(:email)")
     fun existsByEmail(
-        email: String
+        @Param("email") email: String
     ): Boolean
+
     fun existsByPhone(
         phone: String
     ): Boolean
@@ -39,12 +47,12 @@ interface MemberRepository: JpaRepository<Member, Long> {
         """
             SELECT m.username 
             FROM Member m 
-            WHERE m.email = :email
+            WHERE lower(m.email) = lower(:email)
               AND m.deletedAt IS NULL
             """
     )
     fun findUsernameByEmail(
-        email: String
+        @Param("email") email: String
     ): String?
 
     /**

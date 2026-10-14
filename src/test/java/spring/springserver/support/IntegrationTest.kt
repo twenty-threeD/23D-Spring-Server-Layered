@@ -7,6 +7,7 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import redis.embedded.RedisServer
+import spring.springserver.domain.member.initializer.MemberEmailIndexRunner
 import spring.springserver.global.initializer.EnumCheckConstraintRunner
 import java.net.ServerSocket
 
@@ -20,7 +21,7 @@ import java.net.ServerSocket
  *
  * H2는 PostgreSQL이 아니므로 다음은 실제와 다르게 동작한다.
  * - pg_advisory_xact_lock, hashtext는 H2Functions의 빈 함수로 대신한다. 동시성 잠금은 이 테스트로 검증할 수 없다.
- * - EnumCheckConstraintRunner는 PostgreSQL 시스템 카탈로그를 읽으므로 목으로 바꿔 실행하지 않는다.
+ * - EnumCheckConstraintRunner는 PostgreSQL 시스템 카탈로그를, MemberEmailIndexRunner는 to_regclass를 쓰므로 목으로 바꿔 실행하지 않는다.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -29,6 +30,9 @@ abstract class IntegrationTest {
 
     @MockitoBean
     private lateinit var enumCheckConstraintRunner: EnumCheckConstraintRunner
+
+    @MockitoBean
+    private lateinit var memberEmailIndexRunner: MemberEmailIndexRunner
 
     companion object {
 

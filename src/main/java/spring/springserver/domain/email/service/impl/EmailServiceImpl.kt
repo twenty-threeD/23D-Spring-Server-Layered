@@ -351,9 +351,9 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         quotaKeys.forEach { quotaKey -> redisConfig.redisTemplate().opsForValue().decrement(quotaKey) }
     }
 
-    private fun signupKey(email: String): String = "email:signup:$email"
+    private fun signupKey(email: String): String = "email:signup:${email.trim().lowercase()}"
 
-    private fun changeEmailKey(email: String): String = "email:change:$email"
+    private fun changeEmailKey(email: String): String = "email:change:${email.trim().lowercase()}"
 
     private fun verifiedKey(email: String): String = "email:verified:${email.trim().lowercase()}"
 
