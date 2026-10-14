@@ -103,6 +103,11 @@ class JwtProvider(
         return getClaims(token = token)?.get("tokenType", String::class.java) != "accessToken"
     }
 
+    override fun getIssuedAt(token: String): Date? {
+
+        return getClaims(token)?.issuedAt
+    }
+
     private fun getClaims(token: String): Claims? {
 
         return Jwts.parser()
