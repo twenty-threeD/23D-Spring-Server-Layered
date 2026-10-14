@@ -22,15 +22,9 @@ class EmailController(
 ) {
 
     @PostMapping("/code/send")
-    fun sendVerifyCode(
-        @Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest,
-        httpServletRequest: HttpServletRequest
-    ): BaseResponse<SendVerifyCodeResponse> {
+    fun sendVerifyCode(@Valid @RequestBody sendVerifyCodeRequest: SendVerifyCodeRequest): BaseResponse<SendVerifyCodeResponse> {
 
-        return BaseResponse.ok(emailService.sendVerifyCode(
-            sendVerifyCodeRequest.email,
-            httpServletRequest.remoteAddr
-        ))
+        return BaseResponse.ok(emailService.sendVerifyCode(sendVerifyCodeRequest.email))
     }
 
     @PostMapping("/code/verify")
@@ -53,9 +47,6 @@ class EmailController(
             httpServletRequest
         )
 
-        return BaseResponse.ok(emailService.sendChangeEmailCode(
-            sendVerifyCodeRequest.email,
-            httpServletRequest.remoteAddr
-        ))
+        return BaseResponse.ok(emailService.sendChangeEmailCode(sendVerifyCodeRequest.email))
     }
 }

@@ -5,14 +5,12 @@ import spring.springserver.domain.email.data.response.SendVerifyCodeResponse
 
 interface EmailService {
 
-    fun sendVerifyCode(email: String,
-                       clientIp: String): SendVerifyCodeResponse
+    fun sendVerifyCode(email: String): SendVerifyCodeResponse
 
     fun checkVerifyCode(email: String,
                         code: String): CheckVerifyCodeResponse
 
-    fun sendChangeEmailCode(email: String,
-                            clientIp: String): SendVerifyCodeResponse
+    fun sendChangeEmailCode(email: String): SendVerifyCodeResponse
 
     fun checkChangeEmailCode(email: String,
                              code: String): CheckVerifyCodeResponse
