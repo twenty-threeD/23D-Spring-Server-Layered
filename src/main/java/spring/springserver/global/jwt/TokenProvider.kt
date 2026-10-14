@@ -3,6 +3,7 @@ package spring.springserver.global.jwt
 import jakarta.servlet.http.HttpServletRequest
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
 import spring.springserver.domain.member.entity.Role
+import java.util.Date
 
 interface TokenProvider {
 
@@ -19,4 +20,6 @@ interface TokenProvider {
     fun isNotValidToken(token: String): Boolean
 
     fun isNotAccessToken(token: String): Boolean
+
+    fun getIssuedAt(token: String): Date?
 }

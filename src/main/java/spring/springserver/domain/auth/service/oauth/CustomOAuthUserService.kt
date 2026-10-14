@@ -1,6 +1,7 @@
 package spring.springserver.domain.auth.service.oauth
 
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest
@@ -29,8 +30,17 @@ class CustomOAuthUserService(
     private val memberRepository: MemberRepository,
     private val keyService: KeyService,
     private val profileService: ProfileService,
-    private val eventPublisher: ApplicationEventPublisher
+    private val eventPublisher: ApplicationEventPublisher,
+    private val jdbcTemplate: JdbcTemplate
 ): DefaultOAuth2UserService() {
+
+    companion object {
+
+        /**
+         * advisory lock의 첫 번째 키. 다른 기능의 잠금과 키가 겹치지 않게 구분한다.
+         */
+        private const val SOCIAL_LOGIN_LOCK_NAMESPACE = 2302
+    }
 
     @Transactional(rollbackFor = [Exception::class])
     override fun loadUser(oAuth2UserRequest: OAuth2UserRequest): OAuth2User {
@@ -136,6 +146,12 @@ class CustomOAuthUserService(
             else -> throw ApplicationException(AuthStatusCode.UNKNOWN_REGISTRATION_ID)
         }
 
+        lockSocialAccount(
+            provider = provider,
+            providerId = providerId,
+            email = email
+        )
+
         val existingMember = findExistingMember(
             provider = provider,
             providerId = providerId,
@@ -177,6 +193,34 @@ class CustomOAuthUserService(
             customAttributes,
             nameAttributeKey
         )
+    }
+
+    /**
+     * 같은 소셜 계정의 첫 로그인이 동시에 들어오면 둘 다 회원이 없다고 보고 가입을 시도해
+     * 늦은 쪽이 (provider, provider_id)·email 유니크 제약에 걸려 500이 난다.
+     * 아직 없는 행은 행 잠금으로 막을 수 없어 고유 id와 이메일 단위로 PostgreSQL advisory lock을 잡는다.
+     * 늦은 요청은 앞선 가입이 커밋될 때까지 기다린 뒤 그 회원을 찾아 로그인을 이어간다.
+     * 교착을 피하려고 키를 정렬해서 잡고, 트랜잭션이 끝나면 자동으로 풀린다.
+     */
+    private fun lockSocialAccount(
+        provider: Provider,
+        providerId: String,
+        email: String
+    ) {
+
+        listOf(
+            "provider:${provider.name}:$providerId",
+            "email:${email.trim().lowercase()}"
+        )
+            .sorted()
+            .forEach { lockKey ->
+
+                jdbcTemplate.queryForList(
+                    "select pg_advisory_xact_lock(?, hashtext(?))",
+                    SOCIAL_LOGIN_LOCK_NAMESPACE,
+                    lockKey
+                )
+            }
     }
 
     /**
