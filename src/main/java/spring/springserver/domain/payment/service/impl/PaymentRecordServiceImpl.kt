@@ -37,6 +37,7 @@ class PaymentRecordServiceImpl(
             roomId = preparePaymentRequest.roomId,
             contractId = preparePaymentRequest.contractId,
             feeAmount = PaymentFeePolicy.calculateFee(preparePaymentRequest.amount),
+            feeRatePercent = PaymentFeePolicy.feeRatePercent(preparePaymentRequest.amount),
             settlementAmount = PaymentFeePolicy.calculateSettlement(preparePaymentRequest.amount)
         )
 
