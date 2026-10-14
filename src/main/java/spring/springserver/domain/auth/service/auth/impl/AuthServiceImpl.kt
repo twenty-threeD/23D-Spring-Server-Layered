@@ -16,6 +16,7 @@ import spring.springserver.domain.auth.data.response.SignUpResponse
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.auth.AuthService
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.email.service.EmailService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
@@ -39,6 +40,7 @@ class AuthServiceImpl(
     private val profileService: ProfileService,
     private val phoneVerifyService: PhoneVerifyService,
     private val memberRetentionService: MemberRetentionService,
+    private val emailService: EmailService,
     private val redisTemplate: RedisTemplate<String, String>
 ): AuthService {
 
@@ -90,6 +92,15 @@ class AuthServiceImpl(
                 member = memberRepository.findByPhone(phone),
                 duplicateStatusCode = AuthStatusCode.PHONE_ALREADY_EXIST
             )
+        }
+
+        /**
+         * 이메일 소유를 확인하지 않으면 남의 이메일로 먼저 가입해 그 주소를 선점할 수 있다.
+         * 중복 검사를 통과한 뒤에 인증 표식을 소비해, 중복으로 실패한 요청이 표식을 날리지 않게 한다.
+         */
+        if (!emailService.consumeEmailVerification(signUpRequest.email)) {
+
+            throw ApplicationException(AuthStatusCode.EMAIL_NOT_VERIFIED)
         }
 
         val newMember = signUpRequest.toEntity(
