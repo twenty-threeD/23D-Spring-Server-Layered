@@ -42,6 +42,8 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14'
+          # 기본값은 기본 브랜치(main)에서만 캐시를 저장해서 develop 배포는 매번 의존성을 새로 받는다
+          cache-read-only: false
 
       - name: 테스트 및 JAR 빌드
         run: gradle test bootJar
@@ -161,19 +163,20 @@ jobs:
               -v "$APP_DIR/files:/app/files" \
               "$IMAGE_NAME"
 
-            for i in $(seq 1 30); do
+            # 1초 간격으로 확인해 기동 직후 바로 전환한다(최대 대기 90초는 그대로)
+            for i in $(seq 1 90); do
               if curl -fsS "http://localhost:$NEW_PORT$HEALTH_PATH" >/dev/null; then
                 break
               fi
 
-              if [ "$i" -eq 30 ]; then
+              if [ "$i" -eq 90 ]; then
                 sudo docker logs "$NEW_CONTAINER" --tail 100
                 sudo docker rm -f "$NEW_CONTAINER"
                 echo "새 컨테이너 health check 실패"
                 exit 1
               fi
 
-              sleep 3
+              sleep 1
             done
 
             sudo tee "$APP_DIR/nginx/conf.d/default.conf" > /dev/null <<EOF
