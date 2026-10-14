@@ -45,8 +45,8 @@ jobs:
           # 기본값은 기본 브랜치(main)에서만 캐시를 저장해서 develop 배포는 매번 의존성을 새로 받는다
           cache-read-only: false
 
-      - name: 테스트 및 JAR 빌드
-        run: gradle test bootJar
+      - name: 테스트
+        run: gradle test
 
       - name: Docker 이미지 메타데이터 설정
         run: |
@@ -60,16 +60,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Docker 이미지 빌드
+      # Jib이 GHCR 로그인 정보(~/.docker/config.json)로 레이어를 나눠 바로 push 한다
+      - name: Jib 이미지 빌드 및 GHCR Push
         run: |
-          docker build \
-            -t "$IMAGE_NAME:${{ github.sha }}" \
-            -t "$IMAGE_NAME:latest" .
-
-      - name: Docker 이미지 GHCR Push
-        run: |
-          docker push "$IMAGE_NAME:${{ github.sha }}"
-          docker push "$IMAGE_NAME:latest"
+          gradle jib \
+            -Djib.to.image="$IMAGE_NAME:${{ github.sha }}" \
+            -Djib.to.tags=latest
 
       - name: EC2에서 Blue-Green 컨테이너 전환
         uses: appleboy/ssh-action@v1.0.3
