@@ -78,9 +78,9 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
 
-    // 통합 테스트용 PostgreSQL·Redis 컨테이너 (버전은 Spring Boot BOM이 관리)
-    testImplementation("org.testcontainers:junit-jupiter")
-    testImplementation("org.testcontainers:postgresql")
+    // 통합 테스트용 인메모리 DB·Redis (Docker 없이 JVM 안에서 띄운다)
+    testRuntimeOnly("com.h2database:h2")
+    testImplementation("com.github.codemonstur:embedded-redis:1.4.3")
 
     // WebSocket
     implementation("org.springframework.boot:spring-boot-starter-websocket")

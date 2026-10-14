@@ -1,8 +1,5 @@
 # 통합 테스트 전용 값. 실제 비밀값이 아니며(마스터키도 테스트용으로 새로 만든 무작위 값) 외부 서비스로 나가는 호출은 테스트에서 쓰지 않는다.
-# DB·Redis 접속 정보는 IntegrationTest가 Testcontainers 컨테이너 주소로 덮어쓴다.
-DB_URL: jdbc:postgresql://localhost:5432/test
-DB_USERNAME: test
-DB_PASSWORD: test
+# DB는 아래 spring.datasource의 인메모리 H2를 쓰고, Redis 포트는 IntegrationTest가 내장 Redis 포트로 덮어쓴다.
 REDIS_HOST: localhost
 REDIS_PORT: 6379
 JWT_SECRET: integration-test-jwt-secret-key-that-is-long-enough-for-hs384
@@ -28,8 +25,19 @@ COOKIE_SAME_SITE: Lax
 COOKIE_DOMAIN: ""
 
 spring:
+  datasource:
+    # PostgreSQL 호환 모드. 서버 코드가 직접 부르는 PostgreSQL 함수는 H2Functions로 대신한다.
+    url: "jdbc:h2:mem:idta;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;DB_CLOSE_DELAY=-1;INIT=CREATE ALIAS IF NOT EXISTS pg_advisory_xact_lock FOR 'spring.springserver.support.H2Functions.pgAdvisoryXactLock'\\;CREATE ALIAS IF NOT EXISTS hashtext FOR 'spring.springserver.support.H2Functions.hashtext'"
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
   jpa:
+    hibernate:
+      ddl-auto: create-drop
     show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
 
 management:
   health:
