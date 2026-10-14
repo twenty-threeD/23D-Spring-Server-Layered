@@ -72,6 +72,13 @@ class ChatRoom(
 
     fun getTradeStatus(): TradeStatus = tradeStatus ?: TradeStatus.IN_PROGRESS
 
+    fun hasPostAuthor(): Boolean {
+
+        val postAuthorId = post.member.getId()
+
+        return client.getId() == postAuthorId || professional.getId() == postAuthorId
+    }
+
     fun completeTrade() {
 
         tradeStatus = TradeStatus.COMPLETED
