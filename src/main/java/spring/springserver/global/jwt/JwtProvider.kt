@@ -21,6 +21,11 @@ class JwtProvider(
 
     private val secretKey: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray(StandardCharsets.UTF_8))
 
+    /**
+     * 같은 회원이 같은 초에 두 번 로그인하면 주체·발급·만료 시각이 같아 토큰 문자열까지 똑같아진다.
+     * 그러면 refreshToken 저장이 token 유니크 제약에 걸리고, 한쪽 로그아웃이 다른 쪽 토큰까지 거부한다.
+     * 토큰마다 무작위 id(jti)를 넣어 항상 다른 문자열이 되게 한다.
+     */
     override fun generateRefreshToken(generateTokenRequest: GenerateTokenRequest): String? {
 
         val now = Date()
@@ -31,6 +36,7 @@ class JwtProvider(
 
             .claim("tokenType", "refreshToken")
 
+            .id(UUID.randomUUID().toString())
             .issuedAt(now)
             .expiration(expiration)
             .signWith(secretKey)
@@ -49,6 +55,7 @@ class JwtProvider(
             .claim("role", generateTokenRequest.role)
             .claim("tokenType", "accessToken")
 
+            .id(UUID.randomUUID().toString())
             .issuedAt(now)
             .expiration(expiration)
             .signWith(secretKey)
