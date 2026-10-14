@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.member.entity.Provider
 import java.time.LocalDateTime
 
 interface MemberRepository: JpaRepository<Member, Long> {
@@ -17,6 +18,11 @@ interface MemberRepository: JpaRepository<Member, Long> {
 
     fun findByPhone(
         phone: String
+    ): Member?
+
+    fun findByProviderAndProviderId(
+        provider: Provider,
+        providerId: String
     ): Member?
 
     fun existsByUsername(
