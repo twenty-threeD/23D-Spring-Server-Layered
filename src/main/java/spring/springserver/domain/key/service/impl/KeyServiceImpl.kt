@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.key.entity.MemberKey
 import spring.springserver.domain.key.repository.KeyRepository
 import spring.springserver.domain.key.service.KeyService
+import spring.springserver.domain.key.support.MemberKeyCipher
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
@@ -28,7 +29,8 @@ import java.util.*
 @Transactional(rollbackFor = [Exception::class])
 class KeyServiceImpl(
     private val keyRepository: KeyRepository,
-    private val memberRepository: MemberRepository
+    private val memberRepository: MemberRepository,
+    private val memberKeyCipher: MemberKeyCipher
 ): KeyService {
 
     override fun generateKeyPair(memberId: Long) {
@@ -47,7 +49,10 @@ class KeyServiceImpl(
         keyRepository.save(
             MemberKey(
                 member = member,
-                privateKey = privateKey,
+                privateKey = memberKeyCipher.encrypt(
+                    privateKey,
+                    memberId
+                ),
                 publicKey = publicKey
             )
         )
@@ -61,7 +66,12 @@ class KeyServiceImpl(
         val memberKey =keyRepository.findByMemberId(memberId = memberId)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
-        val privateKey = restorePrivateKey(memberKey.getPrivateKey())
+        val privateKey = restorePrivateKey(
+            memberKeyCipher.decrypt(
+                memberKey.getPrivateKey(),
+                memberId
+            )
+        )
         val signer = Signature.getInstance("SHA256withECDSA", BouncyCastleProvider())
 
         signer.initSign(privateKey)
