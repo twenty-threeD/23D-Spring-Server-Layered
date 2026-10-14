@@ -27,10 +27,11 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_KEY: ${{ secrets.EC2_KEY }}
+          MEMBER_KEY_MASTER_KEY: ${{ secrets.MEMBER_KEY_MASTER_KEY }}
         run: |
           set -e
 
-          for key in EC2_HOST EC2_USER EC2_KEY; do
+          for key in EC2_HOST EC2_USER EC2_KEY MEMBER_KEY_MASTER_KEY; do
             if [ -z "${!key}" ]; then
               echo "필수 Secret이 설정되지 않았습니다: $key"
               exit 1
@@ -70,10 +71,15 @@ jobs:
 
       - name: EC2에서 Blue-Green 컨테이너 전환
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          MEMBER_KEY_MASTER_KEY: ${{ secrets.MEMBER_KEY_MASTER_KEY }}
+          # 기존 평문 개인키 일괄 암호화 스위치. 이 코드가 한 번 배포된 뒤 Actions Variable을 true로 바꾸고 재배포한다
+          MEMBER_KEY_ENCRYPT_PLAINTEXT: ${{ vars.MEMBER_KEY_ENCRYPT_PLAINTEXT == 'true' && 'true' || 'false' }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+          envs: MEMBER_KEY_MASTER_KEY,MEMBER_KEY_ENCRYPT_PLAINTEXT
           script: |
             set -e
 
@@ -107,6 +113,19 @@ jobs:
               fi
             done
 
+            # 회원 개인키 마스터키는 .env와 분리된 파일로 두어 .env가 새어 나가도 함께 노출되지 않게 한다
+            SECRET_DIR="$APP_DIR/secrets"
+            MEMBER_KEY_ENV_FILE="$SECRET_DIR/member-key.env"
+
+            if [ -z "$MEMBER_KEY_MASTER_KEY" ]; then
+              echo "필수 Secret이 전달되지 않았습니다: MEMBER_KEY_MASTER_KEY"
+              exit 1
+            fi
+
+            mkdir -p "$SECRET_DIR"
+            chmod 700 "$SECRET_DIR"
+            (umask 077 && printf 'MEMBER_KEY_MASTER_KEY=%s\nMEMBER_KEY_ENCRYPT_PLAINTEXT=%s\n' "$MEMBER_KEY_MASTER_KEY" "$MEMBER_KEY_ENCRYPT_PLAINTEXT" > "$MEMBER_KEY_ENV_FILE")
+
             sudo docker network create "$NETWORK_NAME" 2>/dev/null || true
 
             NGINX_CONF="$APP_DIR/nginx/conf.d/default.conf"
@@ -138,6 +157,7 @@ jobs:
               --restart unless-stopped \
               -p "$NEW_PORT:8080" \
               --env-file "$APP_DIR/.env" \
+              --env-file "$MEMBER_KEY_ENV_FILE" \
               -v "$APP_DIR/files:/app/files" \
               "$IMAGE_NAME"
 

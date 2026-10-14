@@ -179,6 +179,10 @@ cosmos:
   chain-id: ${COSMOS_CHAIN_ID}
   contract-url-salt: ${COSMOS_CONTRACT_URL_SALT}
 
+member-key:
+  master-key: ${MEMBER_KEY_MASTER_KEY:}
+  encrypt-plaintext: ${MEMBER_KEY_ENCRYPT_PLAINTEXT:false}
+
 agora:
   app-id: ${AGORA_APP_ID:}
   app-certificate: ${AGORA_APP_CERTIFICATE:}
