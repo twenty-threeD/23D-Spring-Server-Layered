@@ -181,6 +181,7 @@ cosmos:
 
 member-key:
   master-key: ${MEMBER_KEY_MASTER_KEY:}
+  encrypt-plaintext: ${MEMBER_KEY_ENCRYPT_PLAINTEXT:false}
 
 agora:
   app-id: ${AGORA_APP_ID:}

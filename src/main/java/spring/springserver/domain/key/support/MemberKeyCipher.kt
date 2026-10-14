@@ -18,7 +18,8 @@ import javax.crypto.spec.SecretKeySpec
  * 마스터키가 없거나 길이가 맞지 않으면 평문으로 넘어가지 않도록 기동 자체를 실패시킨다.
  *
  * 기존 평문 키를 일괄 암호화하기 전까지는 Blue-Green 전환 중에도 서명이 끊기지 않도록
- * 접두사가 없는 값을 평문 키로 읽는다. 일괄 암호화가 끝나면 이 분기를 제거한다.
+ * 접두사가 없는 값을 평문 키로 읽는다. member-key.encrypt-plaintext가 켜져 있으면
+ * 일괄 암호화가 커밋된 뒤부터 평문 키를 거부해, DB에 평문 키를 바꿔 넣는 공격을 막는다.
  */
 @Component
 class MemberKeyCipher(
@@ -30,6 +31,9 @@ class MemberKeyCipher(
         "AES"
     )
     private val secureRandom = SecureRandom()
+
+    @Volatile
+    private var plaintextReadable = true
 
     fun encrypt(
         privateKey: String,
@@ -99,9 +103,19 @@ class MemberKeyCipher(
         return privateKey.startsWith(VERSION_PREFIX)
     }
 
+    /**
+     * 평문 개인키 일괄 암호화가 커밋된 뒤 호출해, 이후 평문 개인키를 읽지 않도록 막는다.
+     */
+    fun blockPlaintext() {
+
+        plaintextReadable = false
+    }
+
     private fun readPlaintextPrivateKey(
         privateKey: String
     ): String {
+
+        if (!plaintextReadable) throw ApplicationException(KeyStatusCode.PRIVATE_KEY_DECRYPTION_FAILED)
 
         if (!PLAINTEXT_PRIVATE_KEY_PATTERN.matches(privateKey)) throw ApplicationException(KeyStatusCode.PRIVATE_KEY_DECRYPTION_FAILED)
 
