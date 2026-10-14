@@ -14,4 +14,10 @@ interface EmailService {
 
     fun checkChangeEmailCode(email: String,
                              code: String): CheckVerifyCodeResponse
+
+    /**
+     * 가입 인증을 마친 이메일이면 그 표식을 소비하고 true를 돌려준다.
+     * 표식은 인증코드 확인에 성공하면 남고, 한 번 쓰면 사라진다.
+     */
+    fun consumeEmailVerification(email: String): Boolean
 }

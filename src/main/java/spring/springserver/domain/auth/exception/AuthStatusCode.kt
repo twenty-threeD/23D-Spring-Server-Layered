@@ -20,6 +20,7 @@ enum class AuthStatusCode (
     USERNAME_NOT_FOUND("USERNAME_NOT_FOUND", "존재하지 않는 사용자입니다.", HttpStatus.NOT_FOUND),
     USERNAME_ALREADY_EXIST("USERNAME_HAS_TAKEN", "중복된 사용자명입니다.", HttpStatus.BAD_REQUEST),
     EMAIL_ALREADY_EXIST("EMAIL_ALREADY_EXIST", "해당 이메일로 이미 가입된 계정이 존재합니다.", HttpStatus.BAD_REQUEST),
+    EMAIL_NOT_VERIFIED("EMAIL_NOT_VERIFIED", "이메일 인증을 먼저 완료해주세요.", HttpStatus.BAD_REQUEST),
     PHONE_ALREADY_EXIST("PHONE_ALREADY_EXIST", "해당 전화번호로 이미 가입된 계정이 존재합니다.", HttpStatus.BAD_REQUEST),
     COMPANY_ALREADY_EXIST("COMPANY_ALREADY_EXIST", "중복된 사업자 입니다.", HttpStatus.BAD_REQUEST),
     UNKNOWN_REGISTRATION_ID("UNKNOWN_REGISTRATION_ID", "잘못된 소셜로그인 시도입니다.", HttpStatus.BAD_REQUEST),

@@ -41,13 +41,34 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         )
     }
 
+    /**
+     * 인증에 성공하면 가입이 소비할 수 있도록 인증 표식을 남긴다.
+     * 가입 화면은 코드 확인과 가입 요청이 따로 오므로, 코드만 맞히고 가입은 다른 이메일로 하는 것을 막으려면
+     * 가입 시점에 이 표식을 확인해야 한다.
+     */
     override fun checkVerifyCode(email: String,
                                  code: String): CheckVerifyCodeResponse {
 
-        return checkAndConsume(
+        val response = checkAndConsume(
             code,
             signupKey(email)
         )
+
+        redisConfig.redisTemplate()
+            .opsForValue()
+            .set(
+                verifiedKey(email),
+                "true",
+                VERIFIED_MARK_MINUTES,
+                TimeUnit.MINUTES
+            )
+
+        return response
+    }
+
+    override fun consumeEmailVerification(email: String): Boolean {
+
+        return redisConfig.redisTemplate().delete(verifiedKey(email))
     }
 
     override fun sendChangeEmailCode(email: String): SendVerifyCodeResponse {
@@ -196,6 +217,8 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
 
     private fun changeEmailKey(email: String): String = "email:change:$email"
 
+    private fun verifiedKey(email: String): String = "email:verified:${email.trim().lowercase()}"
+
     private fun attemptKey(redisKey: String): String = "$redisKey:attempts"
 
     private fun sendCooldownKey(redisKey: String): String = "$redisKey:send:cooldown"
@@ -205,5 +228,7 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         private const val MAX_VERIFY_ATTEMPTS = 5L
 
         private const val SEND_COOLDOWN_SECONDS = 10L
+
+        private const val VERIFIED_MARK_MINUTES = 30L
     }
 }
