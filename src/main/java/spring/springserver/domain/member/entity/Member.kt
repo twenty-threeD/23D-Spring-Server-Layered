@@ -169,6 +169,7 @@ class Member(
         this.name = WITHDRAWN_DISPLAY_NAME
         this.email = "deleted_$suffix@deleted.local"
         this.phone = null
+        this.providerId = null
         this.password = null
         this.phoneVerified = false
         this.anonymizedAt = LocalDateTime.now()

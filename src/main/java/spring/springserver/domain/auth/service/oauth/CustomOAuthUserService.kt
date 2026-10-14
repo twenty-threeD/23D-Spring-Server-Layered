@@ -128,6 +128,7 @@ class CustomOAuthUserService(
 
                 /**
                  * 네이버는 인증 여부 값을 주지 않고, 내려주는 이메일은 네이버 계정에 등록된 연락처 이메일이다.
+                 * 네이버가 이 이메일의 소유를 확인한다고 가정하고 인증된 것으로 본다.
                  */
                 emailVerified = true
             }
@@ -208,6 +209,7 @@ class CustomOAuthUserService(
      * 고유 id로 못 찾았을 때만 이메일로 찾는데, 이때는 공급자가 인증한 이메일이어야 한다.
      * 인증되지 않은 이메일로 기존 계정에 연결되면 남의 계정으로 로그인하게 된다.
      * 이메일로 찾은 계정은 같은 가입 경로이고 아직 고유 id가 없는 경우(이 컬럼 도입 전 가입자)에만 연결한다.
+     * 고유 id로 찾은 회원은 공급자 쪽 이메일이 바뀌어도 저장된 이메일을 갱신하지 않는다.
      */
     private fun findExistingMember(
         provider: Provider,
