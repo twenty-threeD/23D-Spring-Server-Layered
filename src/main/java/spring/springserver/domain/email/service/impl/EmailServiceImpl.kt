@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.mail.MailException
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import spring.springserver.domain.email.data.response.CheckVerifyCodeResponse
@@ -69,9 +71,31 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         return response
     }
 
+    /**
+     * 표식을 지운 뒤 가입 저장이 실패하면 트랜잭션이 롤백되는데, 지운 표식은 되살아나지 않아
+     * 저장 실패만으로 이메일 인증을 처음부터 다시 받아야 한다. 롤백되면 남은 TTL로 되살린다.
+     */
     override fun consumeEmailVerification(email: String): Boolean {
 
-        return redisConfig.redisTemplate().delete(verifiedKey(email))
+        val redisTemplate = redisConfig.redisTemplate()
+        val verifiedKey = verifiedKey(email)
+
+        val remainingSeconds = redisTemplate.getExpire(
+            verifiedKey,
+            TimeUnit.SECONDS
+        )
+
+        val consumed = redisTemplate.delete(verifiedKey)
+
+        if (consumed) {
+
+            registerVerificationRestore(
+                verifiedKey,
+                remainingSeconds
+            )
+        }
+
+        return consumed
     }
 
     override fun sendChangeEmailCode(email: String,
@@ -90,6 +114,41 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         return checkAndConsume(
             code,
             changeEmailKey(email)
+        )
+    }
+
+    /**
+     * 표식을 쓴 트랜잭션이 롤백될 때만 되살린다.
+     * TTL이 거의 남지 않았거나 조회에 실패했어도 최소 시간은 남겨, 바로 다시 가입을 시도할 수 있게 한다.
+     */
+    private fun registerVerificationRestore(verifiedKey: String,
+                                            remainingSeconds: Long) {
+
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+
+            return
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(
+            object : TransactionSynchronization {
+
+                override fun afterCompletion(status: Int) {
+
+                    if (status != TransactionSynchronization.STATUS_ROLLED_BACK) {
+
+                        return
+                    }
+
+                    redisConfig.redisTemplate()
+                        .opsForValue()
+                        .set(
+                            verifiedKey,
+                            "true",
+                            remainingSeconds.coerceAtLeast(MIN_RESTORE_SECONDS),
+                            TimeUnit.SECONDS
+                        )
+                }
+            }
         )
     }
 
@@ -313,6 +372,8 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         private const val SEND_COOLDOWN_SECONDS = 10L
 
         private const val VERIFIED_MARK_MINUTES = 30L
+
+        private const val MIN_RESTORE_SECONDS = 60L
 
         private const val DAILY_SEND_LIMIT_PER_EMAIL = 10L
 
