@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
@@ -32,6 +33,7 @@ class TokenServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>,
     private val memberRepository: MemberRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val jdbcTemplate: JdbcTemplate,
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
     @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long,
     @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
@@ -44,6 +46,11 @@ class TokenServiceImpl(
         private const val REVOKED_ACCESS_TOKEN_PREFIX = "revokedAccessToken:"
 
         private const val TOKEN_VALID_AFTER_PREFIX = "tokenValidAfter:"
+
+        /**
+         * advisory lock 키의 상위 16비트. 다른 기능이 같은 회원 id로 잠금을 잡아도 겹치지 않게 구분한다.
+         */
+        private const val REFRESH_TOKEN_LOCK_NAMESPACE = 2303L shl 48
     }
 
     override fun generateAccessToken(
@@ -82,6 +89,16 @@ class TokenServiceImpl(
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
         val expiresAt = toExpiresAt(refreshTokenExpiration)
+
+        /**
+         * refreshToken은 회원당 한 행인데 member_id에 유니크 제약이 없어, 같은 회원의 로그인이 동시에 들어오면
+         * 둘 다 행이 없다고 보고 각각 저장해 행이 두 개가 된다. 그 뒤에는 findByMemberId가 실패한다.
+         * 아직 없는 행은 행 잠금으로 막을 수 없어 회원 단위 advisory lock으로 저장을 한 번에 하나씩 처리한다.
+         */
+        jdbcTemplate.queryForList(
+            "select pg_advisory_xact_lock(?)",
+            REFRESH_TOKEN_LOCK_NAMESPACE or member.getId()!!
+        )
 
         val saved = refreshTokenRepository.findByMemberId(member.getId()!!)
 
