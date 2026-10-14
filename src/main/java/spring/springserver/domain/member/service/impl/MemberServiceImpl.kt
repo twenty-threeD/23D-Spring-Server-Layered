@@ -122,7 +122,7 @@ class MemberServiceImpl(
          * 재설정 전에 발급된 refreshToken이 남아 있으면 탈취한 세션이 최대 14일 더 살아 있다.
          * 로그인 상태에서 바꾸는 경로와 같게 기존 세션을 모두 끊는다.
          */
-        tokenService.deleteTokensByUsername(member.username)
+        tokenService.deleteTokensByMemberId(member.getId()!!)
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
