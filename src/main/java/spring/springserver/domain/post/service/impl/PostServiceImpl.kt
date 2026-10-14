@@ -314,13 +314,24 @@ class PostServiceImpl(
         return fileUrls
     }
 
+    /**
+     * 첨부는 업로드 경로(/files/<파일명>)만 받는다.
+     * 외부 URL이 들어가면 프론트 next/image가 렌더링에 실패하고 열람자 추적에도 쓰일 수 있다.
+     */
     private fun normalizeFileUrls(
         fileUrls: List<String>
     ): List<String> {
 
-        return fileUrls.map { fileUrl -> fileUrl.trim() }
+        val normalized = fileUrls.map { fileUrl -> fileUrl.trim() }
             .filter { fileUrl -> fileUrl.isNotBlank() }
             .distinct()
+
+        if (normalized.any { fileUrl -> !UPLOADED_FILE_URL_REGEX.matches(fileUrl) }) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST_FILE_URL)
+        }
+
+        return normalized
     }
 
     /**
@@ -376,5 +387,7 @@ class PostServiceImpl(
         private const val VIEW_COUNT_KEY_PREFIX = "post-view:"
 
         private val VIEW_COUNT_TTL = Duration.ofDays(1)
+
+        private val UPLOADED_FILE_URL_REGEX = Regex("^/files/[^/\\s.][^/\\s]*$")
     }
 }

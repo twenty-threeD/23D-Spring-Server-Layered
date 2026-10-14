@@ -123,6 +123,7 @@ class MemberServiceImpl(
          * 로그인 상태에서 바꾸는 경로와 같게 기존 세션을 모두 끊는다.
          */
         tokenService.deleteTokensByMemberId(member.getId()!!)
+        tokenService.revokeAccessTokensIssuedBefore(member.username)
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
@@ -150,6 +151,11 @@ class MemberServiceImpl(
             httpServletRequest,
             httpServletResponse,
         )
+
+        /**
+         * deleteTokens는 이 요청에 쓴 토큰만 거부하므로, 다른 기기나 탈취된 accessToken까지 끊는다.
+         */
+        tokenService.revokeAccessTokensIssuedBefore(member.username)
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.")
     }
