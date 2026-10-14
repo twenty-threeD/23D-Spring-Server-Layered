@@ -42,6 +42,8 @@ class TokenServiceImpl(
     companion object {
 
         private const val REVOKED_ACCESS_TOKEN_PREFIX = "revokedAccessToken:"
+
+        private const val TOKEN_VALID_AFTER_PREFIX = "tokenValidAfter:"
     }
 
     override fun generateAccessToken(
@@ -215,7 +217,48 @@ class TokenServiceImpl(
         accessToken: String
     ): Boolean {
 
-        return redisTemplate.hasKey(REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken))
+        if (redisTemplate.hasKey(REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken))) {
+
+            return true
+        }
+
+        return isIssuedBeforeRevocation(accessToken)
+    }
+
+    /**
+     * 끊긴 시각 이전 토큰은 이 시각 이후 accessToken 수명이 지나면 모두 만료되므로 그만큼만 남긴다.
+     * JWT의 발급 시각은 초 단위라 기준 시각도 초 단위로 저장한다.
+     */
+    override fun revokeAccessTokensIssuedBefore(
+        username: String
+    ) {
+
+        redisTemplate.opsForValue().set(
+            TOKEN_VALID_AFTER_PREFIX + username,
+            Instant.now().epochSecond.toString(),
+            accessTokenExpiration,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    /**
+     * 끊긴 시각과 같은 초에 새로 로그인한 토큰까지 막지 않도록, 그 초보다 앞선 토큰만 거부한다.
+     */
+    private fun isIssuedBeforeRevocation(
+        accessToken: String
+    ): Boolean {
+
+        val username = jwtProvider.getUsernameFromToken(accessToken)
+            ?: return false
+
+        val validAfter = redisTemplate.opsForValue().get(TOKEN_VALID_AFTER_PREFIX + username)
+            ?.toLongOrNull()
+            ?: return false
+
+        val issuedAt = jwtProvider.getIssuedAt(accessToken)
+            ?: return true
+
+        return issuedAt.toInstant().epochSecond < validAfter
     }
 
     override fun deleteTokensByMemberId(

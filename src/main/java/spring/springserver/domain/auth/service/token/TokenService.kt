@@ -38,8 +38,17 @@ interface TokenService {
     )
 
     /**
+     * 지금 이전에 발급된 이 회원의 accessToken을 모두 거부한다.
+     * 비밀번호를 바꾸면 다른 기기나 탈취된 토큰의 원문을 몰라도 한꺼번에 끊어야 하므로 시각을 기준으로 막는다.
+     */
+    fun revokeAccessTokensIssuedBefore(
+        username: String
+    )
+
+    /**
      * 로그아웃 등으로 무효화된 accessToken인지 확인한다.
      * JWT는 만료 전까지 서명만으로 유효하므로 서버가 거부 목록을 따로 들고 있어야 한다.
+     * revokeAccessTokensIssuedBefore로 끊긴 시각 이전에 발급된 토큰도 여기서 거부한다.
      */
     fun isRevokedAccessToken(
         accessToken: String
