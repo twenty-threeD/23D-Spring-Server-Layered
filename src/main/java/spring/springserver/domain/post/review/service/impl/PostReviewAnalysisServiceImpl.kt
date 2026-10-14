@@ -43,7 +43,7 @@ class PostReviewAnalysisServiceImpl(
         private const val MIN_REVIEWS_TO_ANALYZE = 3L
 
         /**
-         * 처음 분석한 뒤에는 리뷰가 이만큼 더 쌓였을 때만 다시 분석한다.
+         * 처음 분석한 뒤에는 리뷰 수가 이 값의 배수(5, 10, 15, ...)를 새로 넘을 때만 다시 분석한다.
          * 리뷰 하나가 늘 때마다 다시 부르면 요약은 거의 그대로인데 유료 호출만 늘고,
          * 쓰고 지우기를 반복해 호출을 유발하는 것도 막기 어렵다.
          */
@@ -158,8 +158,10 @@ class PostReviewAnalysisServiceImpl(
     }
 
     /**
-     * 최소 조건을 채운 시점에 한 번 분석하고, 그 뒤로는 분석에 쓴 리뷰 수보다
-     * `REANALYZE_REVIEW_COUNT_STEP`만큼 더 쌓였을 때만 다시 분석한다.
+     * 최소 조건을 채운 시점에 한 번 분석하고, 그 뒤로는 리뷰 수가 `REANALYZE_REVIEW_COUNT_STEP`의
+     * 배수 구간을 새로 넘었을 때만 다시 분석한다. 예를 들어 6개에서 분석했다면 10개가 되는 순간 다시 분석한다.
+     * 차이로 비교하면 6개에서 분석한 뒤 11개가 되어야 다시 분석해, 화면에 보이는 리뷰 수와 기준이 어긋난다.
+     * 같은 구간 안에서 지웠다 다시 쓰는 것은 구간이 바뀌지 않아 호출을 유발하지 않는다.
      * 리뷰가 지워져 수가 줄거나 내용만 수정된 경우는 잡지 못하지만, 그 비용을 감수한다.
      */
     private fun needsReanalysis(
@@ -167,7 +169,7 @@ class PostReviewAnalysisServiceImpl(
         reviewCount: Long
     ): Boolean {
 
-        return reviewCount - postReviewAnalysis.analyzedReviewCount >= REANALYZE_REVIEW_COUNT_STEP
+        return reviewCount / REANALYZE_REVIEW_COUNT_STEP > postReviewAnalysis.analyzedReviewCount / REANALYZE_REVIEW_COUNT_STEP
     }
 
     private fun toResponse(
