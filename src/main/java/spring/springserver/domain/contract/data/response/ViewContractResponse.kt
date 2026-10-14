@@ -1,6 +1,8 @@
 package spring.springserver.domain.contract.data.response
 
 import spring.springserver.domain.contract.entity.Contract
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import com.fasterxml.jackson.datatype.jsr310.ser.LocalDateTimeSerializer
 import java.time.LocalDateTime
 
 /**
@@ -16,7 +18,9 @@ data class ViewContractResponse(
     val professionalId: Long?,
     val professionalName: String,
     val writerId: Long?,
+    @field:JsonSerialize(using = LocalDateTimeSerializer::class)
     val startedAt: LocalDateTime?,
+    @field:JsonSerialize(using = LocalDateTimeSerializer::class)
     val endedAt: LocalDateTime?,
 
     /**
