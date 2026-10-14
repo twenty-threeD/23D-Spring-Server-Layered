@@ -63,7 +63,7 @@ class KeyServiceImpl(
         hash: String
     ): String {
 
-        val memberKey =keyRepository.findByMemberId(memberId = memberId)
+        val memberKey = keyRepository.findByMemberId(memberId = memberId)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
 
         val privateKey = restorePrivateKey(

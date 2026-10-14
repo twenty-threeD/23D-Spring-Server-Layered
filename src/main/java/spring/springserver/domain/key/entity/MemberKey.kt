@@ -15,20 +15,12 @@ class MemberKey(
     private val member: Member,
 
     @Column(length = 512)
-    private var privateKey: String,
+    private val privateKey: String,
 
     @Column(length = 512)
     private val publicKey: String
 ) {
 
-    fun getId() = id
     fun getPrivateKey(): String = privateKey
     fun getPublicKey(): String = publicKey
-
-    fun updatePrivateKey(
-        privateKey: String
-    ) {
-
-        this.privateKey = privateKey
-    }
 }

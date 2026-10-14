@@ -16,6 +16,9 @@ import javax.crypto.spec.SecretKeySpec
  * 저장 형식은 "v1:" + Base64(nonce || ciphertext || tag)이며, 회원 ID를 AAD로 묶어
  * 암호문을 다른 회원 행으로 옮겨 붙이면 복호화되지 않게 한다.
  * 마스터키가 없거나 길이가 맞지 않으면 평문으로 넘어가지 않도록 기동 자체를 실패시킨다.
+ *
+ * 기존 평문 키를 일괄 암호화하기 전까지는 Blue-Green 전환 중에도 서명이 끊기지 않도록
+ * 접두사가 없는 값을 평문 키로 읽는다. 일괄 암호화가 끝나면 이 분기를 제거한다.
  */
 @Component
 class MemberKeyCipher(
@@ -56,7 +59,10 @@ class MemberKeyCipher(
         memberId: Long
     ): String {
 
-        if (!isEncrypted(encryptedPrivateKey)) throw ApplicationException(KeyStatusCode.PRIVATE_KEY_DECRYPTION_FAILED)
+        if (!isEncrypted(encryptedPrivateKey)) {
+
+            return readPlaintextPrivateKey(encryptedPrivateKey)
+        }
 
         return runCatching {
 
@@ -93,6 +99,15 @@ class MemberKeyCipher(
         return privateKey.startsWith(VERSION_PREFIX)
     }
 
+    private fun readPlaintextPrivateKey(
+        privateKey: String
+    ): String {
+
+        if (!PLAINTEXT_PRIVATE_KEY_PATTERN.matches(privateKey)) throw ApplicationException(KeyStatusCode.PRIVATE_KEY_DECRYPTION_FAILED)
+
+        return privateKey
+    }
+
     private fun decodeMasterKey(
         masterKey: String
     ): ByteArray {
@@ -112,5 +127,6 @@ class MemberKeyCipher(
         private const val MASTER_KEY_LENGTH = 32
         private const val NONCE_LENGTH = 12
         private const val TAG_LENGTH_BITS = 128
+        private val PLAINTEXT_PRIVATE_KEY_PATTERN = Regex("^[0-9a-f]{64}$")
     }
 }

@@ -8,5 +8,4 @@ interface KeyRepository: JpaRepository<MemberKey, Long> {
 
     fun findByMemberId(memberId: Long): MemberKey?
     fun member(member: Member): MutableList<MemberKey>
-    fun findAllByPrivateKeyNotStartingWith(prefix: String): List<MemberKey>
 }
