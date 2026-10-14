@@ -147,6 +147,9 @@ management:
 app:
   upload:
     file-dir: ./files
+    # true면 기동 시 업로드 경로(/files/<파일명>)가 아닌 프로필 이미지·커뮤니티 글 파일 URL을 비운다.
+    # 운영 데이터를 바꾸므로 한 번 켜서 정리한 뒤 다시 끈다.
+    cleanup-external-urls: ${CLEANUP_EXTERNAL_FILE_URLS:false}
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth/success}
     failure-redirect-uri: ${OAUTH2_FAILURE_REDIRECT_URI:http://localhost:3000/oauth/fail}
