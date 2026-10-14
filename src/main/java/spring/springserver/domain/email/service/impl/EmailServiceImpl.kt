@@ -2,6 +2,7 @@ package spring.springserver.domain.email.service.impl
 
 import jakarta.mail.MessagingException
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.mail.MailException
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.mail.javamail.MimeMessageHelper
 import org.thymeleaf.TemplateEngine
@@ -33,10 +34,12 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
             .joinToString("")
     }
 
-    override fun sendVerifyCode(email: String): SendVerifyCodeResponse {
+    override fun sendVerifyCode(email: String,
+                                clientIp: String): SendVerifyCodeResponse {
 
         return sendAndCache(
             email,
+            clientIp,
             signupKey(email)
         )
     }
@@ -71,10 +74,12 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         return redisConfig.redisTemplate().delete(verifiedKey(email))
     }
 
-    override fun sendChangeEmailCode(email: String): SendVerifyCodeResponse {
+    override fun sendChangeEmailCode(email: String,
+                                     clientIp: String): SendVerifyCodeResponse {
 
         return sendAndCache(
             email,
+            clientIp,
             changeEmailKey(email)
         )
     }
@@ -89,6 +94,7 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
     }
 
     private fun sendAndCache(email: String,
+                             clientIp: String,
                              redisKey: String): SendVerifyCodeResponse {
 
         /**
@@ -96,6 +102,15 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
          * 수신 주소마다 재발송 간격을 둔다.
          */
         limitSend(redisKey)
+
+        /**
+         * 간격 제한만으로는 10초마다 계속 보낼 수 있고, 주소를 바꿔 가며 보내면 SMTP 발송 한도가 바닥나
+         * 가입 인증 메일이 아예 나가지 않는다. 수신 주소별 하루 상한과 요청 IP별 시간당 상한을 둔다.
+         */
+        val quotaKeys = acquireSendQuota(
+            email,
+            clientIp
+        )
 
         val verifyCode = makeRandomCode()
 
@@ -121,11 +136,23 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         } catch (_: MessagingException) {
 
             redisConfig.redisTemplate().delete(sendCooldownKey(redisKey))
+            releaseSendQuota(quotaKeys)
 
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
         } catch (_: UnsupportedEncodingException) {
 
             redisConfig.redisTemplate().delete(sendCooldownKey(redisKey))
+            releaseSendQuota(quotaKeys)
+
+            throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
+        } catch (_: MailException) {
+
+            /**
+             * JavaMailSender.send는 SMTP 연결·전송 실패를 MessagingException이 아닌 MailException으로 던진다.
+             * 잡지 않으면 500이 나가고, 보내지도 않은 메일이 간격 제한과 발송 횟수에 남는다.
+             */
+            redisConfig.redisTemplate().delete(sendCooldownKey(redisKey))
+            releaseSendQuota(quotaKeys)
 
             throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
         }
@@ -213,6 +240,58 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         }
     }
 
+    /**
+     * 횟수를 먼저 올리고 비교해야 동시에 몰린 요청도 상한을 넘지 못한다.
+     * 상한에 걸린 요청은 발송하지 않으므로 올린 횟수를 되돌린다.
+     */
+    private fun acquireSendQuota(email: String,
+                                 clientIp: String): List<String> {
+
+        val quotaKeys = listOf(
+            dailySendKey(email),
+            ipSendKey(clientIp)
+        )
+
+        val limits = listOf(
+            DAILY_SEND_LIMIT_PER_EMAIL to TimeUnit.DAYS,
+            HOURLY_SEND_LIMIT_PER_IP to TimeUnit.HOURS
+        )
+
+        val redisTemplate = redisConfig.redisTemplate()
+        val acquired = mutableListOf<String>()
+
+        quotaKeys.zip(limits).forEach { (quotaKey, limit) ->
+
+            val count = redisTemplate.opsForValue().increment(quotaKey)
+                ?: throw ApplicationException(EmailException.EMAIL_CANNOT_SEND)
+
+            acquired.add(quotaKey)
+
+            if (count == 1L) {
+
+                redisTemplate.expire(
+                    quotaKey,
+                    1,
+                    limit.second
+                )
+            }
+
+            if (count > limit.first) {
+
+                releaseSendQuota(acquired)
+
+                throw ApplicationException(EmailException.EMAIL_SEND_LIMIT_EXCEEDED)
+            }
+        }
+
+        return quotaKeys
+    }
+
+    private fun releaseSendQuota(quotaKeys: List<String>) {
+
+        quotaKeys.forEach { quotaKey -> redisConfig.redisTemplate().opsForValue().decrement(quotaKey) }
+    }
+
     private fun signupKey(email: String): String = "email:signup:$email"
 
     private fun changeEmailKey(email: String): String = "email:change:$email"
@@ -223,6 +302,10 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
 
     private fun sendCooldownKey(redisKey: String): String = "$redisKey:send:cooldown"
 
+    private fun dailySendKey(email: String): String = "email:send:daily:${email.trim().lowercase()}"
+
+    private fun ipSendKey(clientIp: String): String = "email:send:ip:$clientIp"
+
     companion object {
 
         private const val MAX_VERIFY_ATTEMPTS = 5L
@@ -230,5 +313,9 @@ class EmailServiceImpl(private val javaMailSender: JavaMailSender,
         private const val SEND_COOLDOWN_SECONDS = 10L
 
         private const val VERIFIED_MARK_MINUTES = 30L
+
+        private const val DAILY_SEND_LIMIT_PER_EMAIL = 10L
+
+        private const val HOURLY_SEND_LIMIT_PER_IP = 20L
     }
 }
