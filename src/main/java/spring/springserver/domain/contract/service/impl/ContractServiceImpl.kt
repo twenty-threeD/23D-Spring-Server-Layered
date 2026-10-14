@@ -72,7 +72,7 @@ class ContractServiceImpl(
                 contractUrl = normalizeUrl(createContractRequest.contractUrl!!),
                 post = resolvePost(
                     createContractRequest.postId,
-                    client
+                    professional
                 )
             )
         )
@@ -163,12 +163,13 @@ class ContractServiceImpl(
     }
 
     /**
-     * 게시글을 함께 보낸 계약이면 그 게시글이 살아 있고 의뢰인(갑)이 쓴 글인지 확인한다.
+     * 게시글을 함께 보낸 계약이면 그 게시글이 살아 있고 전문가(을)가 쓴 글인지 확인한다.
+     * 게시글은 전문가가 올린 서비스 글이고, 의뢰인이 그 글을 보고 연락해 계약·결제하므로 글 작성자는 을이다.
      * 남의 게시글에 계약을 붙이면 그 게시글의 리뷰 목록이 오염되므로 막는다.
      */
     private fun resolvePost(
         postId: Long?,
-        client: Member
+        professional: Member
     ): Post? {
 
         if (postId == null) {
@@ -184,7 +185,7 @@ class ContractServiceImpl(
             throw ApplicationException(PostStatusCode.INVALID_POST)
         }
 
-        if (post.member.getId() != client.getId()) {
+        if (post.member.getId() != professional.getId()) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_POST)
         }
