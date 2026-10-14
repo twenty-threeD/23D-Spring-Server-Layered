@@ -11,7 +11,6 @@ import org.springframework.web.client.RestClientResponseException
 import org.springframework.web.client.body
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
-import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.exception.PaymentStatusCode
 import spring.springserver.global.config.TossPaymentsProperties
@@ -80,13 +79,6 @@ class TossPaymentsClient(
             requestBodySpec.retrieve().body<JsonNode>()?.let(PaymentResponse::of)
                 ?: PaymentResponse.of(objectMapper.createObjectNode())
         }
-    }
-
-    fun issueVirtualAccount(
-        virtualAccountRequest: VirtualAccountRequest
-    ): PaymentResponse {
-
-        return post("/v1/virtual-accounts", virtualAccountRequest)
     }
 
     private fun get(

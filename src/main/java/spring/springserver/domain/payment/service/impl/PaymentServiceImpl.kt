@@ -16,7 +16,6 @@ import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
-import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
@@ -564,29 +563,6 @@ class PaymentServiceImpl(
 
             log.warn("거래 취소 상태를 반영하지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
         }
-    }
-
-    override fun issueVirtualAccount(
-        virtualAccountRequest: VirtualAccountRequest,
-        memberId: Long
-    ): PaymentResponse {
-
-        /**
-         * 가상계좌도 주문번호로 붙는다. 남의 주문에 계좌를 끼워 넣지 못하도록 소유자와 금액을 먼저 확인한다.
-         */
-        val payment = paymentRecordService.findByOrderId(virtualAccountRequest.orderId)
-
-        validateOwner(
-            payment,
-            memberId
-        )
-
-        if (payment.getAmount() != virtualAccountRequest.amount) {
-
-            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
-        }
-
-        return tossPaymentsClient.issueVirtualAccount(virtualAccountRequest)
     }
 
     /**

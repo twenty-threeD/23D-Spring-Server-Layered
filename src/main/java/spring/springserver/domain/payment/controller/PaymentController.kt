@@ -7,7 +7,6 @@ import spring.springserver.domain.blockchain.data.response.PaymentVerificationRe
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
-import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
@@ -90,20 +89,6 @@ class PaymentController(
                 cancelPaymentRequest,
                 paymentKey,
                 idempotencyKey,
-                memberDetails.getId()!!
-            )
-        )
-    }
-
-    @PostMapping("/virtual-accounts")
-    fun issueVirtualAccount(
-        @Valid @RequestBody virtualAccountRequest: VirtualAccountRequest,
-        @AuthenticationPrincipal memberDetails: MemberDetails
-    ): BaseResponse<PaymentResponse> {
-
-        return BaseResponse.ok(
-            paymentService.issueVirtualAccount(
-                virtualAccountRequest,
                 memberDetails.getId()!!
             )
         )
