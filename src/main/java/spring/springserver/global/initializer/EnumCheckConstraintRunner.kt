@@ -12,7 +12,7 @@ import spring.springserver.domain.payment.entity.PaymentStatus
 
 /**
  * `ddl-auto: update`는 enum 컬럼의 체크 제약을 처음 만들 때만 생성하고 이후 갱신하지 않는다.
- * 그래서 나중에 추가한 enum 값(결제 CANCEL_REQUESTED, 알림 CALL_MISSED, 채팅 CALL 등)이 제약에 없어 그 행 저장이 실패한다.
+ * 그래서 나중에 추가한 enum 값(결제 PARTIAL_CANCELED·CANCELED, 알림 CALL_MISSED, 채팅 CALL 등)이 제약에 없어 그 행 저장이 실패한다.
  *
  * 기동 시 각 제약이 enum의 모든 값을 허용하는지 확인하고, 빠진 값이 있을 때만 다시 만든다.
  * 이미 맞으면 아무것도 하지 않으므로 재기동해도 안전하다.
