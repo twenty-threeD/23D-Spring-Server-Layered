@@ -29,6 +29,11 @@ class Payment(
     @Column(name = "fee_amount")
     private val feeAmount: Long? = null,
     /**
+     * 결제 시점에 적용된 수수료율(%). 정책이 바뀌어도 당시 요율을 알 수 있도록 남긴다. 이 컬럼이 생기기 전의 결제는 null이다.
+     */
+    @Column(name = "fee_rate_percent")
+    private val feeRatePercent: Long? = null,
+    /**
      * 전문가에게 정산될 금액(결제 금액 - 수수료). 수수료 정책이 생기기 전의 결제는 null이다.
      */
     @Column(name = "settlement_amount")
@@ -74,6 +79,7 @@ class Payment(
     fun getContractUrl() = contractUrl
     fun getContractId() = contractId
     fun getFeeAmount() = feeAmount
+    fun getFeeRatePercent() = feeRatePercent
     fun getSettlementAmount() = settlementAmount
     fun getOrderName() = orderName
     fun getRoomId() = roomId
