@@ -1,0 +1,37 @@
+# 통합 테스트 전용 값. 실제 비밀값이 아니며 외부 서비스로 나가는 호출은 테스트에서 쓰지 않는다.
+# DB·Redis 접속 정보는 IntegrationTest가 Testcontainers 컨테이너 주소로 덮어쓴다.
+DB_URL: jdbc:postgresql://localhost:5432/test
+DB_USERNAME: test
+DB_PASSWORD: test
+REDIS_HOST: localhost
+REDIS_PORT: 6379
+JWT_SECRET: integration-test-jwt-secret-key-that-is-long-enough-for-hs384
+ACCESS_EXPIRATION: 1800000
+REFRESH_EXPIRATION: 1209600000
+EMAIL: test@example.com
+EMAIL_PASSWORD: test
+CLIENT_ID: test
+CLIENT_SECRET: test
+KAKAO_CLIENT_ID: test
+KAKAO_CLIENT_SECRET: test
+NAVER_CLIENT_ID: test
+NAVER_CLIENT_SECRET: test
+COSMOS_NODE_URL: http://localhost:1
+COSMOS_CHAIN_ID: test
+COSMOS_CONTRACT_URL_SALT: test
+SOLAPI_API_KEY: test
+SOLAPI_API_SECRET_KEY: test
+SOLAPI_SENDER_NUMBER: "01000000000"
+MEMBER_KEY_MASTER_KEY: LDbIQtQjZkAY8zfuTwOrK+b5v3PlqRCTDAmnDoCTLls=
+COOKIE_SECURE: false
+COOKIE_SAME_SITE: Lax
+COOKIE_DOMAIN: ""
+
+spring:
+  jpa:
+    show-sql: false
+
+management:
+  health:
+    mail:
+      enabled: false
