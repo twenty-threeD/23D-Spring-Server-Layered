@@ -17,7 +17,6 @@ import spring.springserver.domain.post.review.service.PostReviewAnalysisWriter
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.RedisLockExecutor
 import java.time.Duration
-import java.time.LocalDateTime
 
 /**
  * 클래스 레벨에 @Transactional을 붙이지 않는다.
@@ -44,10 +43,11 @@ class PostReviewAnalysisServiceImpl(
         private const val MIN_REVIEWS_TO_ANALYZE = 3L
 
         /**
-         * 리뷰 수만 보고 재분석하면 리뷰를 쓰고 지우기를 반복해 유료 호출을 계속 유발할 수 있다.
-         * 직전 분석이 이 시간 안이면 리뷰 수가 달라도 저장본을 그대로 돌려준다.
+         * 처음 분석한 뒤에는 리뷰가 이만큼 더 쌓였을 때만 다시 분석한다.
+         * 리뷰 하나가 늘 때마다 다시 부르면 요약은 거의 그대로인데 유료 호출만 늘고,
+         * 쓰고 지우기를 반복해 호출을 유발하는 것도 막기 어렵다.
          */
-        private val REANALYZE_COOLDOWN: Duration = Duration.ofHours(1)
+        private const val REANALYZE_REVIEW_COUNT_STEP = 5L
 
         /**
          * Claude 호출 최악 지연(timeout x 재시도)보다 넉넉해야 분석 중에 잠금이 풀리지 않는다.
@@ -158,23 +158,16 @@ class PostReviewAnalysisServiceImpl(
     }
 
     /**
-     * 리뷰 수가 그대로면 내용도 대체로 그대로다. 달라졌더라도 쿨다운 안이면 다시 분석하지 않는다.
-     * 리뷰 수정만 일어난 경우는 잡지 못하지만, 그 비용을 감수한다.
+     * 최소 조건을 채운 시점에 한 번 분석하고, 그 뒤로는 분석에 쓴 리뷰 수보다
+     * `REANALYZE_REVIEW_COUNT_STEP`만큼 더 쌓였을 때만 다시 분석한다.
+     * 리뷰가 지워져 수가 줄거나 내용만 수정된 경우는 잡지 못하지만, 그 비용을 감수한다.
      */
     private fun needsReanalysis(
         postReviewAnalysis: PostReviewAnalysis,
         reviewCount: Long
     ): Boolean {
 
-        if (postReviewAnalysis.analyzedReviewCount == reviewCount) {
-
-            return false
-        }
-
-        val analyzedAt = postReviewAnalysis.getUpdatedAt()
-            ?: postReviewAnalysis.getCreatedAt()
-
-        return analyzedAt.isBefore(LocalDateTime.now().minus(REANALYZE_COOLDOWN))
+        return reviewCount - postReviewAnalysis.analyzedReviewCount >= REANALYZE_REVIEW_COUNT_STEP
     }
 
     private fun toResponse(
