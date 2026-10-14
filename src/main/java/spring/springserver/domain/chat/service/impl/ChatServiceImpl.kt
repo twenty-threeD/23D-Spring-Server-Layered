@@ -115,6 +115,13 @@ class ChatServiceImpl(
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
         val post = resolvePost(postId)
+        val postAuthorId = post.member.getId()
+
+        if (requester.getId() != postAuthorId && target.getId() != postAuthorId) {
+
+            throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
+        }
+
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
 
         val existingRoom = chatRoomRepository.findByDirectChatKeyAndPostId(
@@ -429,6 +436,14 @@ class ChatServiceImpl(
         return chatRoomParticipantRepository.existsByRoomIdAndMemberId(roomId, memberId)
     }
 
+    @Transactional(readOnly = true)
+    override fun isTradableRoom(
+        roomId: Long
+    ): Boolean {
+
+        return findRoom(roomId)?.hasPostAuthor() ?: false
+    }
+
     override fun sendPaymentMessage(
         roomId: Long,
         senderMemberId: Long,
@@ -510,6 +525,11 @@ class ChatServiceImpl(
             roomId,
             username
         ).room
+
+        if (!room.hasPostAuthor()) {
+
+            throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
+        }
 
         /**
          * 결제가 끝난 거래를 여기서 취소로 바꾸면 돈은 그대로인데 거래만 취소로 보인다.
