@@ -1,4 +1,4 @@
-# 통합 테스트 전용 값. 실제 비밀값이 아니며 외부 서비스로 나가는 호출은 테스트에서 쓰지 않는다.
+# 통합 테스트 전용 값. 실제 비밀값이 아니며(마스터키도 테스트용으로 새로 만든 무작위 값) 외부 서비스로 나가는 호출은 테스트에서 쓰지 않는다.
 # DB·Redis 접속 정보는 IntegrationTest가 Testcontainers 컨테이너 주소로 덮어쓴다.
 DB_URL: jdbc:postgresql://localhost:5432/test
 DB_USERNAME: test
@@ -22,7 +22,7 @@ COSMOS_CONTRACT_URL_SALT: test
 SOLAPI_API_KEY: test
 SOLAPI_API_SECRET_KEY: test
 SOLAPI_SENDER_NUMBER: "01000000000"
-MEMBER_KEY_MASTER_KEY: LDbIQtQjZkAY8zfuTwOrK+b5v3PlqRCTDAmnDoCTLls=
+MEMBER_KEY_MASTER_KEY: DBB9lNOFQzqIw1CX6dtDHONhqiFDmhiJfwQKmJbXBQY=
 COOKIE_SECURE: false
 COOKIE_SAME_SITE: Lax
 COOKIE_DOMAIN: ""
