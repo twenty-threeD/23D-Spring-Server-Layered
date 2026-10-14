@@ -284,7 +284,7 @@ class MemberServiceImpl(
             changeEmailRequest.password
         )
 
-        if (member.email != changeEmailRequest.newEmail && memberRepository.existsByEmail(changeEmailRequest.newEmail)) {
+        if (!member.email.equals(changeEmailRequest.newEmail.trim(), ignoreCase = true) && memberRepository.existsByEmail(changeEmailRequest.newEmail.trim())) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
         }
@@ -376,7 +376,7 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        if (member.email != email && memberRepository.existsByEmail(email)) {
+        if (!member.email.equals(email.trim(), ignoreCase = true) && memberRepository.existsByEmail(email.trim())) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
         }

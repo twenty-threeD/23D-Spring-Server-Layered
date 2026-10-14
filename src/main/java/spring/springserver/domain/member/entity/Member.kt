@@ -40,6 +40,15 @@ class Member(
     var provider: Provider
 ) {
 
+    /**
+     * 이메일은 대소문자를 구분하지 않으므로 항상 소문자로 저장한다.
+     * 그래야 A@x.com과 a@x.com이 서로 다른 계정으로 가입되지 않는다.
+     */
+    init {
+
+        this.email = normalizeEmail(email)
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private var id: Long? = null
@@ -92,7 +101,7 @@ class Member(
 
     fun changeEmail(email: String) {
 
-        this.email = email
+        this.email = normalizeEmail(email)
     }
 
     fun changePhone(phone: String) {
@@ -178,5 +187,7 @@ class Member(
     companion object {
 
         const val WITHDRAWN_DISPLAY_NAME = "탈퇴한 사용자"
+
+        fun normalizeEmail(email: String): String = email.trim().lowercase()
     }
 }
