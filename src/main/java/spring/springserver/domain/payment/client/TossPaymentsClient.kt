@@ -4,11 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
+import org.springframework.http.client.SimpleClientHttpRequestFactory
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import org.springframework.web.client.RestClientResponseException
 import org.springframework.web.client.body
+import java.time.Duration
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.response.PaymentResponse
@@ -25,6 +27,13 @@ class TossPaymentsClient(
 
     private val restClient: RestClient = restClientBuilder
         .baseUrl(tossPaymentsProperties.baseUrl)
+        .requestFactory(
+            SimpleClientHttpRequestFactory().apply {
+
+                setConnectTimeout(Duration.ofSeconds(3))
+                setReadTimeout(Duration.ofSeconds(10))
+            }
+        )
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
         .defaultHeader("TossPayments-Version", tossPaymentsProperties.apiVersion)
