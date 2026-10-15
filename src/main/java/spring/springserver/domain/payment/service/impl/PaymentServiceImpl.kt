@@ -146,6 +146,16 @@ class PaymentServiceImpl(
         val paymentKey = response.paymentKey
             ?: throw ApplicationException(PaymentStatusCode.TOSS_PAYMENTS_REQUEST_FAILED)
 
+        /**
+         * 토스가 실제로 승인한 주문번호·금액이 서버에 저장된 값과 다르면 그 결제는 믿을 수 없다.
+         * 이후 단계(체인 기록·정산·채팅 메시지)가 잘못된 값을 그대로 쓰지 않도록 승인을 취소하고 중단한다.
+         */
+        validateConfirmedPayment(
+            payment,
+            response,
+            paymentKey
+        )
+
         paymentRecordService.markDone(
             confirmPaymentRequest.orderId,
             paymentKey
@@ -350,6 +360,85 @@ class PaymentServiceImpl(
 
         throw lastException
             ?: IllegalStateException("블록체인 기록에 실패했습니다.")
+    }
+
+    /**
+     * 토스 승인 응답의 주문번호와 금액을 저장 값과 다시 비교한다.
+     * 값이 다르거나 응답에 값이 없으면 승인된 결제를 취소하고 불일치로 끝낸다.
+     */
+    private fun validateConfirmedPayment(
+        payment: Payment,
+        paymentResponse: PaymentResponse,
+        paymentKey: String
+    ) {
+
+        if (paymentResponse.orderId != payment.getOrderId()) {
+
+            log.warn(
+                "토스 승인 주문번호가 저장 주문번호와 다릅니다. storedOrderId = {}, confirmedOrderId = {}",
+                payment.getOrderId(),
+                paymentResponse.orderId
+            )
+
+            cancelConfirmedPayment(
+                paymentKey,
+                payment.getOrderId(),
+                ORDER_ID_MISMATCH_FAILURE_REASON
+            )
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_ORDER_ID_MISMATCH)
+        }
+
+        if (paymentResponse.totalAmount != payment.getAmount()) {
+
+            log.warn(
+                "토스 승인 금액이 저장 금액과 다릅니다. orderId = {}, storedAmount = {}, confirmedAmount = {}",
+                payment.getOrderId(),
+                payment.getAmount(),
+                paymentResponse.totalAmount
+            )
+
+            cancelConfirmedPayment(
+                paymentKey,
+                payment.getOrderId(),
+                AMOUNT_MISMATCH_FAILURE_REASON
+            )
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
+        }
+    }
+
+    /**
+     * 승인까지 끝난 결제를 되돌린다.
+     * 취소마저 실패하면 수동 처리가 필요하므로 취소 대기로 남기고 취소 실패로 끝낸다.
+     */
+    private fun cancelConfirmedPayment(
+        paymentKey: String,
+        orderId: String,
+        failureReason: String
+    ) {
+
+        try {
+
+            tossPaymentsClient.cancel(
+                paymentKey,
+                CancelPaymentRequest(failureReason),
+                cancelIdempotencyKey(orderId)
+            )
+        } catch (_: Exception) {
+
+            paymentRecordService.markCancelPending(
+                orderId,
+                failureReason
+            )
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_CANCEL_FAILED)
+        }
+
+        paymentRecordService.markCanceledByChainFailure(
+            orderId,
+            failureReason
+        )
     }
 
     private fun compensate(
@@ -589,6 +678,10 @@ class PaymentServiceImpl(
     companion object {
 
         const val CHAIN_FAILURE_CANCEL_REASON = "블록체인 기록 실패로 인한 자동 취소"
+
+        private const val AMOUNT_MISMATCH_FAILURE_REASON = "승인 금액 불일치로 인한 자동 취소"
+
+        private const val ORDER_ID_MISMATCH_FAILURE_REASON = "승인 주문번호 불일치로 인한 자동 취소"
 
         private const val CHAIN_RECORD_MAX_ATTEMPTS = 3
         private const val CHAIN_RECORD_RETRY_DELAY_MILLIS = 500L
