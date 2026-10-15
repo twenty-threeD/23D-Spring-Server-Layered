@@ -13,6 +13,7 @@ ALTER TABLE payment ADD CONSTRAINT payment_status_check CHECK (status IN (
     'READY',
     'IN_PROGRESS',
     'DONE',
+    'CHAIN_UNCONFIRMED',
     'CHAIN_RECORDED',
     'CANCELED_BY_CHAIN_FAILURE',
     'CANCEL_PENDING',

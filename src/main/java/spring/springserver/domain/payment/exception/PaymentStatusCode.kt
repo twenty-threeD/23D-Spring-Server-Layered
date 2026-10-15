@@ -99,6 +99,11 @@ enum class PaymentStatusCode(
         "수수료를 제외하고 환불할 수 있는 금액이 남아 있지 않습니다.",
         HttpStatus.CONFLICT
     ),
+    PAYMENT_CHAIN_CONFIRMING(
+        "PAYMENT_CHAIN_CONFIRMING",
+        "결제 승인은 끝났고 블록체인 기록을 확인하는 중입니다. 잠시 후 결제 내역에서 다시 확인해주세요.",
+        HttpStatus.ACCEPTED
+    ),
     PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED(
         "PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED",
         "환불 요청 금액이 수수료를 제외한 환불 가능 금액보다 큽니다.",

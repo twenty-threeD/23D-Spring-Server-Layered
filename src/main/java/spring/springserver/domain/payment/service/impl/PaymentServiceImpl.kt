@@ -171,6 +171,23 @@ class PaymentServiceImpl(
                 response,
                 hash
             )
+        } catch (exception: BlockchainCommitTimeoutException) {
+
+            /**
+             * 타임아웃은 기록 실패가 아니라 미확정이다. 브로드캐스트한 트랜잭션이 뒤늦게 커밋될 수 있으므로
+             * 여기서 바로 취소하면 원장에는 기록이 남고 돈만 환불된 상태가 되어 되돌릴 수 없다.
+             * 유예 상태로 남겨 스케줄러가 원장을 다시 확인하고, 끝내 없으면 그때 보상 취소한다.
+             */
+            log.warn("블록체인 커밋 결과를 확정하지 못했습니다. 확인 대상으로 남깁니다. orderId = {}", confirmPaymentRequest.orderId, exception)
+
+            paymentRecordService.markChainUnconfirmed(
+                confirmPaymentRequest.orderId,
+                hash,
+                exception.txHash,
+                CHAIN_UNCONFIRMED_REASON
+            )
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_CHAIN_CONFIRMING)
         } catch (exception: Exception) {
 
             compensate(
@@ -678,6 +695,8 @@ class PaymentServiceImpl(
     companion object {
 
         const val CHAIN_FAILURE_CANCEL_REASON = "블록체인 기록 실패로 인한 자동 취소"
+
+        const val CHAIN_UNCONFIRMED_REASON = "블록체인 커밋 결과 미확정으로 인한 확인 대기"
 
         private const val AMOUNT_MISMATCH_FAILURE_REASON = "승인 금액 불일치로 인한 자동 취소"
 

@@ -5,6 +5,7 @@ enum class PaymentStatus {
     READY,
     IN_PROGRESS,
     DONE,
+    CHAIN_UNCONFIRMED,
     CHAIN_RECORDED,
     CANCELED_BY_CHAIN_FAILURE,
     CANCEL_PENDING,
