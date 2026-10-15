@@ -65,7 +65,7 @@ class Payment(
     /**
      * 체인 기록이 미확정인 결제를 원장에서 다시 확인한 횟수. 유예 한도를 넘기면 보상 취소로 넘긴다.
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer default 0")
     private var chainCheckAttemptCount: Int = 0
 
     @Enumerated(EnumType.STRING)
