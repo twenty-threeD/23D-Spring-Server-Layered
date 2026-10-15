@@ -6,7 +6,8 @@ import spring.springserver.domain.phone.data.response.SendPhoneVerifyNumberRespo
 interface PhoneVerifyService {
 
     fun sendMessage(
-        recipientNumber: String
+        recipientNumber: String,
+        clientIp: String
     ): SendPhoneVerifyNumberResponse
 
     fun verifyPhone(

@@ -202,6 +202,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.DELETE,
+                        "/api/post",
                         "/api/post/*")
                     .hasRole("USER")
                     .requestMatchers(
@@ -236,6 +237,23 @@ class SecurityConfig(
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/contract/*"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.POST,
+                        "/api/community/post",
+                        "/api/community/like",
+                        "/api/community/comment"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/community/post",
+                        "/api/community/comment"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/community/post",
+                        "/api/community/like",
+                        "/api/community/comment"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,

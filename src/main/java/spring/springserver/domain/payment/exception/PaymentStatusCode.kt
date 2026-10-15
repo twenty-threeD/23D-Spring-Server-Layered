@@ -39,6 +39,11 @@ enum class PaymentStatusCode(
         "결제 금액이 일치하지 않습니다.",
         HttpStatus.BAD_REQUEST
     ),
+    PAYMENT_ORDER_ID_MISMATCH(
+        "PAYMENT_ORDER_ID_MISMATCH",
+        "결제 주문번호가 일치하지 않습니다.",
+        HttpStatus.BAD_REQUEST
+    ),
     PAYMENT_MEMBER_MISMATCH(
         "PAYMENT_MEMBER_MISMATCH",
         "결제를 요청한 회원이 아닙니다.",
@@ -89,10 +94,20 @@ enum class PaymentStatusCode(
         "이미 처리 중인 취소 요청이 있습니다. 잠시 후 다시 시도해주세요.",
         HttpStatus.CONFLICT
     ),
+    PAYMENT_CONFIRM_IN_PROGRESS(
+        "PAYMENT_CONFIRM_IN_PROGRESS",
+        "이미 처리 중인 결제 승인 요청이 있습니다. 잠시 후 다시 시도해주세요.",
+        HttpStatus.CONFLICT
+    ),
     PAYMENT_NOTHING_TO_REFUND(
         "PAYMENT_NOTHING_TO_REFUND",
         "수수료를 제외하고 환불할 수 있는 금액이 남아 있지 않습니다.",
         HttpStatus.CONFLICT
+    ),
+    PAYMENT_CHAIN_CONFIRMING(
+        "PAYMENT_CHAIN_CONFIRMING",
+        "결제 승인은 끝났고 블록체인 기록을 확인하는 중입니다. 잠시 후 결제 내역에서 다시 확인해주세요.",
+        HttpStatus.ACCEPTED
     ),
     PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED(
         "PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED",

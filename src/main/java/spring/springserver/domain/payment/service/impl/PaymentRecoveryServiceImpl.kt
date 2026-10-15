@@ -3,6 +3,8 @@ package spring.springserver.domain.payment.service.impl
 import org.slf4j.LoggerFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
+import spring.springserver.domain.blockchain.service.BlockchainService
+import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
@@ -19,7 +21,8 @@ class PaymentRecoveryServiceImpl(
     private val paymentRecordService: PaymentRecordService,
     private val tossPaymentsClient: TossPaymentsClient,
     private val redisTemplate: RedisTemplate<String, String>,
-    private val chatService: ChatService
+    private val chatService: ChatService,
+    private val blockchainService: BlockchainService
 ): PaymentRecoveryService {
 
     private val log = LoggerFactory.getLogger(PaymentRecoveryServiceImpl::class.java)
@@ -160,6 +163,111 @@ class PaymentRecoveryServiceImpl(
         }
     }
 
+    /**
+     * 커밋 결과를 확정하지 못한 결제는 뒤늦게 원장에 올라올 수 있다.
+     * 원장에 기록이 보이면 완료로 수렴시키고, 유예 한도까지 보이지 않으면 그때 보상 취소로 넘긴다.
+     */
+    override fun reconcileUnconfirmedChainRecords() {
+
+        paymentRepository.findAllByStatus(PaymentStatus.CHAIN_UNCONFIRMED).forEach { payment ->
+
+            val orderId = payment.getOrderId()
+            val paymentHash = payment.getPaymentHash()
+
+            /**
+             * 해시가 없으면 완료로도 돌릴 수 없는 건이라 사람이 봐야 한다. 취소 쪽으로 넘긴다.
+             */
+            if (paymentHash == null) {
+
+                log.error("CHAIN_UNCONFIRMED인데 결제 해시가 없습니다. 보상 취소 대상으로 넘깁니다. orderId={}", orderId)
+
+                paymentRecordService.markCancelPending(
+                    orderId,
+                    CHAIN_UNCONFIRMED_EXPIRED_REASON
+                )
+
+                return@forEach
+            }
+
+            try {
+
+                val record = blockchainService.findRecord(orderId = orderId)
+
+                if (record != null) {
+
+                    completeLateChainRecord(
+                        payment,
+                        record.paymentHash
+                    )
+
+                    log.info("뒤늦게 원장에 기록된 결제를 완료로 반영했습니다. orderId={}", orderId)
+
+                    return@forEach
+                }
+
+                if (payment.getChainCheckAttemptCount() >= MAX_CHAIN_CHECK_ATTEMPT_COUNT) {
+
+                    log.warn("유예 한도까지 원장 기록이 없어 보상 취소 대상으로 넘깁니다. orderId={}", orderId)
+
+                    paymentRecordService.markCancelPending(
+                        orderId,
+                        CHAIN_UNCONFIRMED_EXPIRED_REASON
+                    )
+
+                    return@forEach
+                }
+
+                paymentRecordService.markChainUnconfirmed(
+                    orderId,
+                    paymentHash,
+                    payment.getBlockchainTxHash(),
+                    payment.getFailureReason()
+                )
+            } catch (exception: Exception) {
+
+                log.warn("체인 기록 확인에 실패했습니다. 다음 주기에 다시 시도합니다. orderId={}", orderId, exception)
+            }
+        }
+    }
+
+    /**
+     * 뒤늦게 확인된 체인 기록을 완료로 반영한다.
+     * 거래 상태와 채팅 메시지는 결제 자체를 되돌릴 이유가 아니므로 실패해도 기록만 남긴다.
+     */
+    private fun completeLateChainRecord(
+        payment: Payment,
+        paymentHash: String
+    ) {
+
+        paymentRecordService.markChainRecorded(
+            payment.getOrderId(),
+            paymentHash,
+            payment.getBlockchainTxHash()
+        )
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.completeTrade(roomId)
+            chatService.sendPaymentMessage(
+                roomId,
+                payment.getMemberId(),
+                ChatPaymentResponse.of(
+                    payment.getOrderId(),
+                    payment.getOrderName().orEmpty(),
+                    payment.getAmount(),
+                    paymentHash,
+                    payment.getBlockchainTxHash()
+                )
+            )
+        } catch (exception: Exception) {
+
+            log.warn("뒤늦은 체인 기록 반영 후 거래 상태를 갱신하지 못했습니다. orderId={}, roomId={}", payment.getOrderId(), roomId, exception)
+        }
+    }
+
     private fun findRetryablePendingCancels(): List<Payment> {
 
         return paymentRepository.findRetryableByStatus(
@@ -181,6 +289,8 @@ class PaymentRecoveryServiceImpl(
         private const val MAX_CANCEL_ATTEMPT_COUNT = 5
         private const val STUCK_THRESHOLD_MINUTES = 10L
         private const val TOSS_STATUS_DONE = "DONE"
+        private const val MAX_CHAIN_CHECK_ATTEMPT_COUNT = 5
+        private const val CHAIN_UNCONFIRMED_EXPIRED_REASON = "블록체인 기록 미확인 유예 초과로 인한 자동 취소"
         private const val STUCK_FAILURE_REASON = "승인 처리 중 서버 중단으로 인한 정합화"
     }
 }

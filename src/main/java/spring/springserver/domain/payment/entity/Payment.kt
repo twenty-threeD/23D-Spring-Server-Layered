@@ -62,6 +62,12 @@ class Payment(
     @Column(nullable = false)
     private var cancelAttemptCount: Int = 0
 
+    /**
+     * 체인 기록이 미확정인 결제를 원장에서 다시 확인한 횟수. 유예 한도를 넘기면 보상 취소로 넘긴다.
+     */
+    @Column(nullable = false)
+    private var chainCheckAttemptCount: Int = 0
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private var status: PaymentStatus = PaymentStatus.READY
@@ -88,6 +94,7 @@ class Payment(
     fun getBlockchainTxHash() = blockchainTxHash
     fun getFailureReason() = failureReason
     fun getCancelAttemptCount() = cancelAttemptCount
+    fun getChainCheckAttemptCount() = chainCheckAttemptCount
     fun getStatus() = status
     fun getCreatedAt() = createdAt
     fun getUpdatedAt() = updatedAt
@@ -104,6 +111,24 @@ class Payment(
         this.paymentKey = paymentKey
 
         transitTo(PaymentStatus.DONE)
+    }
+
+    /**
+     * 체인 커밋 결과를 확정하지 못한 상태. 기록이 남았는지 다시 확인해야 하므로 해시를 함께 보관한다.
+     */
+    fun markChainUnconfirmed(
+        paymentHash: String,
+        blockchainTxHash: String?,
+        failureReason: String?
+    ) {
+
+        this.paymentHash = paymentHash
+        this.failureReason = failureReason?.take(200)
+        this.chainCheckAttemptCount += 1
+
+        if (blockchainTxHash != null) this.blockchainTxHash = blockchainTxHash
+
+        transitTo(PaymentStatus.CHAIN_UNCONFIRMED)
     }
 
     fun markChainRecorded(

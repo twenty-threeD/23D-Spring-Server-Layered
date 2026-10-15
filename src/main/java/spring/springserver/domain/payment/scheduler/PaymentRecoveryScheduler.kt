@@ -62,6 +62,21 @@ class PaymentRecoveryScheduler(
         }
     }
 
+    /**
+     * 3분마다 체인 커밋 결과가 미확정인 결제를 원장 조회로 확정한다.
+     */
+    @Scheduled(cron = "0 */3 * * * *")
+    fun reconcileUnconfirmedChainRecords() {
+
+        redisLockExecutor.runWithLock(
+            key = RECONCILE_UNCONFIRMED_CHAIN_RECORDS_LOCK_KEY,
+            ttl = LOCK_TTL
+        ) {
+
+            paymentRecoveryService.reconcileUnconfirmedChainRecords()
+        }
+    }
+
     companion object {
 
         private const val RETRY_PENDING_CANCELS_LOCK_KEY = "payment:recovery:retry-pending-cancels:lock"
@@ -70,9 +85,11 @@ class PaymentRecoveryScheduler(
 
         private const val RECONCILE_UNSYNCED_CANCELS_LOCK_KEY = "payment:recovery:reconcile-unsynced-cancels:lock"
 
+        private const val RECONCILE_UNCONFIRMED_CHAIN_RECORDS_LOCK_KEY = "payment:recovery:reconcile-unconfirmed-chain-records:lock"
+
         /**
-         * 가장 짧은 주기(5분)보다 짧게 잡아, 실행 중 인스턴스가 죽어도 다음 주기는 돌게 한다.
+         * 가장 짧은 주기(3분)보다 짧게 잡아, 실행 중 인스턴스가 죽어도 다음 주기는 돌게 한다.
          */
-        private val LOCK_TTL: Duration = Duration.ofMinutes(4)
+        private val LOCK_TTL: Duration = Duration.ofMinutes(2)
     }
 }

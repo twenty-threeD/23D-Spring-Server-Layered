@@ -38,6 +38,17 @@ interface PaymentRecordService {
         paymentKey: String
     )
 
+    /**
+     * 체인 커밋 결과가 미확정인 결제를 유예 상태로 남긴다.
+     * 뒤늦게 커밋될 수 있으므로 바로 취소하지 않고 스케줄러가 원장을 다시 확인한다.
+     */
+    fun markChainUnconfirmed(
+        orderId: String,
+        paymentHash: String,
+        blockchainTxHash: String?,
+        failureReason: String?
+    )
+
     fun markChainRecorded(
         orderId: String,
         paymentHash: String,
