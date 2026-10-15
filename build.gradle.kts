@@ -42,6 +42,10 @@ dependencies {
     // Redis
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
+    // Cache (Caffeine 로컬 캐시)
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine")
+
     // unit
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
