@@ -3,10 +3,10 @@ package spring.springserver.domain.post.review.data.response
 import java.time.LocalDateTime
 
 /**
- * 전문가 한 명이 받은 리뷰의 AI 분석 결과.
+ * 게시글 한 건에 달린 리뷰의 AI 분석 결과.
  */
 data class PostReviewAnalysisResponse(
-    val memberId: Long,
+    val postId: Long,
 
     val summary: String,
 
@@ -20,7 +20,7 @@ data class PostReviewAnalysisResponse(
     companion object {
 
         fun of(
-            memberId: Long,
+            postId: Long,
             summary: String,
             keywords: List<String>,
             analyzedReviewCount: Long,
@@ -28,7 +28,7 @@ data class PostReviewAnalysisResponse(
         ): PostReviewAnalysisResponse {
 
             return PostReviewAnalysisResponse(
-                memberId,
+                postId,
                 summary,
                 keywords,
                 analyzedReviewCount,

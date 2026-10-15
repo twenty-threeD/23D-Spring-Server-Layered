@@ -2,7 +2,7 @@ package spring.springserver.domain.post.review.service
 
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
-import spring.springserver.domain.member.entity.Member
+import spring.springserver.domain.post.entity.Post
 import spring.springserver.domain.post.review.client.ReviewAnalysisResult
 import spring.springserver.domain.post.review.entity.PostReviewAnalysis
 import spring.springserver.domain.post.review.repository.PostReviewAnalysisRepository
@@ -20,24 +20,24 @@ class PostReviewAnalysisWriter(
 ) {
 
     /**
-     * reviewee당 한 행만 두므로 없으면 넣고 있으면 갱신한다.
+     * 게시글당 한 행만 두므로 없으면 넣고 있으면 갱신한다.
      *
-     * 같은 전문가의 첫 분석이 동시에 들어오면 양쪽 모두 insert를 시도해
-     * `uk_post_review_analysis_reviewee`에 걸린다. 제약 위반이 나면 이 트랜잭션은
+     * 같은 게시글의 첫 분석이 동시에 들어오면 양쪽 모두 insert를 시도해
+     * `uk_post_review_analysis_post`에 걸린다. 제약 위반이 나면 이 트랜잭션은
      * 이미 롤백 대상이라 안에서 복구할 수 없다. 그래서 예외를 그대로 올리고,
      * 재시도는 호출자가 새 트랜잭션으로 한 번 더 부르는 식으로 처리한다.
      */
     @Transactional(rollbackFor = [Exception::class])
     fun upsert(
-        reviewee: Member,
+        post: Post,
         reviewAnalysisResult: ReviewAnalysisResult,
         reviewCount: Long
     ): PostReviewAnalysis {
 
-        val revieweeId = reviewee.getId()
-            ?: throw IllegalArgumentException("저장되지 않은 회원으로는 분석 결과를 남길 수 없다.")
+        val postId = post.getId()
+            ?: throw IllegalArgumentException("저장되지 않은 게시글로는 분석 결과를 남길 수 없다.")
 
-        val savedAnalysis = postReviewAnalysisRepository.findByRevieweeId(revieweeId)
+        val savedAnalysis = postReviewAnalysisRepository.findByPostId(postId)
 
         if (savedAnalysis != null) {
 
@@ -55,7 +55,7 @@ class PostReviewAnalysisWriter(
          */
         return postReviewAnalysisRepository.saveAndFlush(
             PostReviewAnalysis(
-                reviewee,
+                post,
                 reviewAnalysisResult.summary,
                 reviewAnalysisResult.keywords.toMutableList(),
                 reviewCount
