@@ -1,6 +1,7 @@
 package spring.springserver.domain.notification.service.impl
 
 import org.slf4j.LoggerFactory
+import org.springframework.data.domain.PageRequest
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
@@ -92,7 +93,8 @@ class NotificationServiceImpl(
 
             notificationRepository.findMissedByReceiverUsername(
                 username = username,
-                lastEventId = lastEventId ?: 0L
+                lastEventId = lastEventId ?: 0L,
+                pageable = PageRequest.of(0, MAX_REPLAY_SIZE)
             ).forEach {
 
                 notification ->
@@ -144,14 +146,49 @@ class NotificationServiceImpl(
     }
 
     /**
+     * AFTER_COMMIT 리스너에서 호출되므로, 기본 전파(REQUIRED)로는 이미 끝난 트랜잭션에 참여해
+     * 저장이 커밋되지 않는다. 그래서 REQUIRES_NEW로 저장하고, 커밋된 뒤에 SSE로 보낸다.
+     */
+    override fun sendMissedCallNotification(
+        receiverUsername: String,
+        callerUsername: String,
+        message: String,
+        roomId: Long?
+    ): NotificationResponse {
+
+        val response = requiresNewTransaction.execute {
+
+            save(
+                type = NotificationType.CALL_MISSED,
+                receiverUsername = receiverUsername,
+                senderUsername = callerUsername,
+                message = message,
+                sentAt = Instant.now(),
+                roomId = roomId
+            )
+        }!!
+
+        dispatch(receiverUsername) { event(response) }
+
+        return response
+    }
+
+    /**
      * 이 메서드는 AFTER_COMMIT 리스너에서 호출된다. 그 시점에는 방금 커밋된 트랜잭션의
      * 리소스가 아직 스레드에 바인딩돼 있어, 기본 전파(REQUIRED)로는 새 트랜잭션이 열리지 않고
-     * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 수신자 한 명마다
-     * REQUIRES_NEW로 트랜잭션을 새로 연다.
+     * 이미 끝난 트랜잭션에 참여해 INSERT가 커밋되지 않는다. 그래서 REQUIRES_NEW로 연다.
      *
-     * 수신자 단위로 트랜잭션을 끊어야 한 명의 저장 실패가 나머지를 롤백시키지 않는다.
+     * 트랜잭션을 끊는 이유는 한 건의 저장 실패가 나머지를 롤백시키지 않게 하려는 것이다.
      * 메서드 전체를 한 트랜잭션으로 묶으면 예외를 잡아도 rollback-only로 마킹되어
      * 마지막 커밋에서 전부 날아간다.
+     *
+     * 다만 그 목적에 수신자 1명 = 트랜잭션 1개까지는 필요 없다. 수신자 500명이면
+     * begin/commit이 500번이고, 팬아웃 비용의 지배항은 조회가 아니라 이 개수다.
+     * `JOB_POST_CHUNK_SIZE`명씩 묶으면 트랜잭션은 그 만큼 줄고, 한 청크가 깨져도
+     * 손실은 그 청크로 제한된다.
+     *
+     * 수신자 조회는 격리와 무관하므로 앞에서 한 번에 끝낸다. 저장할 때는 id로 만든
+     * 프록시 참조만 넘겨 수신자마다 다시 읽지 않는다.
      */
     override fun sendJobPostNotification(
         receiverUsernames: Collection<String>,
@@ -160,49 +197,109 @@ class NotificationServiceImpl(
     ): List<NotificationResponse> {
 
         val sentAt = Instant.now()
+        val distinctUsernames = receiverUsernames.distinct()
+        val receiverIds = memberRepository.findIdsByUsernameIn(distinctUsernames)
+            .associate { row -> (row[0] as String) to (row[1] as Long) }
 
-        return receiverUsernames.distinct()
-            .mapNotNull {
+        val missingUsernames = distinctUsernames.filterNot { receiverIds.containsKey(it) }
 
-                receiverUsername ->
-                runCatching {
+        if (missingUsernames.isNotEmpty()) {
 
-                    val response = requiresNewTransaction.execute {
+            log.warn(
+                "구인/구직 알림 수신자를 찾을 수 없습니다: usernames={}, postId={}",
+                missingUsernames,
+                postId
+            )
+        }
 
-                        save(
-                            type = NotificationType.JOB_POST,
-                            receiverUsername = receiverUsername,
-                            senderUsername = null,
+        return distinctUsernames.filter { receiverIds.containsKey(it) }
+            .chunked(JOB_POST_CHUNK_SIZE)
+            .flatMap {
+
+                chunk ->
+                val responses = runCatching {
+
+                    requiresNewTransaction.execute {
+
+                        saveJobPostNotifications(
+                            receiverUsernames = chunk,
+                            receiverIds = receiverIds,
                             message = message,
                             sentAt = sentAt,
-                            roomId = null,
                             postId = postId
                         )
                     }!!
-
-                    // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
-                    dispatch(receiverUsername) { event(response) }
-
-                    response
                 }.onFailure {
 
                     throwable ->
                     log.warn(
-                        "구인/구직 알림 전송 실패: username={}, postId={}",
-                        receiverUsername,
+                        "구인/구직 알림 전송 실패: usernames={}, postId={}",
+                        chunk,
                         postId,
                         throwable
                     )
-                }.getOrNull()
+                }.getOrDefault(emptyList())
+
+                // 커밋된 뒤에 흘려보내야 SSE로만 전달되고 저장은 되지 않는 알림이 생기지 않는다.
+                responses.forEach { response -> dispatch(response.receiverUsername) { event(response) } }
+
+                responses
             }
+    }
+
+    /**
+     * 한 트랜잭션에서 청크 하나를 저장한다. 수신자를 다시 읽지 않는다.
+     * `getReferenceById`는 프록시만 만들어 FK에는 id만 들어가고,
+     * 응답의 username은 호출부가 이미 아는 값을 쓴다.
+     */
+    private fun saveJobPostNotifications(
+        receiverUsernames: List<String>,
+        receiverIds: Map<String, Long>,
+        message: String,
+        sentAt: Instant,
+        postId: Long
+    ): List<NotificationResponse> {
+
+        val notifications = notificationRepository.saveAll(
+            receiverUsernames.map {
+
+                receiverUsername ->
+                Notification(
+                    type = NotificationType.JOB_POST,
+                    receiver = memberRepository.getReferenceById(receiverIds.getValue(receiverUsername)),
+                    message = message,
+                    sentAt = sentAt,
+                    sender = null,
+                    roomId = null,
+                    postId = postId
+                )
+            }
+        )
+
+        return notifications.mapIndexed {
+
+            index, notification ->
+            NotificationResponse.ofFanout(
+                notification,
+                receiverUsernames[index]
+            )
+        }
     }
 
     @Transactional(readOnly = true)
     override fun getNotifications(
-        username: String
+        username: String,
+        page: Int,
+        size: Int
     ): List<NotificationResponse> {
 
-        return notificationRepository.findAllByReceiverUsername(username)
+        return notificationRepository.findAllByReceiverUsername(
+            username = username,
+            pageable = PageRequest.of(
+                page.coerceAtLeast(0),
+                size.coerceIn(1, MAX_PAGE_SIZE)
+            )
+        )
             .map { NotificationResponse.of(it) }
     }
 
@@ -348,6 +445,18 @@ class NotificationServiceImpl(
         private const val TIMEOUT_MILLIS = 30L * 60L * 1000L
         private const val RECONNECT_MILLIS = 3_000L
         private const val HEARTBEAT_MILLIS = 15_000L
+
+        /**
+         * 팬아웃 저장을 묶는 단위. 트랜잭션 개수와 한 청크가 깨졌을 때의 손실 범위를 맞바꾼다.
+         */
+        private const val JOB_POST_CHUNK_SIZE = 100
+        private const val MAX_PAGE_SIZE = 100
+
+        /**
+         * 재접속 한 번에 흘려보낼 미수신 알림의 상한.
+         * 더 남아 있으면 클라이언트가 마지막 id로 Last-Event-ID를 갱신해 다시 붙는다.
+         */
+        private const val MAX_REPLAY_SIZE = 100
 
         private val log = LoggerFactory.getLogger(NotificationServiceImpl::class.java)
     }

@@ -114,6 +114,6 @@ class CommunityCommentServiceImpl(
     ): String? {
 
         return communityComment.member.getId()
-            ?.let { memberId -> profileService.getImageUrlsByMemberIds(listOf(memberId))[memberId] }
+            ?.let { memberId -> profileService.getImageUrlByMemberId(memberId) }
     }
 }

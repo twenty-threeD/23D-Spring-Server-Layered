@@ -2,23 +2,32 @@ package spring.springserver.domain.chat.service.impl
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.dao.DataIntegrityViolationException
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionDefinition
+import org.springframework.transaction.annotation.Propagation
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
 import spring.springserver.domain.chat.data.request.SendChatMessageRequest
+import spring.springserver.domain.chat.data.request.UpdateTradeStatusRequest
+import spring.springserver.domain.chat.data.response.ChatCallLogResponse
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatMessageType
 import spring.springserver.domain.chat.data.response.ChatParticipantResponse
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
+import spring.springserver.domain.chat.data.response.TradeStatusResponse
+import spring.springserver.domain.chat.entity.ChatMessage
 import spring.springserver.domain.chat.entity.ChatRoom
 import spring.springserver.domain.chat.entity.ChatRoomParticipant
+import spring.springserver.domain.chat.entity.TradeStatus
+import spring.springserver.domain.chat.exception.ChatStatusCode
+import spring.springserver.domain.chat.repository.ChatMessageRepository
 import spring.springserver.domain.chat.repository.ChatRoomParticipantRepository
 import spring.springserver.domain.chat.repository.ChatRoomRepository
 import spring.springserver.domain.chat.service.ChatService
@@ -39,6 +48,7 @@ import java.util.concurrent.TimeUnit
 class ChatServiceImpl(
     private val chatRoomRepository: ChatRoomRepository,
     private val chatRoomParticipantRepository: ChatRoomParticipantRepository,
+    private val chatMessageRepository: ChatMessageRepository,
     private val memberRepository: MemberRepository,
     private val postRepository: PostRepository,
     private val profileService: ProfileService,
@@ -50,6 +60,7 @@ class ChatServiceImpl(
 ) : ChatService {
 
     private val chatMessageCacheTtlMillis = TimeUnit.DAYS.toMillis(3)
+    private val chatMessageCacheScanSize = 200L
     private val paymentMessagePreview = "결제 완료"
 
     private val createRoomTransactionTemplate = TransactionTemplate(transactionManager).apply {
@@ -104,6 +115,13 @@ class ChatServiceImpl(
         val requester = getMemberByUsername(requesterUsername)
         val target = getMemberByUsername(targetUsername)
         val post = resolvePost(postId)
+        val postAuthorId = post.member.getId()
+
+        if (requester.getId() != postAuthorId && target.getId() != postAuthorId) {
+
+            throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
+        }
+
         val directChatKey = ChatRoom.generateDirectChatKey(requester.getId()!!, target.getId()!!)
 
         val existingRoom = chatRoomRepository.findByDirectChatKeyAndPostId(
@@ -120,16 +138,16 @@ class ChatServiceImpl(
             return CreateChatRoomResponse.of(
                 roomId = existingRoom.getId(),
                 postId = existingRoom.post.getId(),
-                participantUsername = getOtherParticipant(existingRoom, requesterUsername).username,
+                participantUsername = target.username,
                 existingRoom = true,
-                clearBefore = participant.deletedAt
+                clearBefore = participant.deletedAt,
+                tradeStatus = existingRoom.getTradeStatus()
             )
         }
 
         return createRoom(
             requester = requester,
             target = target,
-            requesterUsername = requesterUsername,
             post = post
         )
     }
@@ -138,36 +156,62 @@ class ChatServiceImpl(
         username: String
     ): List<ChatRoomResponse> {
 
-        val rooms = chatRoomRepository.findAllByParticipantUsername(username)
-        rooms.forEach(::ensureParticipantRows)
+        /**
+         * 백필은 참여자 테이블 도입 전 방을 위한 호환 장치다. 목록 조회마다 돌리면
+         * 읽기 요청이 매번 쓰기 트랜잭션이 되므로, 빠진 방이 실제로 있을 때만 보정한다.
+         *
+         * 조회 결과가 비었는지로 판단하면 안 된다. 신규 방과 과거 방을 함께 가진 회원은
+         * 결과가 비지 않으므로 보정이 영영 돌지 않고 과거 방이 계속 누락된다.
+         */
+        if (chatRoomRepository.countRoomsMissingParticipantRow(username) > 0) {
 
-        val participantsByRoomId = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
-            .associateBy { it.room.getId() }
+            backfillParticipantRowsForMember(username)
+        }
 
-        val visibleRooms = rooms.filter { it.getId() in participantsByRoomId }
+        val myParticipants = chatRoomParticipantRepository.findVisibleParticipantsByUsername(username)
 
-        val others = visibleRooms.associateWith { getOtherParticipant(it, username) }
+        if (myParticipants.isEmpty()) {
+
+            return emptyList()
+        }
+
+        val othersByRoomId = chatRoomParticipantRepository
+            .findAllByRoomIds(myParticipants.mapNotNull { it.room.getId() })
+            .filter { it.member.username != username }
+            .associateBy({ it.room.getId() }, { it.member })
 
         val imageUrls = profileService.getImageUrlsByMemberIds(
-            others.values.mapNotNull { it.getId() }
+            othersByRoomId.values.mapNotNull { it.getId() }
         )
 
-        return visibleRooms.map { room ->
+        return myParticipants.mapNotNull { participant ->
 
-            val other = others.getValue(room)
+            val room = participant.room
+            val other = othersByRoomId[room.getId()]
+                ?: return@mapNotNull null
 
             ChatRoomResponse.of(
                 room = room,
                 participant = other,
                 participantImageUrl = other.getId()?.let { imageUrls[it] },
-                clearBefore = participantsByRoomId[room.getId()]?.deletedAt
+                clearBefore = participant.deletedAt
             )
         }
     }
 
+    /**
+     * 최근 메시지는 Redis 캐시에서, 캐시에 없거나 더 오래된 구간은 PostgreSQL에서 읽는다.
+     *
+     * 페이지네이션은 offset이 아니라 커서(`id < :cursor`)다. 반환은 기존 계약대로 오래된 -> 최신 순이다.
+     * `after`가 오면 과거 스크롤이 아니라 델타 동기화이므로 그쪽으로 넘긴다(둘은 배타적이다).
+     */
+    @Transactional(readOnly = true)
     override fun getRoomMessages(
         username: String,
-        roomId: Long
+        roomId: Long,
+        cursor: Long?,
+        after: Long?,
+        size: Int
     ): List<ChatMessageResponse> {
 
         val participant = getVisibleParticipant(
@@ -175,19 +219,95 @@ class ChatServiceImpl(
             username = username
         )
 
-        val messages = getCachedRoomMessages(roomId)
+        val pageSize = normalizePageSize(size)
+        val clearBefore = participant.deletedAt
+        val createdAfter = clearBefore ?: Instant.EPOCH
 
-        val responses = if (participant.deletedAt == null) {
+        if (after != null) {
 
-            messages
-        } else {
-
-            messages.filter {
-                it.createdAt.isAfter(participant.deletedAt!!)
-            }
+            return getMessagesAfter(
+                roomId = roomId,
+                sinceId = after,
+                clearBefore = clearBefore,
+                createdAfter = createdAfter,
+                pageSize = pageSize
+            )
         }
 
-        return responses
+        val cachedMessages = getCachedRoomMessages(roomId)
+            .filter { clearBefore == null || it.createdAt.isAfter(clearBefore) }
+            .filter { it.messageId != null && (cursor == null || it.messageId < cursor) }
+            .sortedByDescending { it.messageId }
+            .take(pageSize)
+
+        if (cachedMessages.size >= pageSize) {
+
+            return cachedMessages.asReversed()
+        }
+
+        val nextCursor = cachedMessages.lastOrNull()?.messageId
+            ?: cursor
+        val remaining = pageSize - cachedMessages.size
+        val pageable = PageRequest.of(0, remaining)
+
+        val storedMessages = if (nextCursor == null) {
+
+            chatMessageRepository.findRecentByRoomId(
+                roomId = roomId,
+                clearBefore = createdAfter,
+                pageable = pageable
+            )
+        } else {
+
+            chatMessageRepository.findByRoomIdBefore(
+                roomId = roomId,
+                lastId = nextCursor,
+                clearBefore = createdAfter,
+                pageable = pageable
+            )
+        }
+
+        return (cachedMessages + storedMessages.map { toResponse(it) }).asReversed()
+    }
+
+    /**
+     * 클라이언트가 아는 마지막 메시지 이후만 돌려준다.
+     *
+     * Redis 리스트는 TTL 안의 메시지를 빠짐없이 순서대로 들고 있으므로,
+     * 요청한 지점이 캐시의 시작보다 뒤라면 그 이후는 전부 캐시에 있다고 볼 수 있어 DB를 건드리지 않는다.
+     * 그보다 오래된 지점이면(오래 접속하지 않은 클라이언트) DB에서 읽는다.
+     *
+     * 반환 개수가 `pageSize`와 같으면 아직 남은 구간이 있다는 뜻이고,
+     * 클라이언트는 마지막 id로 `after`를 갱신해 다시 호출하면 된다.
+     */
+    private fun getMessagesAfter(
+        roomId: Long,
+        sinceId: Long,
+        clearBefore: Instant?,
+        createdAfter: Instant,
+        pageSize: Int
+    ): List<ChatMessageResponse> {
+
+        val cachedMessages = getCachedRoomMessages(roomId)
+            .filter { clearBefore == null || it.createdAt.isAfter(clearBefore) }
+            .filter { it.messageId != null }
+            .sortedBy { it.messageId }
+
+        val oldestCachedId = cachedMessages.firstOrNull()?.messageId
+
+        if (oldestCachedId != null && sinceId + 1 >= oldestCachedId) {
+
+            return cachedMessages.filter { it.messageId!! > sinceId }
+                .take(pageSize)
+        }
+
+        return chatMessageRepository.findByRoomIdAfter(
+            roomId = roomId,
+            sinceId = sinceId,
+            clearBefore = createdAfter,
+            pageable = PageRequest.of(0, pageSize)
+        )
+            .map { toResponse(it) }
     }
 
     override fun sendMessage(
@@ -195,14 +315,14 @@ class ChatServiceImpl(
         sendChatMessageRequest: SendChatMessageRequest
     ): ChatMessageResponse {
 
-        memberService.ensurePhoneVerified(username = senderUsername)
-
         val senderParticipant = getVisibleParticipant(
             roomId = sendChatMessageRequest.roomId,
             username = senderUsername
         )
         val room = senderParticipant.room
         val sender = senderParticipant.member
+
+        memberService.ensurePhoneVerified(member = sender)
         val normalizedMessage = normalizeMessage(sendChatMessageRequest.message)
         val attachmentUrls = normalizeAttachmentUrls(sendChatMessageRequest.fileUrls)
 
@@ -215,10 +335,20 @@ class ChatServiceImpl(
         }
 
         val createdAt = Instant.now()
-        val messageId = nextMessageId(room.getId()!!)
+
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = normalizedMessage,
+                createdAt = createdAt,
+                messageType = ChatMessageType.TEXT,
+                attachmentUrlsText = ChatMessage.joinAttachmentUrls(attachmentUrls)
+            )
+        )
 
         val response = ChatMessageResponse(
-            messageId = messageId,
+            messageId = chatMessage.getId(),
             roomId = room.getId(),
             senderUsername = sender.username,
             senderName = sender.name,
@@ -229,7 +359,11 @@ class ChatServiceImpl(
 
         room.updateLastMessageMeta(
             at = createdAt,
-            preview = "새 메시지"
+            // 채팅 목록 미리보기와 거래 완료·취소 판별([거래 완료] 등 접두사)에 원문이 필요하다.
+            // 컬럼 길이(200)를 넘지 않게 자르고, 첨부만 보낸 메시지는 내용이 비어 대체 문구를 둔다
+            preview = normalizedMessage.ifBlank {
+                if (attachmentUrls.isNotEmpty()) "파일을 보냈습니다." else "새 메시지"
+            }.take(200)
         )
 
         reactivateParticipantsOnNewMessage(
@@ -247,9 +381,9 @@ class ChatServiceImpl(
         username: String
     ): ChatParticipantResponse {
 
-        val participant = getVisibleParticipant(roomId, username)
-        
-        return ChatParticipantResponse(getOtherParticipant(participant.room, username).username)
+        getVisibleParticipant(roomId, username)
+
+        return ChatParticipantResponse(getOtherMember(roomId, username).username)
     }
 
     override fun canAccessRoom(
@@ -257,15 +391,13 @@ class ChatServiceImpl(
         roomId: Long
     ): Boolean {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId)
-            ?: return false
-
-        ensureParticipantRows(room)
-
-        return chatRoomParticipantRepository.existsVisibleParticipant(
+        val participant = findParticipant(
             roomId = roomId,
             username = username
         )
+            ?: return false
+
+        return participant.visible
     }
 
     override fun leaveRoom(
@@ -294,10 +426,22 @@ class ChatServiceImpl(
         memberId: Long
     ): Boolean {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
-            ?: return false
+        if (chatRoomParticipantRepository.existsByRoomIdAndMemberId(roomId, memberId)) {
 
-        return room.client.getId() == memberId || room.professional.getId() == memberId
+            return true
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.existsByRoomIdAndMemberId(roomId, memberId)
+    }
+
+    @Transactional(readOnly = true)
+    override fun isTradableRoom(
+        roomId: Long
+    ): Boolean {
+
+        return findRoom(roomId)?.hasPostAuthor() ?: false
     }
 
     override fun sendPaymentMessage(
@@ -306,21 +450,29 @@ class ChatServiceImpl(
         payment: ChatPaymentResponse
     ): ChatMessageResponse {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId = roomId)
-            ?: throw ApplicationException.of(CommonStatusCode.ENDPOINT_NOT_FOUND)
+        val senderParticipant = findParticipant(
+            roomId = roomId,
+            memberId = senderMemberId
+        )
+            ?: throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
 
-        ensureParticipantRows(room = room)
-
-        val sender = when (senderMemberId) {
-            room.client.getId() -> room.client
-            room.professional.getId() -> room.professional
-            else -> throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
-        }
-
+        val room = senderParticipant.room
+        val sender = senderParticipant.member
         val createdAt = Instant.now()
 
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = paymentMessagePreview,
+                createdAt = createdAt,
+                messageType = ChatMessageType.PAYMENT,
+                paymentPayload = objectMapper.writeValueAsString(payment)
+            )
+        )
+
         val response = ChatMessageResponse(
-            messageId = nextMessageId(roomId = roomId),
+            messageId = chatMessage.getId(),
             roomId = roomId,
             senderUsername = sender.username,
             senderName = sender.name,
@@ -354,10 +506,156 @@ class ChatServiceImpl(
         return response
     }
 
+    override fun updateTradeStatus(
+        username: String,
+        roomId: Long,
+        updateTradeStatusRequest: UpdateTradeStatusRequest
+    ): TradeStatusResponse {
+
+        /**
+         * 완료는 결제 승인으로, 진행 중은 새 계약서 등록으로만 바뀐다.
+         * 사용자가 그 값을 직접 넣으면 결제 없이 거래 완료를 만들 수 있으므로 취소만 받는다.
+         */
+        if (updateTradeStatusRequest.status != TradeStatus.CANCELED) {
+
+            throw ApplicationException(ChatStatusCode.TRADE_STATUS_NOT_ALLOWED)
+        }
+
+        val room = getVisibleParticipant(
+            roomId,
+            username
+        ).room
+
+        if (!room.hasPostAuthor()) {
+
+            throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
+        }
+
+        /**
+         * 결제가 끝난 거래를 여기서 취소로 바꾸면 돈은 그대로인데 거래만 취소로 보인다.
+         * 그 경우는 결제 취소를 거쳐야 한다.
+         */
+        if (room.getTradeStatus() != TradeStatus.IN_PROGRESS) {
+
+            throw ApplicationException(ChatStatusCode.TRADE_NOT_CANCELABLE)
+        }
+
+        room.cancelTrade()
+
+        return TradeStatusResponse.of(room)
+    }
+
+    override fun completeTrade(
+        roomId: Long
+    ) {
+
+        findRoom(roomId)?.completeTrade()
+    }
+
+    override fun cancelTrade(
+        roomId: Long
+    ) {
+
+        findRoom(roomId)?.cancelTrade()
+    }
+
+    override fun restartTrade(
+        clientId: Long,
+        professionalId: Long,
+        postId: Long
+    ) {
+
+        chatRoomRepository.findByDirectChatKeyAndPostId(
+            directChatKey = ChatRoom.generateDirectChatKey(clientId, professionalId),
+            postId = postId
+        )?.restartTrade()
+    }
+
+    private fun findRoom(
+        roomId: Long
+    ): ChatRoom? {
+
+        return chatRoomRepository.findById(roomId).orElse(null)
+    }
+
+    /**
+     * 통화 정리 트랜잭션이 커밋된 뒤(AFTER_COMMIT) 호출된다. 그 시점에는 끝난 트랜잭션이 스레드에
+     * 남아 있어 기본 전파로는 저장이 커밋되지 않으므로 새 트랜잭션을 연다.
+     */
+    @Transactional(
+        rollbackFor = [Exception::class],
+        propagation = Propagation.REQUIRES_NEW
+    )
+    override fun sendCallLogMessage(
+        roomId: Long,
+        senderUsername: String,
+        callLog: ChatCallLogResponse
+    ): ChatMessageResponse {
+
+        val senderParticipant = findParticipant(
+            roomId = roomId,
+            username = senderUsername
+        )
+            ?: throw ApplicationException.of(CommonStatusCode.INVALID_ARGUMENT)
+
+        val room = senderParticipant.room
+        val sender = senderParticipant.member
+        val createdAt = Instant.now()
+        val preview = callLog.toPreview()
+
+        val chatMessage = chatMessageRepository.save(
+            ChatMessage(
+                room = room,
+                sender = sender,
+                message = preview,
+                createdAt = createdAt,
+                messageType = ChatMessageType.CALL,
+                callPayload = objectMapper.writeValueAsString(callLog)
+            )
+        )
+
+        val response = ChatMessageResponse(
+            messageId = chatMessage.getId(),
+            roomId = roomId,
+            senderUsername = sender.username,
+            senderName = sender.name,
+            message = preview,
+            createdAt = createdAt,
+            attachedFileUrls = emptyList(),
+            type = ChatMessageType.CALL,
+            call = callLog
+        )
+
+        room.updateLastMessageMeta(
+            at = createdAt,
+            preview = preview
+        )
+
+        reactivateParticipantsOnNewMessage(
+            room = room,
+            senderId = sender.getId()
+        )
+
+        appendRoomMessage(
+            roomId = roomId,
+            message = response
+        )
+
+        messagingTemplate.convertAndSend(
+            "/topic/chat/rooms/$roomId",
+            response
+        )
+
+        return response
+    }
+
+    /**
+     * 1:1 방만 만든다. 참여자를 두 명으로 제한하는 책임은 스키마가 아니라 이 서비스 계층에 있다.
+     * 방과 참여자 row는 같은 트랜잭션에서 저장해 참여자 없는 방이 남지 않게 한다.
+     */
     private fun createRoom(
         requester: Member,
         target: Member,
-        requesterUsername: String,
         post: Post
     ): CreateChatRoomResponse {
 
@@ -371,15 +669,26 @@ class ChatServiceImpl(
 
         val savedRoom = chatRoomRepository.saveAndFlush(room)
 
-        chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.client))
-        chatRoomParticipantRepository.save(ChatRoomParticipant(savedRoom, savedRoom.professional))
+        chatRoomParticipantRepository.saveAll(
+            listOf(
+                ChatRoomParticipant(
+                    room = savedRoom,
+                    member = requester
+                ),
+                ChatRoomParticipant(
+                    room = savedRoom,
+                    member = target
+                )
+            )
+        )
 
         return CreateChatRoomResponse.of(
             roomId = savedRoom.getId(),
             postId = savedRoom.post.getId(),
-            participantUsername = getOtherParticipant(savedRoom, requesterUsername).username,
+            participantUsername = target.username,
             existingRoom = false,
-            clearBefore = null
+            clearBefore = null,
+            tradeStatus = savedRoom.getTradeStatus()
         )
     }
 
@@ -409,9 +718,10 @@ class ChatServiceImpl(
         return CreateChatRoomResponse.of(
             roomId = room.getId(),
             postId = room.post.getId(),
-            participantUsername = getOtherParticipant(room, requesterUsername).username,
+            participantUsername = target.username,
             existingRoom = true,
-            clearBefore = participant.deletedAt
+            clearBefore = participant.deletedAt,
+            tradeStatus = room.getTradeStatus()
         )
     }
 
@@ -420,15 +730,10 @@ class ChatServiceImpl(
         username: String
     ): ChatRoomParticipant {
 
-        val room = chatRoomRepository.findByIdWithParticipants(roomId)
-            ?: throw ApplicationException.of(
-                CommonStatusCode.ENDPOINT_NOT_FOUND,
-                "존재하지 않는 채팅방입니다."
-            )
-
-        ensureParticipantRows(room)
-
-        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+        val participant = findParticipant(
+            roomId = roomId,
+            username = username
+        )
             ?: throw ApplicationException.of(
                 CommonStatusCode.INVALID_ARGUMENT,
                 "해당 채팅방에 접근할 수 없습니다."
@@ -444,6 +749,61 @@ class ChatServiceImpl(
 
         return participant
     }
+
+    /**
+     * 참여자 row를 찾는다. 없으면 과거 방일 수 있으므로 한 번 보정한 뒤 다시 찾는다.
+     *
+     * 보정은 참여자 테이블이 도입되기 전에 만들어진 방을 위한 호환 장치일 뿐이다.
+     * 일회성 데이터 백필이 끝나면 `backfillParticipantRows*` 계열과 함께 지워도 된다.
+     */
+    private fun findParticipant(
+        roomId: Long,
+        username: String
+    ): ChatRoomParticipant? {
+
+        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+
+        if (participant != null) {
+
+            return participant
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.findByRoomIdAndMemberUsername(roomId, username)
+    }
+
+    private fun findParticipant(
+        roomId: Long,
+        memberId: Long
+    ): ChatRoomParticipant? {
+
+        val participant = chatRoomParticipantRepository.findByRoomIdAndMemberId(roomId, memberId)
+
+        if (participant != null) {
+
+            return participant
+        }
+
+        backfillParticipantRows(roomId)
+
+        return chatRoomParticipantRepository.findByRoomIdAndMemberId(roomId, memberId)
+    }
+
+    /**
+     * 요청자가 아닌 상대 참여자. 1:1 방이므로 참여자는 항상 둘이다.
+     */
+    private fun getOtherMember(
+        roomId: Long,
+        username: String
+    ): Member =
+        chatRoomParticipantRepository.findAllByRoomId(roomId)
+            .firstOrNull { it.member.username != username }
+            ?.member
+            ?: throw ApplicationException.of(
+                CommonStatusCode.INVALID_ARGUMENT,
+                "채팅방 참여자가 아닙니다."
+            )
 
     private fun getMemberByUsername(
         username: String
@@ -476,27 +836,6 @@ class ChatServiceImpl(
         }
 
         return post
-    }
-
-    private fun getOtherParticipant(
-        room: ChatRoom,
-        username: String
-    ): Member {
-
-        if (room.client.username == username) {
-
-            return room.professional
-        }
-
-        if (room.professional.username == username) {
-
-            return room.client
-        }
-
-        throw ApplicationException.of(
-            CommonStatusCode.INVALID_ARGUMENT,
-            "채팅방 참여자가 아닙니다."
-        )
     }
 
     private fun isProfessional(
@@ -552,11 +891,20 @@ class ChatServiceImpl(
             }
     }
 
+    /**
+     * 캐시는 TTL(3일) 안의 메시지를 전부 들고 있어 활발한 방이면 수천 건이 된다.
+     * 읽기는 항상 최신 쪽에서 시작하므로 뒤에서 `chatMessageCacheScanSize`개만 가져온다.
+     * 그보다 오래된 구간을 찾는 요청은 기존대로 DB로 내려간다.
+     */
     private fun getCachedRoomMessages(
         roomId: Long
     ): List<ChatMessageResponse> {
 
-        val cachedMessages = redisTemplate.opsForList().range(cacheKey(roomId), 0, -1)
+        val cachedMessages = redisTemplate.opsForList().range(
+            cacheKey(roomId),
+            -chatMessageCacheScanSize,
+            -1
+        )
             ?: emptyList()
 
         return cachedMessages.mapNotNull {
@@ -586,24 +934,69 @@ class ChatServiceImpl(
         )
     }
 
+    /**
+     * 메시지 식별자를 Redis 카운터에서 DB PK로 옮기면서 캐시 키 버전을 올렸다.
+     * 구버전 키에 남은 방별 카운터 기반 id와 전역 PK가 섞이지 않게 하려는 것이고, 구버전 키는 TTL로 사라진다.
+     */
     private fun cacheKey(
         roomId: Long
     ): String =
-        "chat:room:$roomId:messages"
+        "chat:room:$roomId:messages:v2"
 
-    private fun messageSequenceKey(
-        roomId: Long
-    ): String =
-        "chat:room:$roomId:message-seq"
+    /**
+     * DB 행을 응답으로 되돌린다. 결제 상세는 저장된 JSON에서 복원하되,
+     * 형식이 깨진 과거 행 하나 때문에 대화 전체 조회가 실패하지 않도록 실패 시 null로 둔다.
+     */
+    private fun toResponse(
+        chatMessage: ChatMessage
+    ): ChatMessageResponse {
 
-    private fun nextMessageId(
+        val payment = chatMessage.paymentPayload?.let {
+
+            runCatching {
+                objectMapper.readValue(it, ChatPaymentResponse::class.java)
+            }.getOrNull()
+        }
+
+        val call = chatMessage.callPayload?.let {
+
+            runCatching {
+                objectMapper.readValue(it, ChatCallLogResponse::class.java)
+            }.getOrNull()
+        }
+
+        return ChatMessageResponse.of(
+            chatMessage = chatMessage,
+            payment = payment,
+            call = call
+        )
+    }
+
+    private fun normalizePageSize(
+        size: Int
+    ): Int =
+        size.coerceIn(1, MAX_PAGE_SIZE)
+
+    /**
+     * 참여자 row가 없는 과거 방 하나를 보정한다.
+     * 보정의 근거로만 `client` / `professional`을 읽고, 멤버십 판단에는 쓰지 않는다.
+     */
+    private fun backfillParticipantRows(
         roomId: Long
-    ): Long =
-        redisTemplate.opsForValue().increment(messageSequenceKey(roomId))
-            ?: throw ApplicationException.of(
-                CommonStatusCode.ENDPOINT_NOT_FOUND,
-                "메시지 식별자를 생성할 수 없습니다."
-            )
+    ) {
+
+        val room = chatRoomRepository.findByIdWithParticipants(roomId)
+            ?: return
+
+        ensureParticipantRows(room)
+    }
+
+    private fun backfillParticipantRowsForMember(
+        username: String
+    ) {
+
+        ensureParticipantRowsInBatch(chatRoomRepository.findAllByParticipantUsername(username))
+    }
 
     private fun ensureParticipantRows(
         room: ChatRoom
@@ -611,6 +1004,55 @@ class ChatServiceImpl(
 
         ensureParticipantRow(room, room.client)
         ensureParticipantRow(room, room.professional)
+    }
+
+    /**
+     * 여러 방의 참여자 row를 한 번에 보정한다.
+     *
+     * 방마다 존재 여부를 조회하면 방 수에 비례해 쿼리가 늘어나므로(N+1),
+     * 조회 1회로 기존 (roomId, memberId) 조합을 모두 읽고 없는 것만 한 번에 저장한다.
+     */
+    private fun ensureParticipantRowsInBatch(
+        rooms: List<ChatRoom>
+    ) {
+
+        val roomIds = rooms.mapNotNull { it.getId() }
+
+        if (roomIds.isEmpty()) {
+
+            return
+        }
+
+        val existingPairs = chatRoomParticipantRepository.findRoomMemberIdsByRoomIds(roomIds)
+            .map { it.getRoomId() to it.getMemberId() }
+            .toSet()
+
+        val missingParticipants = rooms.flatMap { room ->
+
+            listOf(room.client, room.professional).mapNotNull { member ->
+
+                val roomId = room.getId()
+                val memberId = member.getId()
+
+                if (roomId == null || memberId == null || (roomId to memberId) in existingPairs) {
+
+                    null
+                } else {
+
+                    ChatRoomParticipant(
+                        room = room,
+                        member = member
+                    )
+                }
+            }
+        }
+
+        if (missingParticipants.isEmpty()) {
+
+            return
+        }
+
+        chatRoomParticipantRepository.saveAll(missingParticipants)
     }
 
     private fun ensureParticipantRow(
@@ -665,5 +1107,10 @@ class ChatServiceImpl(
 
             participant.reactivate()
         }
+    }
+
+    companion object {
+
+        private const val MAX_PAGE_SIZE = 100
     }
 }

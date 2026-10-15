@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
+import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.contract.data.request.CreateContractRequest
 import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.data.response.CreateContractResponse
@@ -17,7 +18,11 @@ import spring.springserver.domain.contract.service.ContractService
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.exception.PostStatusCode
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.LocalDateTime
 import java.util.regex.Pattern
 
 @Service
@@ -25,7 +30,9 @@ import java.util.regex.Pattern
 class ContractServiceImpl(
     private val contractRepository: ContractRepository,
     private val memberRepository: MemberRepository,
-    private val tokenService: TokenService
+    private val postRepository: PostRepository,
+    private val tokenService: TokenService,
+    private val chatService: ChatService
 ): ContractService {
 
     override fun createContract(
@@ -47,15 +54,42 @@ class ContractServiceImpl(
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
 
+        validatePeriod(
+            startedAt = createContractRequest.startedAt,
+            endedAt = createContractRequest.endedAt
+        )
+
         val contract = contractRepository.save(
             Contract(
-                client = client,
-                professional = professional,
-                writer = writer,
+                client = client, // 갑
+                professional = professional, // 을
+                startedAt = createContractRequest.startedAt, // 계약 시작일
+                endedAt = createContractRequest.endedAt, // 계약 종료일
+                inspectionPeriod = createContractRequest.inspectionPeriod!!, // 계약 검수일
+                price = createContractRequest.price!!, // 계약 대금
+                servicesDescription = createContractRequest.servicesDescription!!.trim(), // 용역 내용
+                writer = writer, // 작성자
                 contractUrl = normalizeUrl(createContractRequest.contractUrl!!),
-                price = createContractRequest.price!!
+                post = resolvePost(
+                    createContractRequest.postId,
+                    professional
+                )
             )
         )
+
+        /**
+         * 같은 게시글로 같은 상대와 새 계약을 맺으면 기존 방을 재사용하므로,
+         * 이전 거래의 완료·취소 상태를 지우고 새 거래를 진행 중으로 시작한다.
+         * 게시글 없이 맺은 계약은 방을 특정할 수 없어 건드리지 않는다.
+         */
+        contract.post?.getId()?.let { postId ->
+
+            chatService.restartTrade(
+                client.getId()!!,
+                professional.getId()!!,
+                postId
+            )
+        }
 
         return CreateContractResponse.of(contract)
     }
@@ -103,11 +137,60 @@ class ContractServiceImpl(
         member: Member
     ) {
 
-        if (contract.client.getId() != member.getId() &&
-            contract.professional.getId() != member.getId()) {
+        if (!contract.isParty(member.getId())) {
 
             throw ApplicationException(ContractStatusCode.CONTRACT_FORBIDDEN)
         }
+    }
+
+    /**
+     * 시작·종료 시각은 둘 다 비워 둘 수 있지만, 둘 다 있으면 순서가 맞아야 한다.
+     */
+    private fun validatePeriod(
+        startedAt: LocalDateTime?,
+        endedAt: LocalDateTime?
+    ) {
+
+        if (startedAt == null || endedAt == null) {
+
+            return
+        }
+
+        if (endedAt.isBefore(startedAt)) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_PERIOD)
+        }
+    }
+
+    /**
+     * 게시글을 함께 보낸 계약이면 그 게시글이 살아 있고 전문가(을)가 쓴 글인지 확인한다.
+     * 게시글은 전문가가 올린 서비스 글이고, 의뢰인이 그 글을 보고 연락해 계약·결제하므로 글 작성자는 을이다.
+     * 남의 게시글에 계약을 붙이면 그 게시글의 리뷰 목록이 오염되므로 막는다.
+     */
+    private fun resolvePost(
+        postId: Long?,
+        professional: Member
+    ): Post? {
+
+        if (postId == null) {
+
+            return null
+        }
+
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        if (post.member.getId() != professional.getId()) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_POST)
+        }
+
+        return post
     }
 
     private fun getMemberEntity(
@@ -116,23 +199,6 @@ class ContractServiceImpl(
 
         return memberRepository.findMemberById(memberId)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
-    }
-
-    /**
-     * 계약서는 PDF로만 주고받기로 했으므로 업로드된 PDF 경로인지 확인한다.
-     */
-    private fun normalizeUrl(
-        contractUrl: String
-    ): String {
-
-        val normalizedUrl = contractUrl.trim()
-
-        if (!ALLOWED_CONTRACT_URL.matcher(normalizedUrl).matches()) {
-
-            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_FILE)
-        }
-
-        return normalizedUrl
     }
 
     private fun getCurrentMember(): Member {
@@ -148,9 +214,28 @@ class ContractServiceImpl(
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
     }
 
+    /**
+     * 계약서는 PDF로만 주고받기로 했으므로 업로드된 PDF 경로인지 확인한다.
+     * 절대 URL로 들어와도 파일 업로드 응답과 같은 상대 경로(/files/<UUID>.pdf)로 통일해 저장한다.
+     */
+    private fun normalizeUrl(
+        contractUrl: String
+    ): String {
+
+        val matcher = ALLOWED_CONTRACT_URL.matcher(contractUrl.trim())
+
+        if (!matcher.matches()) {
+
+            throw ApplicationException(ContractStatusCode.CONTRACT_INVALID_FILE)
+        }
+
+        return matcher.group("path")
+    }
+
     companion object {
 
         private val ALLOWED_CONTRACT_URL =
-            Pattern.compile("https://www\\.idta\\.store/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf$")
+            Pattern.compile("^(?:https://(?:www\\.)?idta\\.store)?(?<path>/files/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\.pdf)$")
     }
+
 }

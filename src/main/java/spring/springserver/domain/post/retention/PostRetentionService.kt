@@ -37,14 +37,34 @@ class PostRetentionService(
 
         if (expiredReviews.isNotEmpty()) postReviewRepository.deleteAll(expiredReviews)
 
-        val expiredPosts = postRepository.findAllByIsDeletedTrueAndDeletedAtBefore(threshold)
+        postFavoriteRepository.deleteAllByExpiredPosts(threshold)
+
+        val expiredPosts = postRepository.findAllWithAttachmentsToPurge(threshold)
 
         if (expiredPosts.isNotEmpty()) {
 
             registerAttachedFileCommitCleanup(expiredPosts)
-            postFavoriteRepository.deleteAllByPostIn(expiredPosts)
-            postReviewRepository.deleteAllByPostIn(expiredPosts)
-            postRepository.deleteAll(expiredPosts)
+
+            /**
+             * 게시글은 채팅방·견적이 NOT NULL로 참조하고 계약·리뷰의 출발점이라 물리 삭제할 수 없다.
+             * 소프트 삭제 상태로 보존하고 보관 기간이 지난 첨부 파일만 정리한다.
+             */
+            clearAttachedFileUrls(expiredPosts)
+        }
+    }
+
+    private fun clearAttachedFileUrls(
+        posts: List<Post>
+    ) {
+
+        posts.forEach {
+
+            post ->
+
+            post.attachments.forEach {
+
+                attachment -> attachment.fileUrl = null
+            }
         }
     }
 

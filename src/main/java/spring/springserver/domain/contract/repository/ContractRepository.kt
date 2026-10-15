@@ -8,4 +8,9 @@ interface ContractRepository: JpaRepository<Contract, Long> {
     fun findContractById(
         id: Long
     ): Contract?
+
+    fun findAllByPostIdAndClientIdOrderByCreatedAtDesc(
+        postId: Long,
+        clientId: Long
+    ): List<Contract>
 }

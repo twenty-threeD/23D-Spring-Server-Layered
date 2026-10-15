@@ -8,7 +8,17 @@ import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
 @Entity
-@Table(name = "community_comment")
+@Table(
+    name = "community_comment",
+    indexes = [
+        /**
+         * 글 상세의 댓글 목록과 댓글 수 집계가 탄다.
+         */
+        Index(name = "idx_community_comment_post", columnList = "community_post_id"),
+
+        Index(name = "idx_community_comment_member", columnList = "member_id")
+    ]
+)
 class CommunityComment(
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

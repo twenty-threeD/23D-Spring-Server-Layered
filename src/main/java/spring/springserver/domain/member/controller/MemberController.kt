@@ -5,15 +5,19 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
+import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.request.SetPasswordRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.jwt.MemberDetails
 
 @RestController
 @Validated
@@ -21,6 +25,20 @@ import spring.springserver.global.data.BaseResponse
 class MemberController(
     private val memberService: MemberService
 ) {
+
+    @PostMapping("/password")
+    fun setPassword(
+        @Valid @RequestBody setPasswordRequest: SetPasswordRequest,
+        httpServletRequest: HttpServletRequest
+    ): BaseResponse<PasswordResetResponse> {
+
+        return BaseResponse.ok(
+            memberService.setPassword(
+                setPasswordRequest,
+                httpServletRequest
+            )
+        )
+    }
 
     @PostMapping("/password/reset")
     fun resetPasswordWithoutAuth(
@@ -32,14 +50,14 @@ class MemberController(
 
     @PostMapping("/password/reset/check")
     fun resetPassword(
-        @Valid @RequestBody passwordResetRequest: PasswordResetRequest,
+        @Valid @RequestBody passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): BaseResponse<PasswordResetResponse> {
 
         return BaseResponse.ok(
             memberService.resetPasswordWithAuth(
-                passwordResetRequest,
+                passwordChangeRequest,
                 httpServletRequest,
                 httpServletResponse
             )
@@ -66,6 +84,14 @@ class MemberController(
                 httpServletResponse
             )
         )
+    }
+
+    @GetMapping("/location")
+    fun getMemberLocation(
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<MemberLocationResponse> {
+
+        return BaseResponse.ok(memberService.getMemberLocation(memberDetails.username))
     }
 
     @GetMapping("/check-email")

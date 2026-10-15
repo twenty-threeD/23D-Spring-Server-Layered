@@ -4,6 +4,7 @@ plugins {
     kotlin("plugin.jpa")
     id("org.springframework.boot") version "3.5.13"
     id("io.spring.dependency-management") version "1.1.7"
+    id("com.google.cloud.tools.jib") version "3.5.4"
 }
 
 group = "spring"
@@ -94,6 +95,12 @@ dependencies {
     // Solapi
     implementation("com.solapi:sdk:1.0.3")
 
+    // Agora (RTC 토큰 발급)
+    implementation("io.agora:authentication:2.1.3")
+
+    // Anthropic (Claude API, 리뷰 AI 분석)
+    implementation("com.anthropic:anthropic-java:2.34.0")
+
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
@@ -102,4 +109,17 @@ dependencies {
 
 tasks.named<Test>("test") {
     useJUnitPlatform()
+}
+
+// 의존성/리소스/클래스를 별도 레이어로 나눠, 코드만 바뀌면 작은 레이어만 push·pull 되게 한다.
+// 이미지 이름·태그는 CI에서 -Djib.to.image, -Djib.to.tags로 넘긴다.
+jib {
+    from {
+        image = "eclipse-temurin:21-jre-alpine"
+    }
+    container {
+        // upload.file-dir(./files)이 /app/files를 가리키도록 작업 디렉터리를 맞춘다
+        workingDirectory = "/app"
+        ports = listOf("8080")
+    }
 }

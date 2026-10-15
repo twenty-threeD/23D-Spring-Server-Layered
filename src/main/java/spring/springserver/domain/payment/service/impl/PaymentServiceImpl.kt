@@ -1,22 +1,22 @@
 package spring.springserver.domain.payment.service.impl
 
 import org.slf4j.LoggerFactory
+import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.stereotype.Service
 import spring.springserver.domain.blockchain.data.response.PaymentVerificationResponse
 import spring.springserver.domain.blockchain.exception.BlockchainAlreadyRecordedException
 import spring.springserver.domain.blockchain.exception.BlockchainCommitTimeoutException
 import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.chat.data.response.ChatPaymentResponse
+import spring.springserver.domain.chat.exception.ChatStatusCode
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.domain.contract.exception.ContractStatusCode
 import spring.springserver.domain.contract.service.ContractService
-import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.client.TossPaymentsClient
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
-import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
@@ -27,18 +27,21 @@ import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.ContractUrlHasher
+import spring.springserver.global.util.RedisLockExecutor
 import java.security.MessageDigest
+import java.time.Duration
 
 @Service
 class PaymentServiceImpl(
     private val tossPaymentsClient: TossPaymentsClient,
     private val keyService: KeyService,
     private val blockchainService: BlockchainService,
-    private val estimateService: EstimateService,
     private val paymentRecordService: PaymentRecordService,
     private val chatService: ChatService,
     private val contractUrlHasher: ContractUrlHasher,
-    private val contractService: ContractService
+    private val contractService: ContractService,
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val redisLockExecutor: RedisLockExecutor
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -63,22 +66,39 @@ class PaymentServiceImpl(
 
                 throw ApplicationException(PaymentStatusCode.PAYMENT_CHAT_ROOM_FORBIDDEN)
             }
-        }
 
-        val contractUrl = preparePaymentRequest.contractId?.let { contractId ->
+            if (!chatService.isTradableRoom(roomId)) {
 
-            val contractPartyResponse = contractService.findPartyById(contractId = contractId)
-                ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
-
-            if (contractPartyResponse.clientId != memberId
-                && contractPartyResponse.professionalId != memberId) {
-
-                throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
+                throw ApplicationException(ChatStatusCode.NOT_POST_AUTHOR_ROOM)
             }
-
-            contractPartyResponse.contractUrl
         }
-            ?: preparePaymentRequest.contractUrl
+
+        /**
+         * 결제 금액은 클라이언트가 정하는 값이 아니다.
+         * 계약서라는 서버 측 금액 원천이 반드시 있어야 하고, 요청 금액은 그 값과 정확히 같아야 한다.
+         */
+        val contractId = preparePaymentRequest.contractId
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_SOURCE_REQUIRED)
+
+        val contractPartyResponse = contractService.findPartyById(contractId = contractId)
+            ?: throw ApplicationException(ContractStatusCode.CONTRACT_NOT_FOUND)
+
+        if (contractPartyResponse.clientId != memberId
+            && contractPartyResponse.professionalId != memberId) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_CONTRACT_FORBIDDEN)
+        }
+
+        if (contractPartyResponse.price != preparePaymentRequest.amount) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_AMOUNT_MISMATCH)
+        }
+
+        /**
+         * 계약서에는 더 이상 PDF 경로가 없다. 원장에 해시로 올릴 경로는 요청 값에서 받는다.
+         * contractId는 요청자가 그 계약의 당사자인지 확인하는 용도로만 쓴다.
+         */
+        val contractUrl = preparePaymentRequest.contractUrl
 
         return PreparePaymentResponse.of(
             paymentRecordService.create(
@@ -96,22 +116,24 @@ class PaymentServiceImpl(
 
         val stored = paymentRecordService.findByOrderId(confirmPaymentRequest.orderId)
 
+        /**
+         * 이미 기록된 주문은 아래에서 토스 결제 조회 결과를 그대로 돌려준다.
+         * 그 전에 주인을 확인하지 않으면 남의 orderId만으로 결제 정보를 받아볼 수 있다.
+         */
+        validateOwner(
+            stored,
+            memberId
+        )
+
         if (stored.getStatus() == PaymentStatus.CHAIN_RECORDED) {
 
             return ConfirmPaymentResponse.of(
                 payment = tossPaymentsClient.findByOrderId(confirmPaymentRequest.orderId),
                 paymentHash = stored.getPaymentHash()
                     ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN),
-                blockchainTxHash = stored.getBlockchainTxHash()
-            )
-        }
-
-        confirmPaymentRequest.estimateId?.let { estimateId ->
-
-            estimateService.validatePayable(
-                estimateId,
-                memberId,
-                confirmPaymentRequest.amount
+                blockchainTxHash = stored.getBlockchainTxHash(),
+                feeAmount = stored.getFeeAmount(),
+                settlementAmount = stored.getSettlementAmount()
             )
         }
 
@@ -159,19 +181,7 @@ class PaymentServiceImpl(
             resolvedTxHash
         )
 
-        confirmPaymentRequest.estimateId?.let { estimateId ->
-
-            paymentRecordService.linkEstimate(
-                confirmPaymentRequest.orderId,
-                estimateId = estimateId
-            )
-
-            estimateService.markAsPaid(
-                estimateId,
-                memberId,
-                response.totalAmount ?: confirmPaymentRequest.amount
-            )
-        }
+        completeTrade(payment)
 
         sendPaymentMessage(
             payment,
@@ -184,8 +194,30 @@ class PaymentServiceImpl(
         return ConfirmPaymentResponse.of(
             payment = response,
             paymentHash = hash,
-            blockchainTxHash = resolvedTxHash
+            blockchainTxHash = resolvedTxHash,
+            feeAmount = payment.getFeeAmount(),
+            settlementAmount = payment.getSettlementAmount()
         )
+    }
+
+    /**
+     * 결제가 체인 기록까지 끝났으므로 결제가 시작된 채팅방의 거래를 완료로 바꾼다.
+     * 결제는 이미 끝났으므로 상태 반영이 실패해도 결제를 되돌리지 않고 기록만 남긴다.
+     */
+    private fun completeTrade(
+        payment: Payment
+    ) {
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.completeTrade(roomId)
+        } catch (exception: Exception) {
+
+            log.warn("거래 완료 상태를 반영하지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
+        }
     }
 
     /**
@@ -229,7 +261,10 @@ class PaymentServiceImpl(
 
         val payment = paymentRecordService.findByOrderId(orderId = orderId)
 
-        if (payment.getMemberId() != memberId) throw ApplicationException(PaymentStatusCode.PAYMENT_MEMBER_MISMATCH)
+        validateOwner(
+            payment,
+            memberId
+        )
 
         val record = blockchainService.findRecord(orderId = orderId)
             ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_RECORDED_ON_CHAIN)
@@ -358,32 +393,197 @@ class PaymentServiceImpl(
             .joinToString("") { "%02x".format(it) }
     }
 
-    override fun findByPaymentKey(paymentKey: String): PaymentResponse {
+    override fun findByPaymentKey(
+        paymentKey: String,
+        memberId: Long
+    ): PaymentResponse {
+
+        validateOwner(
+            paymentRecordService.findByPaymentKey(paymentKey),
+            memberId
+        )
 
         return tossPaymentsClient.findByPaymentKey(paymentKey)
     }
 
-    override fun findByOrderId(orderId: String): PaymentResponse {
+    override fun findByOrderId(
+        orderId: String,
+        memberId: Long
+    ): PaymentResponse {
+
+        validateOwner(
+            paymentRecordService.findByOrderId(orderId),
+            memberId
+        )
 
         return tossPaymentsClient.findByOrderId(orderId)
     }
 
     override fun cancel(
-        paymentKey: String,
         cancelPaymentRequest: CancelPaymentRequest,
-        idempotencyKey: String?
+        paymentKey: String,
+        idempotencyKey: String?,
+        memberId: Long
     ): PaymentResponse {
 
-        return tossPaymentsClient.cancel(
-            paymentKey,
-            cancelPaymentRequest,
-            idempotencyKey
-        )
+        /**
+         * 같은 결제에 취소가 동시에 들어오면 둘 다 취소 가능 상태로 보고 토스를 두 번 부를 수 있다.
+         * 결제마다 락을 잡아 한 번에 하나만 처리하고, 락을 잡은 뒤에 상태를 다시 읽어 확인한다.
+         */
+        return redisLockExecutor.runWithLock(
+            key = CANCEL_LOCK_PREFIX + paymentKey,
+            ttl = CANCEL_LOCK_TTL
+        ) {
+
+            cancelWithLock(
+                cancelPaymentRequest,
+                paymentKey,
+                idempotencyKey,
+                memberId
+            )
+        }
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_CANCEL_IN_PROGRESS)
     }
 
-    override fun issueVirtualAccount(virtualAccountRequest: VirtualAccountRequest): PaymentResponse {
+    private fun cancelWithLock(
+        cancelPaymentRequest: CancelPaymentRequest,
+        paymentKey: String,
+        idempotencyKey: String?,
+        memberId: Long
+    ): PaymentResponse {
 
-        return tossPaymentsClient.issueVirtualAccount(virtualAccountRequest)
+        val stored = paymentRecordService.findByPaymentKey(paymentKey)
+
+        validateOwner(
+            stored,
+            memberId
+        )
+
+        if (!stored.isCancelable()) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_CANCELABLE)
+        }
+
+        /**
+         * 환불 때 수수료는 돌려주지 않는다. 환불 가능 금액은 토스에 남은 잔액에서 수수료를 뺀 값이고,
+         * 금액 없이 요청하면 그 전부를 돌려준다. 잔액은 앞선 부분 환불을 반영하려고 토스에서 다시 읽는다.
+         */
+        val refundableAmount = calculateRefundableAmount(stored)
+
+        if (refundableAmount <= 0) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_NOTHING_TO_REFUND)
+        }
+
+        val requestedAmount = cancelPaymentRequest.cancelAmount
+
+        if (requestedAmount != null && requestedAmount > refundableAmount) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_REFUNDABLE_AMOUNT_EXCEEDED)
+        }
+
+        val refundRequest = cancelPaymentRequest.copy(cancelAmount = requestedAmount ?: refundableAmount)
+
+        /**
+         * 전액 취소는 결제당 한 번뿐이라 서버가 멱등키를 정할 수 있다.
+         * 토스 취소는 끝났는데 응답을 못 받아 다시 요청해도 토스가 같은 결과를 돌려준다.
+         * 부분 취소는 같은 금액을 정상적으로 여러 번 할 수 있어 클라이언트 멱등키에 맡긴다.
+         */
+        val effectiveIdempotencyKey = when {
+
+            idempotencyKey != null -> idempotencyKey
+            cancelPaymentRequest.cancelAmount == null -> fullCancelIdempotencyKey(paymentKey)
+            else -> null
+        }
+
+        val response = tossPaymentsClient.cancel(
+            paymentKey,
+            refundRequest,
+            effectiveIdempotencyKey
+        )
+
+        /**
+         * 토스에서 환불이 끝났는데 우리 쪽 상태가 그대로면 전문가에게는 여전히 결제 완료로 보인다.
+         * 토스가 돌려준 상태를 기준으로 결제를 취소 상태로 바꾼다.
+         */
+        try {
+
+            val payment = paymentRecordService.markCanceled(
+                paymentKey,
+                response.status,
+                response.balanceAmount
+            )
+
+            cancelTradeIfFullyCanceled(payment)
+        } catch (exception: Exception) {
+
+            /**
+             * 환불은 이미 끝났으므로 상태 반영이 실패해도 사용자에게 실패로 응답하지 않는다.
+             * 재처리 대상으로 남겨 스케줄러가 토스 상태를 다시 조회해 맞춘다.
+             */
+            log.error("결제 취소 후 상태를 반영하지 못했습니다. 재처리 대상으로 기록합니다. paymentKey = {}, tossStatus = {}", paymentKey, response.status, exception)
+
+            runCatching {
+
+                redisTemplate.opsForSet().add(
+                    UNSYNCED_CANCEL_KEY,
+                    paymentKey
+                )
+            }.onFailure { recordException ->
+
+                log.error("재처리 대상 기록에도 실패했습니다. 수동 확인이 필요합니다. paymentKey = {}", paymentKey, recordException)
+            }
+        }
+
+        return response
+    }
+
+    private fun calculateRefundableAmount(
+        payment: Payment
+    ): Long {
+
+        val balanceAmount = tossPaymentsClient.findByPaymentKey(payment.getPaymentKey()!!).balanceAmount
+            ?: payment.getAmount()
+
+        return balanceAmount - (payment.getFeeAmount() ?: 0L)
+    }
+
+    /**
+     * 전액 취소는 거래를 되돌린 것이므로 채팅방 거래를 취소로 바꾼다.
+     * 부분 취소는 거래가 유지된 것으로 보고 완료 상태를 그대로 둔다.
+     * 환불은 이미 끝났으므로 상태 반영이 실패해도 예외를 밖으로 내보내지 않는다.
+     */
+    private fun cancelTradeIfFullyCanceled(
+        payment: Payment
+    ) {
+
+        if (payment.getStatus() != PaymentStatus.CANCELED) return
+
+        val roomId = payment.getRoomId()
+            ?: return
+
+        try {
+
+            chatService.cancelTrade(roomId)
+        } catch (exception: Exception) {
+
+            log.warn("거래 취소 상태를 반영하지 못했습니다. orderId = {}, roomId = {}", payment.getOrderId(), roomId, exception)
+        }
+    }
+
+    /**
+     * 결제 건은 orderId·paymentKey만 알면 주소창에서 바꿔 넣을 수 있는 값이다.
+     * 토스로 넘기기 전에 요청자가 그 결제의 주인인지 반드시 확인한다.
+     */
+    private fun validateOwner(
+        payment: Payment,
+        memberId: Long
+    ) {
+
+        if (payment.getMemberId() != memberId) {
+
+            throw ApplicationException(PaymentStatusCode.PAYMENT_MEMBER_MISMATCH)
+        }
     }
 
     companion object {
@@ -392,6 +592,18 @@ class PaymentServiceImpl(
 
         private const val CHAIN_RECORD_MAX_ATTEMPTS = 3
         private const val CHAIN_RECORD_RETRY_DELAY_MILLIS = 500L
+
+        const val UNSYNCED_CANCEL_KEY = "payment:cancel:unsynced"
+
+        private const val CANCEL_LOCK_PREFIX = "payment:cancel:lock:"
+        private val CANCEL_LOCK_TTL = Duration.ofSeconds(60)
+
+        fun fullCancelIdempotencyKey(
+            paymentKey: String
+        ): String {
+
+            return "cancel-$paymentKey-full"
+        }
 
         fun cancelIdempotencyKey(
             orderId: String

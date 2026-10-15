@@ -8,12 +8,14 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.stereotype.Component
+import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.global.jwt.TokenProvider
 
 @Component
 class WebSocketChannelInterceptor(
     private val tokenProvider: TokenProvider,
+    private val tokenService: TokenService,
     @Lazy private val chatService: ChatService,
 ) : ChannelInterceptor {
 
@@ -26,19 +28,15 @@ class WebSocketChannelInterceptor(
 
         if (StompCommand.CONNECT == accessor.command && accessor.user == null) {
 
-            var token = accessor.getFirstNativeHeader("Authorization")
+            val token = accessor.getFirstNativeHeader("Authorization")
+                ?.removePrefix("Bearer ")
+                ?: throw IllegalArgumentException("유효하지 않은 토큰")
 
-            if (token != null && token.startsWith("Bearer ")) {
-
-                token = token.substring(7)
-            }
-
-            if (token == null || tokenProvider.isNotValidToken(token)) {
-
-                throw IllegalArgumentException("유효하지 않은 토큰")
-            }
-
-            val username = tokenProvider.getUsernameFromToken(token)
+            /**
+             * 서명만 보면 refreshToken, 로그아웃한 토큰, 탈퇴 회원의 토큰도 통과하므로
+             * HTTP 요청과 같은 기준으로 확인한다.
+             */
+            val username = tokenService.resolveActiveUsername(token)
                 ?: throw IllegalArgumentException("유효하지 않은 토큰")
             val parsedRole = tokenProvider.getRole(token)
             val role = parsedRole?.toString()

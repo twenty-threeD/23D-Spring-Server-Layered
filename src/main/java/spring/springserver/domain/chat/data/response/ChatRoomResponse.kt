@@ -1,6 +1,7 @@
 package spring.springserver.domain.chat.data.response
 
 import spring.springserver.domain.chat.entity.ChatRoom
+import spring.springserver.domain.chat.entity.TradeStatus
 import spring.springserver.domain.member.entity.Member
 import java.time.Instant
 
@@ -22,7 +23,12 @@ data class ChatRoomResponse(
      * 클라이언트는 로컬 DB에 남아 있는 이 시각 이전 메시지를 정리해야 한다.
      * 나간 적이 없으면 null이다.
      */
-    val clearBefore: Instant?
+    val clearBefore: Instant?,
+
+    /**
+     * 이 방의 거래 상태. 마지막 메시지와 무관하게 서버가 관리한다.
+     */
+    val tradeStatus: TradeStatus
 ) {
 
     companion object {
@@ -52,7 +58,8 @@ data class ChatRoomResponse(
                 lastMessagePreview = if (hidden) null else room.lastMessagePreview,
                 lastMessageAt = if (hidden) null else room.lastMessageAt,
                 createdAt = room.getCreatedAt(),
-                clearBefore = clearBefore
+                clearBefore = clearBefore,
+                tradeStatus = room.getTradeStatus()
             )
         }
     }

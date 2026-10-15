@@ -15,6 +15,7 @@ import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.repository.PostRepository
+import spring.springserver.domain.post.review.repository.PostReviewRepository
 import spring.springserver.domain.profile.data.request.UpdateProfileRequest
 import spring.springserver.domain.profile.data.response.ProfileResponse
 import spring.springserver.domain.profile.data.response.UpdateProfileResponse
@@ -23,6 +24,7 @@ import spring.springserver.domain.profile.exception.ProfileStatusCode
 import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
+import kotlin.math.round
 
 @Service
 @Transactional(rollbackFor = [Exception::class])
@@ -32,7 +34,8 @@ class ProfileServiceImpl(
     private val locationService: LocationService,
     private val jobCategoryService: JobCategoryService,
     private val tokenService: TokenService,
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val postReviewRepository: PostReviewRepository
 ): ProfileService {
 
     override fun createDefaultProfile(
@@ -68,14 +71,13 @@ class ProfileServiceImpl(
 
         val profile = getCurrentProfile(member)
 
-        val usernameChanged = applyUsername(
+        val newUsername = resolveNewUsername(
             member,
             updateProfileRequest.username?.trim()
         )
 
         profile.update(
-            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() }
-                ?: profile.imageUrl,
+            imageUrl = updateProfileRequest.imageUrl?.trim()?.takeIf { it.isNotBlank() },
             sig = resolveSig(updateProfileRequest.sigCd, profile.sig),
             movableDistance = updateProfileRequest.movableDistance
                 ?: profile.movableDistance,
@@ -84,12 +86,19 @@ class ProfileServiceImpl(
             jobCategory = resolveJobCategory(updateProfileRequest.jobCategoryId, profile.jobCategory)
         )
 
-        if (usernameChanged) {
+        if (newUsername != null) {
 
+            /**
+             * deleteTokens는 토큰 속 이전 username으로 회원을 다시 조회한다.
+             * username을 먼저 바꾸면 그 조회 전에 변경이 flush되어 회원을 찾지 못하므로,
+             * 토큰을 정리한 뒤에 바꾼다.
+             */
             tokenService.deleteTokens(
                 httpServletRequest,
                 httpServletResponse
             )
+
+            member.username = newUsername
 
             return UpdateProfileResponse.of("프로필이 수정되었습니다. 다시 로그인 해주세요.")
         }
@@ -111,14 +120,25 @@ class ProfileServiceImpl(
             .associate { row -> (row[0] as Long) to (row[1] as String?) }
     }
 
-    private fun applyUsername(
+    @Transactional(readOnly = true)
+    override fun getImageUrlByMemberId(
+        memberId: Long
+    ): String? {
+
+        return profileRepository.findImageUrlByMemberId(memberId)
+    }
+
+    /**
+     * 바꿀 username이 있으면 중복을 확인해 돌려주고, 바꿀 필요가 없으면 null을 돌려준다.
+     */
+    private fun resolveNewUsername(
         member: Member,
         username: String?
-    ): Boolean {
+    ): String? {
 
         if (username == null || username == member.username) {
 
-            return false
+            return null
         }
 
         if (memberRepository.existsByUsername(username)) {
@@ -126,9 +146,7 @@ class ProfileServiceImpl(
             throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
         }
 
-        member.username = username
-
-        return true
+        return username
     }
 
     private fun resolveSig(
@@ -162,17 +180,35 @@ class ProfileServiceImpl(
         member: Member
     ): ProfileResponse {
 
+        val memberId = member.getId()
+
         return ProfileResponse.of(
             profile = profile,
-            memberId = member.getId(),
+            memberId = memberId,
             username = member.username,
             email = member.email,
             phone = member.phone,
             locationName = profile.sig?.let { locationService.getFullName(it) },
             jobCategoryName = profile.jobCategory?.getFullName(),
             phoneVerified = member.isPhoneVerified(),
-            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl)
+            hasPassword = !member.password.isNullOrBlank(),
+            posts = getPostsByUsername(username = member.username, imageUrl = profile.imageUrl),
+            reviewCount = memberId?.let { id -> postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(id) } ?: 0L,
+            averageRating = memberId?.let { id -> averageRating(id) } ?: 0.0
         )
+    }
+
+    /**
+     * 평균 별점은 소수 첫째 자리까지만 내려준다. 리뷰가 없으면 0.0이다.
+     */
+    private fun averageRating(
+        memberId: Long
+    ): Double {
+
+        val averageRating = postReviewRepository.findAverageRatingByRevieweeId(memberId)
+            ?: return 0.0
+
+        return round(averageRating * 10) / 10
     }
 
     private fun getCurrentProfile(

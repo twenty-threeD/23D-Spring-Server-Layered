@@ -9,17 +9,22 @@ import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.email.service.EmailService
+import spring.springserver.domain.location.service.LocationService
 import spring.springserver.domain.member.data.request.ChangeEmailRequest
 import spring.springserver.domain.member.data.request.ChangePhoneRequest
 import spring.springserver.domain.member.data.request.FindUsernameRequest
+import spring.springserver.domain.member.data.request.PasswordChangeRequest
 import spring.springserver.domain.member.data.request.PasswordResetRequest
+import spring.springserver.domain.member.data.request.SetPasswordRequest
 import spring.springserver.domain.member.data.response.*
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.member.entity.Provider
 import spring.springserver.domain.member.exception.MemberStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.member.retention.MemberRetentionService
 import spring.springserver.domain.member.service.MemberService
 import spring.springserver.domain.phone.service.PhoneVerifyService
+import spring.springserver.domain.profile.repository.ProfileRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.exception.status_code.CommonStatusCode
 import spring.springserver.global.util.PhoneNormalizer
@@ -31,8 +36,29 @@ class MemberServiceImpl(
     private val tokenService: TokenService,
     private val emailService: EmailService,
     private val phoneVerifyService: PhoneVerifyService,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val memberRetentionService: MemberRetentionService,
+    private val profileRepository: ProfileRepository,
+    private val locationService: LocationService
 ) : MemberService {
+
+    @Transactional(readOnly = true)
+    override fun getMemberLocation(
+        username: String
+    ): MemberLocationResponse {
+
+        val member = memberRepository.findByUsername(username)
+            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+
+        val sig = profileRepository.findByMember(member)?.sig
+            ?: throw ApplicationException(MemberStatusCode.LOCATION_NOT_SET)
+
+        return MemberLocationResponse.of(
+            sig.getSigCd(),
+            sig.getCtprvnCd(),
+            locationService.getFullName(sig)
+        )
+    }
 
     override fun deleteAccount(
         httpServletRequest: HttpServletRequest,
@@ -49,7 +75,13 @@ class MemberServiceImpl(
             httpServletResponse,
         )
 
-        memberRepository.delete(member)
+        /**
+         * 계약·견적 등 거래 기록이 member를 참조하고 있어 행을 지우지 않고 탈퇴 표시만 남긴다.
+         * 저장된 리프레시 토큰은 위 deleteTokens에서 이미 지워진다.
+         */
+        member.withdraw()
+
+        memberRepository.save(member)
 
         return DeleteAccountResponse.of("탈퇴되었습니다.")
     }
@@ -61,33 +93,88 @@ class MemberServiceImpl(
         val member = memberRepository.findByUsername(passwordResetRequest.username)
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
+        /**
+         * 탈퇴 회원도 행이 남아 있어 여기서 걸러야 탈퇴한 계정의 비밀번호가 바뀌지 않는다.
+         * 탈퇴 여부를 알려주지 않기 위해 없는 사용자와 같은 응답을 준다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
+        }
+
+        /**
+         * 소셜 회원도 비밀번호를 직접 설정한 뒤에는 재설정할 수 있다.
+         * 비밀번호가 없는 소셜 회원은 재설정이 아니라 로그인 후 최초 설정을 써야 한다.
+         */
+        if (member.password.isNullOrBlank()) {
+
+            throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_RESET_PASSWORD)
+        }
+
+        verifyPasswordResetOwnership(
+            member,
+            passwordResetRequest
+        )
+
         member.password = passwordEncoder.encode(passwordResetRequest.newPassword)
+
+        /**
+         * 재설정 전에 발급된 refreshToken이 남아 있으면 탈취한 세션이 최대 14일 더 살아 있다.
+         * 로그인 상태에서 바꾸는 경로와 같게 기존 세션을 모두 끊는다.
+         */
+        tokenService.deleteTokensByMemberId(member.getId()!!)
+        tokenService.revokeAccessTokensIssuedBefore(member.username)
 
         return PasswordResetResponse.of("비밀번호가 변경되었습니다.")
     }
 
     override fun resetPasswordWithAuth(
-        passwordResetRequest: PasswordResetRequest,
+        passwordChangeRequest: PasswordChangeRequest,
         httpServletRequest: HttpServletRequest,
         httpServletResponse: HttpServletResponse
     ): PasswordResetResponse {
 
-        val username = tokenService.getCurrentUsername(httpServletRequest)
+        /**
+         * 변경 대상은 항상 토큰의 주체다.
+         * 요청 본문으로 다른 계정을 지정할 수 없다.
+         */
+        val member = getAuthenticatedMember(httpServletRequest)
 
-        if(username.isNullOrBlank()) throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        verifyCurrentPassword(
+            member,
+            passwordChangeRequest.currentPassword
+        )
 
-        val member = memberRepository.findByUsername(passwordResetRequest.username)
-            ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
-
-        val encoded = passwordEncoder.encode(passwordResetRequest.newPassword)
-        member.password = encoded
+        member.password = passwordEncoder.encode(passwordChangeRequest.newPassword)
 
         tokenService.deleteTokens(
             httpServletRequest,
             httpServletResponse,
         )
 
+        /**
+         * deleteTokens는 이 요청에 쓴 토큰만 거부하므로, 다른 기기나 탈취된 accessToken까지 끊는다.
+         */
+        tokenService.revokeAccessTokensIssuedBefore(member.username)
+
         return PasswordResetResponse.of("비밀번호가 변경되었습니다. 다시 로그인 해주세요.")
+    }
+
+    override fun setPassword(
+        setPasswordRequest: SetPasswordRequest,
+        httpServletRequest: HttpServletRequest
+    ): PasswordResetResponse {
+
+        val member = getAuthenticatedMember(httpServletRequest)
+
+        if (!member.password.isNullOrBlank()) {
+
+            throw ApplicationException(MemberStatusCode.PASSWORD_ALREADY_SET)
+        }
+
+        member.password = passwordEncoder.encode(setPasswordRequest.newPassword)
+
+        return PasswordResetResponse.of("비밀번호가 설정되었습니다.")
     }
 
     override fun findUsername(
@@ -105,7 +192,10 @@ class MemberServiceImpl(
         email: String
     ): CheckResponse {
 
-        if (memberRepository.existsByEmail(email)) throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        checkDuplicate(
+            member = memberRepository.findByEmail(email),
+            duplicateStatusCode = AuthStatusCode.EMAIL_ALREADY_EXIST
+        )
 
         return CheckResponse.of("사용할 수 있는 이메일입니다.")
     }
@@ -115,9 +205,13 @@ class MemberServiceImpl(
         phone: String
         ): CheckResponse {
 
-        if (memberRepository.existsByPhone(PhoneNormalizer.normalize(phone)
-                ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT))
-            ) throw ApplicationException(AuthStatusCode.PHONE_ALREADY_EXIST)
+        val normalizedPhone = PhoneNormalizer.normalize(phone)
+            ?: throw ApplicationException(CommonStatusCode.INVALID_ARGUMENT)
+
+        checkDuplicate(
+            member = memberRepository.findByPhone(normalizedPhone),
+            duplicateStatusCode = AuthStatusCode.PHONE_ALREADY_EXIST
+        )
 
         return CheckResponse.of("사용할 수 있는 전화번호입니다.")
     }
@@ -127,9 +221,39 @@ class MemberServiceImpl(
         username: String
     ): UsernameCheckResponse {
 
-        if (memberRepository.existsByUsername(username)) throw ApplicationException(AuthStatusCode.USERNAME_ALREADY_EXIST)
+        checkDuplicate(
+            member = memberRepository.findByUsername(username),
+            duplicateStatusCode = AuthStatusCode.USERNAME_ALREADY_EXIST
+        )
 
         return UsernameCheckResponse.of("사용 가능한 사용자명입니다.")
+    }
+
+    /**
+     * 중복 확인 응답을 회원가입(AuthServiceImpl.signUp)과 같은 기준으로 맞춘다.
+     * 탈퇴 회원이 쥐고 있는 값이면 재가입 불가임을 구분해 알려준다.
+     */
+    private fun checkDuplicate(
+        member: Member?,
+        duplicateStatusCode: AuthStatusCode
+    ) {
+
+        if (member == null) {
+
+            return
+        }
+
+        if (member.isDeleted()) {
+
+            if (memberRetentionService.releaseIfRetentionExpired(member.getId()!!)) {
+
+                return
+            }
+
+            throw ApplicationException(AuthStatusCode.WITHDRAWN_ACCOUNT_CANNOT_REJOIN)
+        }
+
+        throw ApplicationException(duplicateStatusCode)
     }
 
     @Transactional(readOnly = true)
@@ -139,6 +263,13 @@ class MemberServiceImpl(
 
         val member = memberRepository.findByUsername(username)
             ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+
+        ensurePhoneVerified(member = member)
+    }
+
+    override fun ensurePhoneVerified(
+        member: Member
+    ) {
 
         if (!member.isPhoneVerified()) {
 
@@ -159,7 +290,7 @@ class MemberServiceImpl(
             changeEmailRequest.password
         )
 
-        if (member.email != changeEmailRequest.newEmail && memberRepository.existsByEmail(changeEmailRequest.newEmail)) {
+        if (!member.email.equals(changeEmailRequest.newEmail.trim(), ignoreCase = true) && memberRepository.existsByEmail(changeEmailRequest.newEmail.trim())) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
         }
@@ -251,9 +382,75 @@ class MemberServiceImpl(
 
         val member = getAuthenticatedMember(httpServletRequest)
 
-        if (member.email != email && memberRepository.existsByEmail(email)) {
+        if (!member.email.equals(email.trim(), ignoreCase = true) && memberRepository.existsByEmail(email.trim())) {
 
             throw ApplicationException(AuthStatusCode.EMAIL_ALREADY_EXIST)
+        }
+    }
+
+    /**
+     * 비로그인 재설정의 유일한 소유권 증거다.
+     * 휴대폰 또는 이메일로 발송된 인증코드를 먼저 소비한 뒤,
+     * 인증에 성공한 연락처가 실제로 그 계정의 것인지 확인한다.
+     */
+    private fun verifyPasswordResetOwnership(
+        member: Member,
+        passwordResetRequest: PasswordResetRequest
+    ) {
+
+        val verifyCode = passwordResetRequest.verifyCode
+
+        if (verifyCode.isNullOrBlank()) throw ApplicationException(MemberStatusCode.VERIFICATION_REQUIRED)
+
+        val phone = passwordResetRequest.phone
+        val email = passwordResetRequest.email
+
+        when {
+
+            !phone.isNullOrBlank() -> {
+
+                val verifiedPhone = phoneVerifyService.verifyCodeOnly(
+                    recipientNumber = phone,
+                    code = verifyCode
+                )
+
+                if (member.phone != verifiedPhone) {
+
+                    throw ApplicationException(MemberStatusCode.VERIFICATION_TARGET_MISMATCH)
+                }
+            }
+
+            !email.isNullOrBlank() -> {
+
+                emailService.checkVerifyCode(
+                    email,
+                    verifyCode
+                )
+
+                if (!member.email.equals(email, ignoreCase = true)) {
+
+                    throw ApplicationException(MemberStatusCode.VERIFICATION_TARGET_MISMATCH)
+                }
+            }
+
+            else -> throw ApplicationException(MemberStatusCode.VERIFICATION_REQUIRED)
+        }
+    }
+
+    /**
+     * 비밀번호 변경은 provider와 무관하게 현재 비밀번호를 아는지만 본다.
+     * 비밀번호가 없는 소셜 회원은 여기서 걸리며 최초 설정 API를 써야 한다.
+     */
+    private fun verifyCurrentPassword(
+        member: Member,
+        rawPassword: String
+    ) {
+
+        val encodedPassword = member.password
+
+        if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
         }
     }
 
@@ -267,11 +464,9 @@ class MemberServiceImpl(
             throw ApplicationException(MemberStatusCode.SOCIAL_ACCOUNT_CANNOT_CHANGE)
         }
 
-        val encodedPassword = member.password
-
-        if (encodedPassword.isNullOrBlank() || !passwordEncoder.matches(rawPassword, encodedPassword)) {
-
-            throw ApplicationException(AuthStatusCode.INVALID_CREDENTIALS)
-        }
+        verifyCurrentPassword(
+            member,
+            rawPassword
+        )
     }
 }

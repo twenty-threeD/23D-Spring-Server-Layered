@@ -44,12 +44,17 @@ spring:
     refreshTokenExpiration: ${REFRESH_EXPIRATION}
 
   mail:
-    host: smtp.gmail.com
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
     username: ${EMAIL}
     password: ${EMAIL_PASSWORD}
     properties:
-      mail.smtp.auth: true
-      mail.smtp.starttls.enable: true
+      mail.transport.protocol: smtp
+      mail.debug: ${MAIL_DEBUG:false}
+      mail.smtp.auth: ${MAIL_SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_SMTP_STARTTLS:true}
+      mail.smtp.ssl.trust: ${MAIL_SSL_TRUST:${MAIL_HOST:smtp.gmail.com}}
+      mail.smtp.ssl.protocols: ${MAIL_SSL_PROTOCOLS:TLSv1.3 TLSv1.2}
 
   data:
     redis:
@@ -108,14 +113,16 @@ spring:
       max-file-size: 25MB
       max-request-size: 30MB
 
+# API 문서는 운영에서 기동 비용과 노출 면적을 늘리므로 기본값을 꺼진 상태로 둔다.
+# 로컬에서 볼 때는 .env에 SWAGGER_ENABLED=true를 넣는다.
 springdoc:
   api-docs:
     path: /v3/api-docs
-    enabled: true # 배포할 때 false로 변경
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
     display-request-duration: true
-    enabled: true # 배포할 때 false로 변경
+    enabled: ${SWAGGER_ENABLED:false}
 
 
 management:
@@ -140,9 +147,15 @@ management:
 app:
   upload:
     file-dir: ./files
+    # true면 기동 시 업로드 경로(/files/<파일명>)가 아닌 프로필 이미지·커뮤니티 글 파일 URL을 비운다.
+    # 운영 데이터를 바꾸므로 한 번 켜서 정리한 뒤 다시 끈다.
+    cleanup-external-urls: ${CLEANUP_EXTERNAL_FILE_URLS:false}
   oauth2:
     redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:3000/oauth/success}
     failure-redirect-uri: ${OAUTH2_FAILURE_REDIRECT_URI:http://localhost:3000/oauth/fail}
+    # 로그인 시작 시 redirect_uri로 넘길 수 있는 프론트 origin. scheme·host·port가 정확히 일치해야 한다.
+    # 목록에 없거나 값이 없으면 위의 기본 주소로 보낸다.
+    allowed-origins: ${OAUTH2_ALLOWED_ORIGINS:https://idta.store,http://localhost:3000}
   # 프론트와 서버가 서브도메인으로 갈려 있어 크로스 사이트로 쿠키가 오간다.
   # 상위 도메인 지정과 SameSite=None, Secure는 셋이 함께여야 refreshToken이 실린다.
   # 로컬(http://localhost)에서는 이 조합으로 쿠키가 심기지 않으므로
@@ -162,11 +175,28 @@ toss-payments:
   base-url: https://api.tosspayments.com
   api-version: 2024-06-01
 
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: claude-haiku-4-5
+  max-tokens: 2048
+
 cosmos:
-  submitter-private-key: ${COSMOS_SUBMITTER_PRIVATE_KEY}
+  submitter-private-key: ${COSMOS_SUBMITTER_PRIVATE_KEY:}
+  submitter-private-keys: ${COSMOS_SUBMITTER_PRIVATE_KEYS:}
   node-url: ${COSMOS_NODE_URL}
   chain-id: ${COSMOS_CHAIN_ID}
   contract-url-salt: ${COSMOS_CONTRACT_URL_SALT}
+
+member-key:
+  master-key: ${MEMBER_KEY_MASTER_KEY:}
+  encrypt-plaintext: ${MEMBER_KEY_ENCRYPT_PLAINTEXT:false}
+
+agora:
+  app-id: ${AGORA_APP_ID:}
+  app-certificate: ${AGORA_APP_CERTIFICATE:}
+  token-expiration-seconds: ${AGORA_TOKEN_EXPIRATION_SECONDS:600}
+  ringing-timeout-seconds: ${AGORA_RINGING_TIMEOUT_SECONDS:60}
+  max-call-duration-seconds: ${AGORA_MAX_CALL_DURATION_SECONDS:14400}
 
 solapi:
   api-key: ${SOLAPI_API_KEY}

@@ -2,7 +2,6 @@ package spring.springserver.domain.auth.handler
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException
 import org.springframework.security.web.authentication.AuthenticationFailureHandler
@@ -12,7 +11,7 @@ import spring.springserver.domain.auth.exception.AuthStatusCode
 
 @Component
 class OAuth2FailureHandler(
-    @param:Value($$"${app.oauth2.failure-redirect-uri}") private val failureRedirectUri: String
+    private val oAuth2RedirectResolver: OAuth2RedirectResolver
 ): AuthenticationFailureHandler {
 
     override fun onAuthenticationFailure(
@@ -27,8 +26,13 @@ class OAuth2FailureHandler(
             ?.takeIf { it.isNotBlank() }
             ?: AuthStatusCode.OAUTH_LOGIN_FAILED.getCode()
 
+        val origin = oAuth2RedirectResolver.consumeRedirectOrigin(
+            httpServletRequest,
+            httpServletResponse
+        )
+
         val redirectUri = UriComponentsBuilder
-            .fromUriString(failureRedirectUri)
+            .fromUriString(oAuth2RedirectResolver.failureUri(origin))
             .queryParam("code", errorCode)
             .build()
             .encode()

@@ -7,7 +7,7 @@ description: 이 저장소에서 Kotlin + Spring Boot 프로덕션 코드를 작
 
 ## 시작 전 (필수)
 
-1. `.Codex/convention.md`를 읽는다. 이 파일이 컨벤션의 단일 출처(Single Source of Truth)다.
+1. `.agents/convention.md`를 읽는다. 이 파일이 컨벤션의 단일 출처(Single Source of Truth)다.
 2. 손댈 도메인의 기존 파일(Controller / Service / ServiceImpl / DTO / StatusCode)을 먼저 읽는다.
 3. 요청이 컨벤션과 충돌하면 먼저 지적하고, 사용자가 명시적으로 뒤집지 않는 한 컨벤션을 따른다.
 

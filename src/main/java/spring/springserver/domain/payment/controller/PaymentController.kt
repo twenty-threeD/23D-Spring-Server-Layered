@@ -7,7 +7,6 @@ import spring.springserver.domain.blockchain.data.response.PaymentVerificationRe
 import spring.springserver.domain.payment.data.request.CancelPaymentRequest
 import spring.springserver.domain.payment.data.request.ConfirmPaymentRequest
 import spring.springserver.domain.payment.data.request.PreparePaymentRequest
-import spring.springserver.domain.payment.data.request.VirtualAccountRequest
 import spring.springserver.domain.payment.data.response.ConfirmPaymentResponse
 import spring.springserver.domain.payment.data.response.PaymentResponse
 import spring.springserver.domain.payment.data.response.PreparePaymentResponse
@@ -51,42 +50,48 @@ class PaymentController(
 
     @GetMapping("/{paymentKey}")
     fun findByPaymentKey(
-        @PathVariable paymentKey: String
-    ): BaseResponse<PaymentResponse> {
-
-        return BaseResponse.ok(paymentService.findByPaymentKey(paymentKey))
-    }
-
-    @GetMapping("/orders/{orderId}")
-    fun findByOrderId(
-        @PathVariable orderId: String
-    ): BaseResponse<PaymentResponse> {
-
-        return BaseResponse.ok(paymentService.findByOrderId(orderId))
-    }
-
-    @PostMapping("/{paymentKey}/cancel")
-    fun cancel(
         @PathVariable paymentKey: String,
-        @Valid @RequestBody cancelPaymentRequest: CancelPaymentRequest,
-        @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
         return BaseResponse.ok(
-            paymentService.cancel(
+            paymentService.findByPaymentKey(
                 paymentKey,
-                cancelPaymentRequest,
-                idempotencyKey
+                memberDetails.getId()!!
             )
         )
     }
 
-    @PostMapping("/virtual-accounts")
-    fun issueVirtualAccount(
-        @Valid @RequestBody virtualAccountRequest: VirtualAccountRequest
+    @GetMapping("/orders/{orderId}")
+    fun findByOrderId(
+        @PathVariable orderId: String,
+        @AuthenticationPrincipal memberDetails: MemberDetails
     ): BaseResponse<PaymentResponse> {
 
-        return BaseResponse.ok(paymentService.issueVirtualAccount(virtualAccountRequest))
+        return BaseResponse.ok(
+            paymentService.findByOrderId(
+                orderId,
+                memberDetails.getId()!!
+            )
+        )
+    }
+
+    @PostMapping("/{paymentKey}/cancel")
+    fun cancel(
+        @Valid @RequestBody cancelPaymentRequest: CancelPaymentRequest,
+        @PathVariable paymentKey: String,
+        @RequestHeader("Idempotency-Key", required = false) idempotencyKey: String?,
+        @AuthenticationPrincipal memberDetails: MemberDetails
+    ): BaseResponse<PaymentResponse> {
+
+        return BaseResponse.ok(
+            paymentService.cancel(
+                cancelPaymentRequest,
+                paymentKey,
+                idempotencyKey,
+                memberDetails.getId()!!
+            )
+        )
     }
 
     @GetMapping("/orders/{orderId}/verify")

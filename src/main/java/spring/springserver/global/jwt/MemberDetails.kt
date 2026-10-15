@@ -39,7 +39,7 @@ data class MemberDetails(
                 member.getId(),
                 member.username,
                 member.email,
-                member.password!!,
+                member.password ?: "",
                 listOf(SimpleGrantedAuthority(role))
             )
         }

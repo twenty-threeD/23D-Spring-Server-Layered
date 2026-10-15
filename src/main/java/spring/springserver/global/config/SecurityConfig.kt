@@ -28,6 +28,7 @@ import spring.springserver.global.jwt.JwtAuthFilter
 @EnableWebSecurity
 class SecurityConfig(
     @param:Value($$"${app.cors.allowed-origins}") private val corsAllowedOrigins: String,
+    @param:Value($$"${springdoc.swagger-ui.enabled}") private val swaggerEnabled: Boolean,
     private val jwtAuthFilter: JwtAuthFilter,
     private val cookieOAuth2AuthorizationRequestRepository: CookieOAuth2AuthorizationRequestRepository,
     private val apiAuthenticationEntryPoint: ApiAuthenticationEntryPoint,
@@ -110,8 +111,8 @@ class SecurityConfig(
                         HttpMethod.POST,
                         "/api/auth/signup",
                         "/api/auth/signin",
-                        "/api/auth/signout",
-                        "/api/auth/password/reset",
+                        "/api/auth/oauth/exchange",
+                        "/api/member/password/reset",
                         "/api/auth/verify/password"
                     ).permitAll()
                     /**
@@ -132,7 +133,12 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/auth/password/reset/check"
+                        "/api/member/password",
+                        "/api/member/password/reset/check"
+                    ).hasRole("USER")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/member/location"
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.PATCH,
@@ -141,7 +147,7 @@ class SecurityConfig(
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.DELETE,
-                        "/api/delete/account")
+                        "/api/member/account")
                     .hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
@@ -163,6 +169,16 @@ class SecurityConfig(
                         HttpMethod.PATCH,
                         "/api/post")
                     .hasRole("USER")
+                    /**
+                     * 아래 게시글 GET 공개 규칙보다 먼저 와야 한다.
+                     * reviewable은 내 계약을 기준으로 답하는 API라 비로그인이면 401로 끝낸다.
+                     * analysis는 유료 외부 API(Claude)를 태우므로 공개하지 않는다.
+                     */
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/post/review/reviewable",
+                        "/api/post/review/analysis"
+                    ).authenticated()
                     .requestMatchers(
                         HttpMethod.GET,
                         "/api/post/**",
@@ -201,8 +217,7 @@ class SecurityConfig(
                         HttpMethod.POST,
                         "/api/payment/prepare",
                         "/api/payment/confirm",
-                        "/api/payment/*/cancel",
-                        "/api/payment/virtual-accounts"
+                        "/api/payment/*/cancel"
                     ).hasRole("USER")
                     .requestMatchers(
                         HttpMethod.GET,
@@ -216,23 +231,6 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
-                        "/api/estimate"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.PATCH,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.DELETE,
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/estimate",
-                        "/api/estimate/*"
-                    ).hasRole("USER")
-                    .requestMatchers(
-                        HttpMethod.POST,
                         "/api/contract"
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
@@ -241,10 +239,8 @@ class SecurityConfig(
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.GET,
-                        "/api/community/post/",
-                        "/api/community/post/{postId}",
-                        "/api/community/post/search",
-                        "/api/community/post/category"
+                        "/api/community/post",
+                        "/api/community/post/*",
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
@@ -271,16 +267,48 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/call",
+                        "/api/call/*/accept",
+                        "/api/call/*/reject",
+                        "/api/call/*/cancel",
+                        "/api/call/*/end",
+                        "/api/call/*/token",
+                        "/api/call/*/screen-share"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.PATCH,
+                        "/api/call/*/media"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/call/*/screen-share"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.GET,
+                        "/api/call/*",
+                        "/api/call/active",
+                        "/api/call/rooms/*"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/phone/send",
                         "/phone/verify"
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.GET,
                         "/files/*",
-                        "/images/*",
+                        "/images/*"
+                    ).permitAll()
+                    // 문서를 끈 환경에서는 경로 자체를 열어두지 않는다.
+                    // springdoc이 꺼져 있어도 규칙이 남아 있으면 노출 면적만 넓어진다.
+                    .requestMatchers(
+                        HttpMethod.GET,
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
-                    ).permitAll()
+                    ).access { _, _ ->
+
+                        AuthorizationDecision(swaggerEnabled)
+                    }
                     .anyRequest()
                     .authenticated()
             }

@@ -3,9 +3,11 @@ package spring.springserver.domain.chat.controller
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.chat.data.request.CreateChatRoomRequest
+import spring.springserver.domain.chat.data.request.UpdateTradeStatusRequest
 import spring.springserver.domain.chat.data.response.ChatMessageResponse
 import spring.springserver.domain.chat.data.response.ChatRoomResponse
 import spring.springserver.domain.chat.data.response.CreateChatRoomResponse
+import spring.springserver.domain.chat.data.response.TradeStatusResponse
 import spring.springserver.domain.chat.service.ChatService
 import spring.springserver.global.data.BaseResponse
 import java.security.Principal
@@ -39,12 +41,18 @@ class ChatController(
     @GetMapping("/rooms/{roomId}/messages")
     fun getMessages(
         @PathVariable roomId: Long,
+        @RequestParam(required = false) cursor: Long?,
+        @RequestParam(required = false) after: Long?,
+        @RequestParam(defaultValue = "50") size: Int,
         principal: Principal
     ): BaseResponse<List<ChatMessageResponse>> =
         BaseResponse.ok(
             chatService.getRoomMessages(
                 username = principal.name,
-                roomId = roomId
+                roomId = roomId,
+                cursor = cursor,
+                after = after,
+                size = size
             )
         )
 
@@ -60,5 +68,24 @@ class ChatController(
         )
 
         return BaseResponse.ok(null)
+    }
+
+    /**
+     * 진행 중인 거래를 취소한다. 받는 값은 CANCELED뿐이다.
+     */
+    @PatchMapping("/rooms/{roomId}/trade-status")
+    fun updateTradeStatus(
+        @PathVariable roomId: Long,
+        @Valid @RequestBody updateTradeStatusRequest: UpdateTradeStatusRequest,
+        principal: Principal
+    ): BaseResponse<TradeStatusResponse> {
+
+        return BaseResponse.ok(
+            chatService.updateTradeStatus(
+                username = principal.name,
+                roomId = roomId,
+                updateTradeStatusRequest = updateTradeStatusRequest
+            )
+        )
     }
 }

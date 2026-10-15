@@ -4,6 +4,7 @@ import spring.springserver.domain.community.comment.repository.CommunityCommentR
 import spring.springserver.domain.community.like.repository.CommunityPostLikeRepository
 import spring.springserver.domain.community.post.entity.Category
 import spring.springserver.domain.community.post.entity.CommunityPost
+import spring.springserver.domain.member.entity.Member
 import java.time.LocalDateTime
 
 /**
@@ -64,10 +65,14 @@ data class CommunityPostResponse(
             imageUrl: String?
         ): CommunityPostResponse {
 
+            // username은 작성 시점 값이 그대로 남아 있어 탈퇴 후에도 실명이 보인다.
+            // 표시용 이름·프로필 이미지는 회원의 현재 상태를 기준으로 낮춘다.
+            val isWithdrawn = communityPost.member.isDeleted()
+
             return CommunityPostResponse(
                 communityPost.getId(),
-                communityPost.username,
-                imageUrl,
+                if (isWithdrawn) Member.WITHDRAWN_DISPLAY_NAME else communityPost.username,
+                if (isWithdrawn) null else imageUrl,
                 communityPost.title,
                 communityPost.content,
                 communityPost.category,

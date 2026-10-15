@@ -53,6 +53,13 @@ class ChatRoom(
     @Column(name = "created_at", updatable = false)
     private var createdAt: Instant? = null
 
+    /**
+     * 컬럼이 생기기 전에 만들어진 방은 값이 null이므로 조회할 때 진행 중으로 본다.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trade_status", length = 20)
+    private var tradeStatus: TradeStatus? = TradeStatus.IN_PROGRESS
+
     @PrePersist
     fun prePersistDate() {
 
@@ -62,6 +69,30 @@ class ChatRoom(
     fun getId(): Long? = id
 
     fun getCreatedAt(): Instant? = createdAt
+
+    fun getTradeStatus(): TradeStatus = tradeStatus ?: TradeStatus.IN_PROGRESS
+
+    fun hasPostAuthor(): Boolean {
+
+        val postAuthorId = post.member.getId()
+
+        return client.getId() == postAuthorId || professional.getId() == postAuthorId
+    }
+
+    fun completeTrade() {
+
+        tradeStatus = TradeStatus.COMPLETED
+    }
+
+    fun cancelTrade() {
+
+        tradeStatus = TradeStatus.CANCELED
+    }
+
+    fun restartTrade() {
+
+        tradeStatus = TradeStatus.IN_PROGRESS
+    }
 
     fun updateLastMessageMeta(
         at: Instant,

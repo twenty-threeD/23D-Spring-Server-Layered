@@ -11,7 +11,6 @@ import spring.springserver.domain.blockchain.service.BlockchainService
 import spring.springserver.domain.blockchain.service.TxVerificationService
 import spring.springserver.domain.contract.data.response.ContractPartyResponse
 import spring.springserver.domain.contract.service.ContractService
-import spring.springserver.domain.estimate.service.EstimateService
 import spring.springserver.domain.key.service.KeyService
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.service.PaymentRecordService
@@ -24,7 +23,6 @@ class TxVerificationServiceImpl(
     private val keyService: KeyService,
     private val paymentRecordService: PaymentRecordService,
     private val contractUrlHasher: ContractUrlHasher,
-    private val estimateService: EstimateService,
     private val contractService: ContractService
 ): TxVerificationService {
 
@@ -170,17 +168,8 @@ class TxVerificationServiceImpl(
 
         if (payment.getMemberId() == memberId) return true
 
-        if (contractPartyResponse != null
+        return contractPartyResponse != null
             && (contractPartyResponse.clientId == memberId || contractPartyResponse.professionalId == memberId)
-        ) return true
-
-        val estimateId = payment.getEstimateId()
-            ?: return false
-
-        return estimateService.isProfessional(
-            estimateId = estimateId,
-            memberId = memberId
-        )
     }
 
     /**

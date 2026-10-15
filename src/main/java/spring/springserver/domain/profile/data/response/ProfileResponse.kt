@@ -31,7 +31,22 @@ data class ProfileResponse(
 
     val phoneVerified: Boolean,
 
+    /**
+     * 비밀번호 설정 여부. 소셜 가입 회원은 직접 설정하기 전까지 false다.
+     */
+    val hasPassword: Boolean,
+
     val posts: List<PostResponse>,
+
+    /**
+     * 전문가로서 받은 리뷰 수. 평점은 계약 기준으로 쌓이므로 게시글과 무관하다.
+     */
+    val reviewCount: Long,
+
+    /**
+     * 전문가로서 받은 평균 별점(소수 첫째 자리). 리뷰가 없으면 0.0이다.
+     */
+    val averageRating: Double,
 
     val updatedAt: LocalDateTime?
 ) {
@@ -47,7 +62,10 @@ data class ProfileResponse(
             locationName: String?,
             jobCategoryName: String?,
             phoneVerified: Boolean,
-            posts: List<PostResponse>
+            hasPassword: Boolean,
+            posts: List<PostResponse>,
+            reviewCount: Long,
+            averageRating: Double
         ): ProfileResponse {
 
             return ProfileResponse(
@@ -64,7 +82,10 @@ data class ProfileResponse(
                 profile.jobCategory?.getId(),
                 jobCategoryName,
                 phoneVerified,
+                hasPassword,
                 posts,
+                reviewCount,
+                averageRating,
                 profile.getUpdatedAt()
             )
         }

@@ -1,5 +1,6 @@
 package spring.springserver.domain.payment.service.impl
 
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Propagation
@@ -8,6 +9,7 @@ import spring.springserver.domain.payment.data.request.PreparePaymentRequest
 import spring.springserver.domain.payment.entity.Payment
 import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
+import spring.springserver.domain.payment.policy.PaymentFeePolicy
 import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.global.exception.exception.ApplicationException
@@ -18,25 +20,30 @@ class PaymentRecordServiceImpl(
     private val paymentRepository: PaymentRepository
 ): PaymentRecordService {
 
+    private val log = LoggerFactory.getLogger(PaymentRecordServiceImpl::class.java)
+
     override fun create(
         preparePaymentRequest: PreparePaymentRequest,
         memberId: Long,
         contractUrl: String
     ): Payment {
 
+        val payment = Payment(
+            orderId = preparePaymentRequest.orderId,
+            amount = preparePaymentRequest.amount,
+            memberId = memberId,
+            contractUrl = contractUrl,
+            orderName = preparePaymentRequest.orderName,
+            roomId = preparePaymentRequest.roomId,
+            contractId = preparePaymentRequest.contractId,
+            feeAmount = PaymentFeePolicy.calculateFee(preparePaymentRequest.amount),
+            feeRatePercent = PaymentFeePolicy.feeRatePercent(preparePaymentRequest.amount),
+            settlementAmount = PaymentFeePolicy.calculateSettlement(preparePaymentRequest.amount)
+        )
+
         try {
 
-            return paymentRepository.saveAndFlush(
-                Payment(
-                    orderId = preparePaymentRequest.orderId,
-                    amount = preparePaymentRequest.amount,
-                    memberId = memberId,
-                    contractUrl = contractUrl,
-                    orderName = preparePaymentRequest.orderName,
-                    roomId = preparePaymentRequest.roomId,
-                    contractId = preparePaymentRequest.contractId
-                )
-            )
+            return paymentRepository.saveAndFlush(payment)
         } catch (_: DataIntegrityViolationException) {
 
             throw ApplicationException(PaymentStatusCode.PAYMENT_ORDER_ID_DUPLICATED)
@@ -70,6 +77,15 @@ class PaymentRecordServiceImpl(
         payment.markInProgress()
 
         return payment
+    }
+
+    @Transactional(readOnly = true)
+    override fun findByPaymentKey(
+        paymentKey: String
+    ): Payment {
+
+        return paymentRepository.findByPaymentKey(paymentKey)
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_NOT_FOUND)
     }
 
     @Transactional(readOnly = true)
@@ -109,14 +125,6 @@ class PaymentRecordServiceImpl(
         )
     }
 
-    override fun linkEstimate(
-        orderId: String,
-        estimateId: Long
-    ) {
-
-        findByOrderId(orderId = orderId).linkEstimate(estimateId = estimateId)
-    }
-
     override fun markCanceledByChainFailure(
         orderId: String,
         failureReason: String?
@@ -140,11 +148,41 @@ class PaymentRecordServiceImpl(
         findByOrderId(orderId).markCancelFailed()
     }
 
+    override fun markCanceled(
+        paymentKey: String,
+        tossStatus: String?,
+        balanceAmount: Long?
+    ): Payment {
+
+        val payment = findByPaymentKey(paymentKey)
+        val feeAmount = payment.getFeeAmount() ?: 0L
+        val onlyFeeRemains = balanceAmount != null && balanceAmount <= feeAmount
+
+        when (tossStatus) {
+
+            TOSS_STATUS_CANCELED -> payment.markCanceled()
+            TOSS_STATUS_PARTIAL_CANCELED -> if (onlyFeeRemains) payment.markCanceled() else payment.markPartialCanceled()
+            /**
+             * 이 시점은 토스 취소가 이미 끝난 뒤라 예외를 던지면 환불된 사용자가 실패 응답을 받는다.
+             * 상태는 그대로 두고 로그로 남겨 수동으로 확인한다.
+             */
+            else -> log.error("예상하지 못한 토스 취소 상태입니다. paymentKey = {}, tossStatus = {}", paymentKey, tossStatus)
+        }
+
+        return payment
+    }
+
     override fun markAbandoned(
         orderId: String,
         failureReason: String?
     ) {
 
         findByOrderId(orderId).markAbandoned(failureReason)
+    }
+
+    companion object {
+
+        private const val TOSS_STATUS_CANCELED = "CANCELED"
+        private const val TOSS_STATUS_PARTIAL_CANCELED = "PARTIAL_CANCELED"
     }
 }

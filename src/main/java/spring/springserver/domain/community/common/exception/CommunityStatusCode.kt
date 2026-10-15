@@ -9,7 +9,8 @@ enum class CommunityStatusCode(
     private val httpStatus: HttpStatus
 ): StatusCode {
 
-    REGION_NOT_SET("REGION_NOT_SET", "내 주변 글을 보려면 프로필에 지역을 먼저 설정해야 합니다.", HttpStatus.BAD_REQUEST);
+    REGION_NOT_SET("REGION_NOT_SET", "내 주변 글을 보려면 프로필에 지역을 먼저 설정해야 합니다.", HttpStatus.BAD_REQUEST),
+    NEIGHBORHOOD_LOGIN_REQUIRED("NEIGHBORHOOD_LOGIN_REQUIRED", "동네 주민 글은 로그인 후 볼 수 있습니다.", HttpStatus.UNAUTHORIZED);
 
     override fun getCode(): String = code
     override fun getMessage(): String = message

@@ -24,4 +24,8 @@ interface ProfileService {
     fun getImageUrlsByMemberIds(
         memberIds: Collection<Long>
     ): Map<Long, String?>
+
+    fun getImageUrlByMemberId(
+        memberId: Long
+    ): String?
 }

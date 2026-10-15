@@ -8,6 +8,12 @@ permissions:
   contents: read
   packages: write
 
+# 같은 브랜치 배포는 한 번에 하나만 실행한다. 진행 중인 배포를 끊으면 EC2에 반쯤 전환된 상태가
+# 남을 수 있으므로 취소하지 않고, 뒤에 온 배포는 앞 배포가 끝날 때까지 기다린다
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -27,23 +33,49 @@ jobs:
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_KEY: ${{ secrets.EC2_KEY }}
+          MEMBER_KEY_MASTER_KEY: ${{ secrets.MEMBER_KEY_MASTER_KEY }}
         run: |
           set -e
 
-          for key in EC2_HOST EC2_USER EC2_KEY; do
+          for key in EC2_HOST EC2_USER EC2_KEY MEMBER_KEY_MASTER_KEY; do
             if [ -z "${!key}" ]; then
               echo "필수 Secret이 설정되지 않았습니다: $key"
               exit 1
             fi
           done
 
+      # 캐시는 아래 두 actions/cache 단계가 직접 관리한다.
+      # setup-gradle 캐시는 키에 커밋 SHA가 들어가 매 실행마다 새로 저장(약 10초)하므로 끈다
       - name: Gradle 설치
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14'
+          cache-disabled: true
 
-      - name: 테스트 및 JAR 빌드
-        run: gradle test bootJar
+      # 의존성은 빌드 스크립트가 바뀔 때만 키가 바뀌므로, 키가 그대로면 복원만 하고 저장은 건너뛴다
+      - name: Gradle 의존성 캐시
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-deps-${{ runner.os }}-${{ hashFiles('build.gradle.kts', 'settings.gradle.kts') }}
+          restore-keys: |
+            gradle-deps-${{ runner.os }}-
+
+      # 직전 빌드의 컴파일 결과와 Gradle 실행 기록을 복원해 Kotlin이 바뀐 파일만 다시 컴파일하게 한다.
+      # 복원한 상태가 맞지 않으면 Kotlin이 전체 컴파일로 되돌아가므로 결과물이 틀어지지 않는다
+      - name: Kotlin 증분 컴파일 상태 캐시
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle
+            build/classes
+            build/kotlin
+            build/resources
+          key: kotlin-ic-${{ runner.os }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            kotlin-ic-${{ runner.os }}-${{ github.ref_name }}-
 
       - name: Docker 이미지 메타데이터 설정
         run: |
@@ -57,23 +89,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Docker 이미지 빌드
+      # 테스트가 통과해야 jib가 실행된다. Gradle을 한 번만 띄워 데몬 기동·설정 시간을 아낀다.
+      # Jib이 GHCR 로그인 정보(~/.docker/config.json)로 레이어를 나눠 바로 push 한다
+      - name: 테스트 및 Jib 이미지 빌드 · GHCR Push
         run: |
-          docker build \
-            -t "$IMAGE_NAME:${{ github.sha }}" \
-            -t "$IMAGE_NAME:latest" .
+          gradle test jib \
+            -Djib.to.image="$IMAGE_NAME:${{ github.sha }}" \
+            -Djib.to.tags=latest
 
-      - name: Docker 이미지 GHCR Push
-        run: |
-          docker push "$IMAGE_NAME:${{ github.sha }}"
-          docker push "$IMAGE_NAME:latest"
-
+      # v1.1부터 composite 방식이라 매 실행마다 액션용 Docker 이미지를 빌드하지 않는다
       - name: EC2에서 Blue-Green 컨테이너 전환
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          MEMBER_KEY_MASTER_KEY: ${{ secrets.MEMBER_KEY_MASTER_KEY }}
+          # 기존 평문 개인키 일괄 암호화 스위치. 이 코드가 한 번 배포된 뒤 Actions Variable을 true로 바꾸고 재배포한다
+          MEMBER_KEY_ENCRYPT_PLAINTEXT: ${{ vars.MEMBER_KEY_ENCRYPT_PLAINTEXT == 'true' && 'true' || 'false' }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+          envs: MEMBER_KEY_MASTER_KEY,MEMBER_KEY_ENCRYPT_PLAINTEXT
           script: |
             set -e
 
@@ -83,7 +118,9 @@ jobs:
             OWNER="${{ github.repository_owner }}"
             OWNER="$(echo "$OWNER" | tr '[:upper:]' '[:lower:]')"
             IMAGE_NAME="ghcr.io/$OWNER/spring-server:${{ github.sha }}"
-            HEALTH_PATH="/v3/api-docs"
+            # API 문서는 운영에서 꺼지므로 health check로 쓸 수 없다.
+            # actuator의 health는 인증 없이 열려 있고 DB/Redis 연결까지 확인한다.
+            HEALTH_PATH="/actuator/health"
 
             mkdir -p "$APP_DIR/files" "$APP_DIR/nginx/conf.d"
             echo "${{ github.token }}" | sudo docker login ghcr.io -u "${{ github.actor }}" --password-stdin
@@ -104,6 +141,19 @@ jobs:
                 exit 1
               fi
             done
+
+            # 회원 개인키 마스터키는 .env와 분리된 파일로 두어 .env가 새어 나가도 함께 노출되지 않게 한다
+            SECRET_DIR="$APP_DIR/secrets"
+            MEMBER_KEY_ENV_FILE="$SECRET_DIR/member-key.env"
+
+            if [ -z "$MEMBER_KEY_MASTER_KEY" ]; then
+              echo "필수 Secret이 전달되지 않았습니다: MEMBER_KEY_MASTER_KEY"
+              exit 1
+            fi
+
+            mkdir -p "$SECRET_DIR"
+            chmod 700 "$SECRET_DIR"
+            (umask 077 && printf 'MEMBER_KEY_MASTER_KEY=%s\nMEMBER_KEY_ENCRYPT_PLAINTEXT=%s\n' "$MEMBER_KEY_MASTER_KEY" "$MEMBER_KEY_ENCRYPT_PLAINTEXT" > "$MEMBER_KEY_ENV_FILE")
 
             sudo docker network create "$NETWORK_NAME" 2>/dev/null || true
 
@@ -136,22 +186,24 @@ jobs:
               --restart unless-stopped \
               -p "$NEW_PORT:8080" \
               --env-file "$APP_DIR/.env" \
+              --env-file "$MEMBER_KEY_ENV_FILE" \
               -v "$APP_DIR/files:/app/files" \
               "$IMAGE_NAME"
 
-            for i in $(seq 1 30); do
+            # 1초 간격으로 확인해 기동 직후 바로 전환한다(최대 대기 90초는 그대로)
+            for i in $(seq 1 90); do
               if curl -fsS "http://localhost:$NEW_PORT$HEALTH_PATH" >/dev/null; then
                 break
               fi
 
-              if [ "$i" -eq 30 ]; then
+              if [ "$i" -eq 90 ]; then
                 sudo docker logs "$NEW_CONTAINER" --tail 100
                 sudo docker rm -f "$NEW_CONTAINER"
                 echo "새 컨테이너 health check 실패"
                 exit 1
               fi
 
-              sleep 3
+              sleep 1
             done
 
             sudo tee "$APP_DIR/nginx/conf.d/default.conf" > /dev/null <<EOF
@@ -177,6 +229,9 @@ jobs:
 
             server {
                 listen 80;
+
+                # 업로드 최대 크기(Spring multipart max-file-size 25MB에 맞춘다)
+                client_max_body_size 30M;
 
                 location /actuator {
                     allow 127.0.0.0/8;

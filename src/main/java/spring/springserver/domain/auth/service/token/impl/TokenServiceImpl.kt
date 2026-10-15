@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseCookie
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.data.request.GenerateTokenRequest
@@ -18,9 +19,11 @@ import spring.springserver.domain.auth.service.token.TokenService
 import spring.springserver.domain.member.repository.MemberRepository
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.JwtProvider
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.util.HexFormat
 import java.util.concurrent.TimeUnit
 
 @Service
@@ -30,12 +33,25 @@ class TokenServiceImpl(
     private val redisTemplate: RedisTemplate<String, String>,
     private val memberRepository: MemberRepository,
     private val refreshTokenRepository: RefreshTokenRepository,
+    private val jdbcTemplate: JdbcTemplate,
     @param:Value($$"${spring.jwt.accessTokenExpiration}") private val accessTokenExpiration: Long,
     @param:Value($$"${spring.jwt.refreshTokenExpiration}") private val refreshTokenExpiration: Long,
     @param:Value($$"${app.cookie.same-site}") private val cookieSameSite: String,
     @param:Value($$"${app.cookie.secure}") private val cookieSecure: Boolean,
     @param:Value($$"${app.cookie.domain}") private val cookieDomain: String
 ): TokenService {
+
+    companion object {
+
+        private const val REVOKED_ACCESS_TOKEN_PREFIX = "revokedAccessToken:"
+
+        private const val TOKEN_VALID_AFTER_PREFIX = "tokenValidAfter:"
+
+        /**
+         * advisory lock 키의 상위 16비트. 다른 기능이 같은 회원 id로 잠금을 잡아도 겹치지 않게 구분한다.
+         */
+        private const val REFRESH_TOKEN_LOCK_NAMESPACE = 2303L shl 48
+    }
 
     override fun generateAccessToken(
         generateTokenRequest: GenerateTokenRequest,
@@ -73,6 +89,16 @@ class TokenServiceImpl(
             ?: throw ApplicationException(AuthStatusCode.USERNAME_NOT_FOUND)
 
         val expiresAt = toExpiresAt(refreshTokenExpiration)
+
+        /**
+         * refreshToken은 회원당 한 행인데 member_id에 유니크 제약이 없어, 같은 회원의 로그인이 동시에 들어오면
+         * 둘 다 행이 없다고 보고 각각 저장해 행이 두 개가 된다. 그 뒤에는 findByMemberId가 실패한다.
+         * 아직 없는 행은 행 잠금으로 막을 수 없어 회원 단위 advisory lock으로 저장을 한 번에 하나씩 처리한다.
+         */
+        jdbcTemplate.queryForList(
+            "select pg_advisory_xact_lock(?)",
+            REFRESH_TOKEN_LOCK_NAMESPACE or member.getId()!!
+        )
 
         val saved = refreshTokenRepository.findByMemberId(member.getId()!!)
 
@@ -146,6 +172,15 @@ class TokenServiceImpl(
             throw ApplicationException(AuthStatusCode.INVALID_JWT)
         }
 
+        /**
+         * 탈퇴 시 저장된 refreshToken을 지우지만, 그 처리가 어긋난 경우에도
+         * 탈퇴 회원이 accessToken을 다시 받아가지 못하도록 여기서도 막는다.
+         */
+        if (member.isDeleted()) {
+
+            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+        }
+
         val accessToken = generateAccessToken(
             GenerateTokenRequest(
                 username = member.username,
@@ -191,18 +226,135 @@ class TokenServiceImpl(
 
         redisTemplate.delete("accessToken:$username")
         refreshTokenRepository.deleteByMemberId(member.getId()!!)
+
+        revokeAccessToken(accessToken)
+    }
+
+    override fun isRevokedAccessToken(
+        accessToken: String
+    ): Boolean {
+
+        if (redisTemplate.hasKey(REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken))) {
+
+            return true
+        }
+
+        return isIssuedBeforeRevocation(accessToken)
+    }
+
+    /**
+     * 끊긴 시각 이전 토큰은 이 시각 이후 accessToken 수명이 지나면 모두 만료되므로 그만큼만 남긴다.
+     * JWT의 발급 시각은 초 단위라 기준 시각도 초 단위로 저장한다.
+     */
+    override fun revokeAccessTokensIssuedBefore(
+        username: String
+    ) {
+
+        redisTemplate.opsForValue().set(
+            TOKEN_VALID_AFTER_PREFIX + username,
+            Instant.now().epochSecond.toString(),
+            accessTokenExpiration,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    /**
+     * 끊긴 시각과 같은 초에 새로 로그인한 토큰까지 막지 않도록, 그 초보다 앞선 토큰만 거부한다.
+     */
+    private fun isIssuedBeforeRevocation(
+        accessToken: String
+    ): Boolean {
+
+        val username = jwtProvider.getUsernameFromToken(accessToken)
+            ?: return false
+
+        val validAfter = redisTemplate.opsForValue().get(TOKEN_VALID_AFTER_PREFIX + username)
+            ?.toLongOrNull()
+            ?: return false
+
+        val issuedAt = jwtProvider.getIssuedAt(accessToken)
+            ?: return true
+
+        return issuedAt.toInstant().epochSecond < validAfter
+    }
+
+    override fun deleteTokensByMemberId(
+        memberId: Long
+    ) {
+
+        /**
+         * 쿠키를 지울 응답이 없는 경로에서 쓰므로 서버가 들고 있는 흔적만 지운다.
+         * 이미 발급된 accessToken은 원문을 모르면 거부 목록에 넣을 수 없어 만료까지 유효하다.
+         */
+        refreshTokenRepository.deleteByMemberId(memberId)
+    }
+
+    /**
+     * 토큰이 만료되면 어차피 거부되므로 거부 목록은 accessToken 수명만큼만 남긴다.
+     * 토큰 원문 대신 해시를 키로 써서 Redis에 토큰이 그대로 남지 않게 한다.
+     */
+    private fun revokeAccessToken(
+        accessToken: String
+    ) {
+
+        redisTemplate.opsForValue().set(
+            REVOKED_ACCESS_TOKEN_PREFIX + hash(accessToken),
+            "",
+            accessTokenExpiration,
+            TimeUnit.MILLISECONDS
+        )
+    }
+
+    private fun hash(
+        value: String
+    ): String {
+
+        return HexFormat.of().formatHex(
+            MessageDigest.getInstance("SHA-256").digest(value.toByteArray())
+        )
     }
 
     override fun getCurrentUsername(httpServletRequest: HttpServletRequest) : String? {
 
         val accessToken = jwtProvider.resolveToken(httpServletRequest)
+            ?.takeIf { it.isNotBlank() }
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
 
-        if(accessToken.isNullOrBlank() || jwtProvider.isNotValidToken(accessToken)) {
+        /**
+         * 공개 경로에서도 호출되므로 JWT 필터와 같은 기준으로 다시 확인한다.
+         * 서명만 보면 refreshToken, 로그아웃한 토큰, 탈퇴 회원의 토큰도 통과한다.
+         */
+        return resolveActiveUsername(accessToken)
+            ?: throw ApplicationException(AuthStatusCode.INVALID_JWT)
+    }
 
-            throw ApplicationException(AuthStatusCode.INVALID_JWT)
+    @Transactional(readOnly = true)
+    override fun resolveActiveUsername(
+        accessToken: String
+    ): String? {
+
+        if (
+            jwtProvider.isNotValidToken(accessToken)
+            || jwtProvider.isNotAccessToken(accessToken)
+            || isRevokedAccessToken(accessToken)
+        ) {
+
+            return null
         }
 
-        return jwtProvider.getUsernameFromToken(accessToken)
+        val username = jwtProvider.getUsernameFromToken(accessToken)
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+
+        val member = memberRepository.findByUsername(username)
+            ?: return null
+
+        if (member.isDeleted()) {
+
+            return null
+        }
+
+        return username
     }
 
     private fun extractTokenFromCookie(

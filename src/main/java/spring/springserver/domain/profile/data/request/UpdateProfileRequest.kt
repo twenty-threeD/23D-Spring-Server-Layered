@@ -11,6 +11,10 @@ data class UpdateProfileRequest(
     )
     val username: String?,
 
+    @field:Pattern(
+        regexp = "^\\s*(/files/[^/\\s.][^/\\s]*)?\\s*$",
+        message = "프로필 이미지는 업로드한 파일 경로(/files/...)만 사용할 수 있습니다."
+    )
     val imageUrl: String?,
 
     val sigCd: String?,
