@@ -202,6 +202,7 @@ class SecurityConfig(
                     ).permitAll()
                     .requestMatchers(
                         HttpMethod.DELETE,
+                        "/api/post",
                         "/api/post/*")
                     .hasRole("USER")
                     .requestMatchers(
