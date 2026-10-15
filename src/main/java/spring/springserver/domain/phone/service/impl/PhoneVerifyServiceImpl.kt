@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
-import spring.springserver.domain.payment.service.impl.PaymentServiceImpl
 import spring.springserver.domain.phone.data.response.PhoneVerifyResponse
 import spring.springserver.domain.phone.data.response.SendPhoneVerifyNumberResponse
 import spring.springserver.domain.phone.exception.exception.CannotSendPhoneVerifyNumberException
@@ -289,6 +288,6 @@ class PhoneVerifyServiceImpl(
 
         private const val MAX_DAILY_SEND_COUNT = 10L
 
-        private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
+        private val log = LoggerFactory.getLogger(PhoneVerifyServiceImpl::class.java)
     }
 }
