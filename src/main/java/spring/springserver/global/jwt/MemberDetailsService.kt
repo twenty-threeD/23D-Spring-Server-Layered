@@ -1,17 +1,20 @@
 package spring.springserver.global.jwt
 
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.auth.exception.AuthStatusCode
 import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.global.config.CacheConfig
 import spring.springserver.global.exception.exception.ApplicationException
 
 @Service
 class MemberDetailsService(private val memberRepository: MemberRepository): UserDetailsService {
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = [CacheConfig.MEMBER_DETAILS], key = "#username")
     override fun loadUserByUsername(username: String): UserDetails? {
 
         val member = memberRepository.findByUsername(username)
