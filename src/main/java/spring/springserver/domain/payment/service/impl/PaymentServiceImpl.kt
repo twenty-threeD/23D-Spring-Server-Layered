@@ -322,7 +322,7 @@ class PaymentServiceImpl(
             "${response.paymentKey} | ${response.orderId} | ${response.totalAmount} | ${response.approvedAt}"
         )
 
-        return PaymentVerificationResponse.of(
+        val verification = PaymentVerificationResponse.of(
             record,
             recalculatedHash = recalculateHash,
             keyService.verifySignature(
@@ -332,6 +332,33 @@ class PaymentServiceImpl(
             ),
             record.buyerAddress == keyService.deriveCosmosAddress(payment.getMemberId()),
             record.amount == response.totalAmount
+        )
+
+        logVerificationFailure(verification)
+
+        return verification
+    }
+
+    /**
+     * 검증 실패 상세는 응답으로 내보내지 않고 서버 로그에만 남긴다.
+     * 해시 원문(결제키·승인시각 조합)은 내부 로직이므로 로그에도 남기지 않는다.
+     */
+    private fun logVerificationFailure(
+        paymentVerificationResponse: PaymentVerificationResponse
+    ) {
+
+        if (paymentVerificationResponse.verified) {
+
+            return
+        }
+
+        log.warn(
+            "결제 검증이 실패했습니다. orderId = {}, hashMatched = {}, signatureValid = {}, buyerAddressMatched = {}, amountMatched = {}",
+            paymentVerificationResponse.orderId,
+            paymentVerificationResponse.hashMatched,
+            paymentVerificationResponse.signatureValid,
+            paymentVerificationResponse.buyerAddressMatched,
+            paymentVerificationResponse.amountMatched
         )
     }
 
