@@ -39,6 +39,11 @@ enum class PaymentStatusCode(
         "결제 금액이 일치하지 않습니다.",
         HttpStatus.BAD_REQUEST
     ),
+    PAYMENT_ORDER_ID_MISMATCH(
+        "PAYMENT_ORDER_ID_MISMATCH",
+        "결제 주문번호가 일치하지 않습니다.",
+        HttpStatus.BAD_REQUEST
+    ),
     PAYMENT_MEMBER_MISMATCH(
         "PAYMENT_MEMBER_MISMATCH",
         "결제를 요청한 회원이 아닙니다.",
