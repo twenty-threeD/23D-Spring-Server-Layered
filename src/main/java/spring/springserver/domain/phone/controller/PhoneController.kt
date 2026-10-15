@@ -1,5 +1,6 @@
 package spring.springserver.domain.phone.controller
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
@@ -11,6 +12,7 @@ import spring.springserver.domain.phone.data.response.PhoneVerifyResponse
 import spring.springserver.domain.phone.data.response.SendPhoneVerifyNumberResponse
 import spring.springserver.domain.phone.service.PhoneVerifyService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.util.ClientIpResolver
 
 @RestController
 @RequestMapping("/phone")
@@ -20,11 +22,13 @@ class PhoneController(
 
     @PostMapping("/send")
     fun sendVerify(
-        @Valid @RequestBody sendPhoneVerifyNumberRequest: SendPhoneVerifyNumberRequest
+        @Valid @RequestBody sendPhoneVerifyNumberRequest: SendPhoneVerifyNumberRequest,
+        httpServletRequest: HttpServletRequest
     ): BaseResponse<SendPhoneVerifyNumberResponse> {
 
         return BaseResponse.ok(phoneVerifyService.sendMessage(
-                recipientNumber = sendPhoneVerifyNumberRequest.recipientNumber
+                recipientNumber = sendPhoneVerifyNumberRequest.recipientNumber,
+                clientIp = ClientIpResolver.resolve(httpServletRequest)
         ))
     }
 

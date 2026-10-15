@@ -45,7 +45,8 @@ class PhoneVerifyServiceImpl(
     )
 
     override fun sendMessage(
-        recipientNumber: String
+        recipientNumber: String,
+        clientIp: String
     ): SendPhoneVerifyNumberResponse {
 
         val message = Message()
@@ -55,8 +56,9 @@ class PhoneVerifyServiceImpl(
 
         /**
          * 발송은 로그인 없이 열려 있어 SMS 비용을 무제한으로 소모시킬 수 있다.
-         * 번호마다 재발송 간격과 하루 발송 횟수를 제한한다.
+         * 번호별 한도를 넘어 IP 레벨에서도 분/일 단위로 제한한다.
          */
+        limitSendByIp(clientIp)
         limitSend(recipientPhoneNumber)
 
         message.from = PhoneNormalizer.normalize(phone = senderNumber)
@@ -220,6 +222,45 @@ class PhoneVerifyServiceImpl(
         )
     }
 
+    private fun limitSendByIp(
+        clientIp: String
+    ) {
+
+        val minuteCount = redisTemplate.opsForValue().increment(sendIpMinuteKey(ip = clientIp))
+            ?: throw CannotSendPhoneVerifyNumberException()
+
+        if (minuteCount == 1L) {
+
+            redisTemplate.expire(
+                sendIpMinuteKey(ip = clientIp),
+                1,
+                TimeUnit.MINUTES
+            )
+        }
+
+        if (minuteCount > MAX_IP_MINUTE_SEND_COUNT) {
+
+            throw ApplicationException(PhoneVerifyStatusCode.SEND_IP_RATE_LIMIT_EXCEEDED)
+        }
+
+        val dailyCount = redisTemplate.opsForValue().increment(sendIpDailyKey(ip = clientIp))
+            ?: throw CannotSendPhoneVerifyNumberException()
+
+        if (dailyCount == 1L) {
+
+            redisTemplate.expire(
+                sendIpDailyKey(ip = clientIp),
+                1,
+                TimeUnit.DAYS
+            )
+        }
+
+        if (dailyCount > MAX_IP_DAILY_SEND_COUNT) {
+
+            throw ApplicationException(PhoneVerifyStatusCode.SEND_IP_RATE_LIMIT_EXCEEDED)
+        }
+    }
+
     private fun limitSend(
         phoneNumber: String
     ) {
@@ -270,6 +311,14 @@ class PhoneVerifyServiceImpl(
         phone: String
     ): String = "$phone:send:daily"
 
+    private fun sendIpMinuteKey(
+        ip: String
+    ): String = "phone:send:ip:$ip:minute"
+
+    private fun sendIpDailyKey(
+        ip: String
+    ): String = "phone:send:ip:$ip:daily"
+
     private fun verifiedKey(
         phone: String
     ): String = "$phone:verified"
@@ -287,6 +336,10 @@ class PhoneVerifyServiceImpl(
         private const val SEND_COOLDOWN_SECONDS = 60L
 
         private const val MAX_DAILY_SEND_COUNT = 10L
+
+        private const val MAX_IP_MINUTE_SEND_COUNT = 5L
+
+        private const val MAX_IP_DAILY_SEND_COUNT = 20L
 
         private val log = LoggerFactory.getLogger(PhoneVerifyServiceImpl::class.java)
     }
