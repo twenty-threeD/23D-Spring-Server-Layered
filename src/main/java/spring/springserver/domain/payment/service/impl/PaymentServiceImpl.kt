@@ -114,6 +114,28 @@ class PaymentServiceImpl(
         memberId: Long
     ): ConfirmPaymentResponse {
 
+        /**
+         * 같은 주문에 승인 요청이 동시에 들어오면 둘 다 토스 confirm 호출을 보낼 수 있다.
+         * 주문마다 락을 잡아 한 번에 하나만 처리한다.
+         */
+        return redisLockExecutor.runWithLock(
+            key = CONFIRM_LOCK_PREFIX + confirmPaymentRequest.orderId,
+            ttl = CONFIRM_LOCK_TTL
+        ) {
+
+            confirmWithLock(
+                confirmPaymentRequest,
+                memberId
+            )
+        }
+            ?: throw ApplicationException(PaymentStatusCode.PAYMENT_CONFIRM_IN_PROGRESS)
+    }
+
+    private fun confirmWithLock(
+        confirmPaymentRequest: ConfirmPaymentRequest,
+        memberId: Long
+    ): ConfirmPaymentResponse {
+
         val stored = paymentRecordService.findByOrderId(confirmPaymentRequest.orderId)
 
         /**
@@ -690,6 +712,9 @@ class PaymentServiceImpl(
 
         private const val CANCEL_LOCK_PREFIX = "payment:cancel:lock:"
         private val CANCEL_LOCK_TTL = Duration.ofSeconds(60)
+
+        private const val CONFIRM_LOCK_PREFIX = "payment:confirm:lock:"
+        private val CONFIRM_LOCK_TTL = Duration.ofSeconds(60)
 
         fun fullCancelIdempotencyKey(
             paymentKey: String
