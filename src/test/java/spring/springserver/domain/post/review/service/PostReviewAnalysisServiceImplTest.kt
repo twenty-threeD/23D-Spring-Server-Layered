@@ -15,8 +15,8 @@ import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Pageable
-import spring.springserver.domain.member.entity.Member
-import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.review.client.ReviewAnalysisClient
 import spring.springserver.domain.post.review.client.ReviewAnalysisResult
 import spring.springserver.domain.post.review.entity.PostReview
@@ -41,7 +41,7 @@ class PostReviewAnalysisServiceImplTest {
 
     private val postReviewAnalysisRepository = mock<PostReviewAnalysisRepository>()
     private val postReviewRepository = mock<PostReviewRepository>()
-    private val memberRepository = mock<MemberRepository>()
+    private val postRepository = mock<PostRepository>()
     private val reviewAnalysisClient = mock<ReviewAnalysisClient>()
     private val postReviewAnalysisWriter = mock<PostReviewAnalysisWriter>()
     private val redisLockExecutor = mock<RedisLockExecutor>()
@@ -50,7 +50,7 @@ class PostReviewAnalysisServiceImplTest {
 
     companion object {
 
-        private const val MEMBER_ID = 1L
+        private const val POST_ID = 1L
     }
 
     @BeforeEach
@@ -59,7 +59,7 @@ class PostReviewAnalysisServiceImplTest {
         postReviewAnalysisService = PostReviewAnalysisServiceImpl(
             postReviewAnalysisRepository,
             postReviewRepository,
-            memberRepository,
+            postRepository,
             reviewAnalysisClient,
             postReviewAnalysisWriter,
             redisLockExecutor
@@ -67,7 +67,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenLockIsAcquired()
 
-        whenever(memberRepository.findMemberById(MEMBER_ID)).thenReturn(mock<Member>())
+        whenever(postRepository.findPostById(POST_ID)).thenReturn(mock<Post>())
     }
 
     @Test
@@ -76,7 +76,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenReviewCount(2L)
 
-        assertThatThrownBy { postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID) }
+        assertThatThrownBy { postReviewAnalysisService.viewReviewAnalysis(POST_ID) }
             .isInstanceOf(ApplicationException::class.java)
             .hasFieldOrPropertyWithValue(
                 "statusCode",
@@ -99,14 +99,14 @@ class PostReviewAnalysisServiceImplTest {
             analyzedAt = LocalDateTime.now().minusDays(30)
         )
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("저장된 총평")
         assertThat(response.keywords).containsExactly("시간 약속 정확")
         assertThat(response.analyzedReviewCount).isEqualTo(5L)
 
         verify(reviewAnalysisClient, never()).analyze(any())
-        verify(postReviewRepository, never()).findRecentActiveReviewsByRevieweeId(any(), any())
+        verify(postReviewRepository, never()).findRecentActiveReviewsByPostId(any(), any())
     }
 
     @Test
@@ -122,7 +122,7 @@ class PostReviewAnalysisServiceImplTest {
             analyzedAt = LocalDateTime.now().minusMinutes(5)
         )
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("방금 만든 총평")
 
@@ -151,7 +151,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenWriterReturnsUpsertedAnalysis()
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("새 총평")
         assertThat(response.keywords).containsExactly("소통 원활", "결과물 만족")
@@ -170,7 +170,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenReviewCount(4L)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(null)
 
         givenReviews(4)
 
@@ -181,7 +181,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenWriterReturnsUpsertedAnalysis()
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("첫 총평")
         assertThat(response.keywords).containsExactly("꼼꼼함")
@@ -194,7 +194,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenReviewCount(4L)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(null)
 
         givenReviews(4)
 
@@ -210,17 +210,17 @@ class PostReviewAnalysisServiceImplTest {
                 any()
             )
         )
-            .thenThrow(DataIntegrityViolationException("uk_post_review_analysis_reviewee"))
+            .thenThrow(DataIntegrityViolationException("uk_post_review_analysis_post"))
             .thenReturn(
                 PostReviewAnalysis(
-                    mock<Member>(),
+                    mock<Post>(),
                     "총평",
                     mutableListOf(),
                     4L
                 )
             )
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("총평")
 
@@ -273,7 +273,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenLockIsNotAcquired()
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("직전 총평")
 
@@ -286,11 +286,11 @@ class PostReviewAnalysisServiceImplTest {
 
         givenReviewCount(4L)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(null)
 
         givenLockIsNotAcquired()
 
-        assertThatThrownBy { postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID) }
+        assertThatThrownBy { postReviewAnalysisService.viewReviewAnalysis(POST_ID) }
             .isInstanceOf(ApplicationException::class.java)
             .hasFieldOrPropertyWithValue(
                 "statusCode",
@@ -316,11 +316,11 @@ class PostReviewAnalysisServiceImplTest {
         whenever(freshAnalysis.analyzedReviewCount).thenReturn(7L)
         whenever(freshAnalysis.getUpdatedAt()).thenReturn(LocalDateTime.now())
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID))
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID))
             .thenReturn(null)
             .thenReturn(freshAnalysis)
 
-        val response = postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        val response = postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         assertThat(response.summary).isEqualTo("앞선 요청이 만든 총평")
 
@@ -329,12 +329,12 @@ class PostReviewAnalysisServiceImplTest {
     }
 
     @Test
-    @DisplayName("전문가 단위 키로 잠금을 건다")
-    fun locksPerReviewee() {
+    @DisplayName("게시글 단위 키로 잠금을 건다")
+    fun locksPerPost() {
 
         givenReviewCount(4L)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(null)
 
         givenReviews(4)
 
@@ -345,7 +345,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenWriterReturnsUpsertedAnalysis()
 
-        postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         val keyCaptor = argumentCaptor<String>()
         val ttlCaptor = argumentCaptor<Duration>()
@@ -356,7 +356,7 @@ class PostReviewAnalysisServiceImplTest {
             any<() -> PostReviewAnalysis>()
         )
 
-        assertThat(keyCaptor.firstValue).isEqualTo("lock:post-review-analysis:$MEMBER_ID")
+        assertThat(keyCaptor.firstValue).isEqualTo("lock:post-review-analysis:$POST_ID")
         assertThat(ttlCaptor.firstValue).isGreaterThanOrEqualTo(Duration.ofSeconds(40))
     }
 
@@ -366,7 +366,7 @@ class PostReviewAnalysisServiceImplTest {
 
         givenReviewCount(500L)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(null)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(null)
 
         givenReviews(10)
 
@@ -377,12 +377,12 @@ class PostReviewAnalysisServiceImplTest {
 
         givenWriterReturnsUpsertedAnalysis()
 
-        postReviewAnalysisService.viewReviewAnalysis(MEMBER_ID)
+        postReviewAnalysisService.viewReviewAnalysis(POST_ID)
 
         val pageableCaptor = argumentCaptor<Pageable>()
 
-        verify(postReviewRepository).findRecentActiveReviewsByRevieweeId(
-            eq(MEMBER_ID),
+        verify(postReviewRepository).findRecentActiveReviewsByPostId(
+            eq(POST_ID),
             pageableCaptor.capture()
         )
 
@@ -424,7 +424,7 @@ class PostReviewAnalysisServiceImplTest {
         reviewCount: Long
     ) {
 
-        whenever(postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(MEMBER_ID))
+        whenever(postReviewRepository.countByPostIdAndDeletedAtIsNull(POST_ID))
             .thenReturn(reviewCount)
     }
 
@@ -447,7 +447,7 @@ class PostReviewAnalysisServiceImplTest {
         whenever(savedAnalysis.getUpdatedAt()).thenReturn(analyzedAt)
         whenever(savedAnalysis.getCreatedAt()).thenReturn(analyzedAt)
 
-        whenever(postReviewAnalysisRepository.findByRevieweeId(MEMBER_ID)).thenReturn(savedAnalysis)
+        whenever(postReviewAnalysisRepository.findByPostId(POST_ID)).thenReturn(savedAnalysis)
 
         return savedAnalysis
     }
@@ -469,7 +469,7 @@ class PostReviewAnalysisServiceImplTest {
             val reviewAnalysisResult = invocation.arguments[1] as ReviewAnalysisResult
 
             PostReviewAnalysis(
-                mock<Member>(),
+                mock<Post>(),
                 reviewAnalysisResult.summary,
                 reviewAnalysisResult.keywords.toMutableList(),
                 invocation.arguments[2] as Long
@@ -481,7 +481,7 @@ class PostReviewAnalysisServiceImplTest {
         reviewCount: Int
     ) {
 
-        whenever(postReviewRepository.findRecentActiveReviewsByRevieweeId(any(), any()))
+        whenever(postReviewRepository.findRecentActiveReviewsByPostId(any(), any()))
             .thenReturn(List(reviewCount) { mock<PostReview>() })
     }
 

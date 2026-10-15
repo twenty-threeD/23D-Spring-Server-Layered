@@ -84,14 +84,14 @@ class PostReviewController(
     }
 
     /**
-     * 전문가 한 명이 받은 리뷰의 AI 분석(한줄 총평·키워드).
+     * 게시글 한 건에 달린 리뷰의 AI 분석(한줄 총평·키워드).
      */
     @GetMapping("/analysis")
     fun viewReviewAnalysis(
-        @RequestParam memberId: Long
+        @RequestParam postId: Long
     ): BaseResponse<PostReviewAnalysisResponse> {
 
-        return BaseResponse.ok(postReviewAnalysisService.viewReviewAnalysis(memberId))
+        return BaseResponse.ok(postReviewAnalysisService.viewReviewAnalysis(postId))
     }
 
     @PatchMapping

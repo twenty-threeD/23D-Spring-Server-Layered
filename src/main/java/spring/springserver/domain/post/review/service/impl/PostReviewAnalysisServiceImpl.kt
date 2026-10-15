@@ -3,9 +3,9 @@ package spring.springserver.domain.post.review.service.impl
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
-import spring.springserver.domain.member.entity.Member
-import spring.springserver.domain.member.exception.MemberStatusCode
-import spring.springserver.domain.member.repository.MemberRepository
+import spring.springserver.domain.post.entity.Post
+import spring.springserver.domain.post.exception.PostStatusCode
+import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.review.client.ReviewAnalysisClient
 import spring.springserver.domain.post.review.data.response.PostReviewAnalysisResponse
 import spring.springserver.domain.post.review.entity.PostReviewAnalysis
@@ -29,7 +29,7 @@ import java.time.Duration
 class PostReviewAnalysisServiceImpl(
     private val postReviewAnalysisRepository: PostReviewAnalysisRepository,
     private val postReviewRepository: PostReviewRepository,
-    private val memberRepository: MemberRepository,
+    private val postRepository: PostRepository,
     private val reviewAnalysisClient: ReviewAnalysisClient,
     private val postReviewAnalysisWriter: PostReviewAnalysisWriter,
     private val redisLockExecutor: RedisLockExecutor
@@ -58,19 +58,19 @@ class PostReviewAnalysisServiceImpl(
     }
 
     override fun viewReviewAnalysis(
-        memberId: Long
+        postId: Long
     ): PostReviewAnalysisResponse {
 
-        val reviewee = getMember(memberId)
+        val post = getPost(postId)
 
-        val reviewCount = postReviewRepository.countByRevieweeIdAndDeletedAtIsNull(memberId)
+        val reviewCount = postReviewRepository.countByPostIdAndDeletedAtIsNull(postId)
 
         if (reviewCount < MIN_REVIEWS_TO_ANALYZE) {
 
             throw ApplicationException(PostReviewStatusCode.NOT_ENOUGH_REVIEWS_TO_ANALYZE)
         }
 
-        val savedAnalysis = postReviewAnalysisRepository.findByRevieweeId(memberId)
+        val savedAnalysis = postReviewAnalysisRepository.findByPostId(postId)
 
         if (savedAnalysis != null && !needsReanalysis(
                 savedAnalysis,
@@ -79,22 +79,22 @@ class PostReviewAnalysisServiceImpl(
         ) {
 
             return toResponse(
-                memberId,
+                postId,
                 savedAnalysis
             )
         }
 
         /**
-         * 프로필 화면을 여러 사람이 동시에 열면 전부 "저장본이 없다"고 보고 각자 유료 호출을 한다.
-         * 전문가 단위로 잠금을 걸어 한 요청만 분석하고, 나머지는 저장본으로 돌려보낸다.
+         * 글 상세를 여러 사람이 동시에 열면 전부 "저장본이 없다"고 보고 각자 유료 호출을 한다.
+         * 게시글 단위로 잠금을 걸어 한 요청만 분석하고, 나머지는 저장본으로 돌려보낸다.
          */
         val analysis = redisLockExecutor.runWithLock(
-            key = ANALYSIS_LOCK_KEY_PREFIX + memberId,
+            key = ANALYSIS_LOCK_KEY_PREFIX + postId,
             ttl = ANALYSIS_LOCK_TTL
         ) {
             analyzeAndSave(
-                reviewee,
-                memberId,
+                post,
+                postId,
                 reviewCount
             )
         }
@@ -102,21 +102,21 @@ class PostReviewAnalysisServiceImpl(
             ?: throw ApplicationException(PostReviewStatusCode.REVIEW_ANALYSIS_IN_PROGRESS)
 
         return toResponse(
-            memberId,
+            postId,
             analysis
         )
     }
 
     private fun analyzeAndSave(
-        reviewee: Member,
-        memberId: Long,
+        post: Post,
+        postId: Long,
         reviewCount: Long
     ): PostReviewAnalysis {
 
         /**
          * 잠금을 기다리는 동안 앞선 요청이 분석을 끝냈을 수 있다. 다시 확인해 중복 호출을 막는다.
          */
-        val savedAnalysis = postReviewAnalysisRepository.findByRevieweeId(memberId)
+        val savedAnalysis = postReviewAnalysisRepository.findByPostId(postId)
 
         if (savedAnalysis != null && !needsReanalysis(
                 savedAnalysis,
@@ -127,8 +127,8 @@ class PostReviewAnalysisServiceImpl(
             return savedAnalysis
         }
 
-        val postReviews = postReviewRepository.findRecentActiveReviewsByRevieweeId(
-            memberId,
+        val postReviews = postReviewRepository.findRecentActiveReviewsByPostId(
+            postId,
             PageRequest.of(
                 0,
                 ReviewAnalysisClient.MAX_REVIEWS_IN_PROMPT
@@ -143,14 +143,14 @@ class PostReviewAnalysisServiceImpl(
          */
         return try {
             postReviewAnalysisWriter.upsert(
-                reviewee,
+                post,
                 reviewAnalysisResult,
                 reviewCount
             )
         } catch (exception: DataIntegrityViolationException) {
 
             postReviewAnalysisWriter.upsert(
-                reviewee,
+                post,
                 reviewAnalysisResult,
                 reviewCount
             )
@@ -171,12 +171,12 @@ class PostReviewAnalysisServiceImpl(
     }
 
     private fun toResponse(
-        memberId: Long,
+        postId: Long,
         postReviewAnalysis: PostReviewAnalysis
     ): PostReviewAnalysisResponse {
 
         return PostReviewAnalysisResponse.of(
-            memberId,
+            postId,
             postReviewAnalysis.summary,
             postReviewAnalysis.keywords.toList(),
             postReviewAnalysis.analyzedReviewCount,
@@ -184,11 +184,18 @@ class PostReviewAnalysisServiceImpl(
         )
     }
 
-    private fun getMember(
-        memberId: Long
-    ): Member {
+    private fun getPost(
+        postId: Long
+    ): Post {
 
-        return memberRepository.findMemberById(memberId)
-            ?: throw ApplicationException(MemberStatusCode.MEMBER_NOT_FOUND)
+        val post = postRepository.findPostById(postId)
+            ?: throw ApplicationException(PostStatusCode.INVALID_POST)
+
+        if (post.isDeleted) {
+
+            throw ApplicationException(PostStatusCode.INVALID_POST)
+        }
+
+        return post
     }
 }

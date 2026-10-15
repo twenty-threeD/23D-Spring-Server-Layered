@@ -25,6 +25,10 @@ interface PostReviewRepository: JpaRepository<PostReview, Long> {
         revieweeId: Long
     ): Long
 
+    fun countByPostIdAndDeletedAtIsNull(
+        postId: Long
+    ): Long
+
     fun findAllByDeletedAtBefore(
         deletedAt: LocalDateTime
     ): List<PostReview>
@@ -78,13 +82,13 @@ interface PostReviewRepository: JpaRepository<PostReview, Long> {
         """
         select pr
         from PostReview pr
-        where pr.reviewee.id = :revieweeId
+        where pr.post.id = :postId
           and pr.deletedAt is null
         order by pr.createdAt desc
         """
     )
-    fun findRecentActiveReviewsByRevieweeId(
-        @Param("revieweeId") revieweeId: Long,
+    fun findRecentActiveReviewsByPostId(
+        @Param("postId") postId: Long,
         pageable: Pageable
     ): List<PostReview>
 

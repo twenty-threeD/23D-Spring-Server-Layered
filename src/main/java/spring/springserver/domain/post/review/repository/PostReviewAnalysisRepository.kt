@@ -7,7 +7,7 @@ import spring.springserver.domain.post.review.entity.PostReviewAnalysis
 @Repository
 interface PostReviewAnalysisRepository: JpaRepository<PostReviewAnalysis, Long> {
 
-    fun findByRevieweeId(
-        revieweeId: Long
+    fun findByPostId(
+        postId: Long
     ): PostReviewAnalysis?
 }

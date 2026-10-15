@@ -5,6 +5,6 @@ import spring.springserver.domain.post.review.data.response.PostReviewAnalysisRe
 interface PostReviewAnalysisService {
 
     fun viewReviewAnalysis(
-        memberId: Long
+        postId: Long
     ): PostReviewAnalysisResponse
 }
