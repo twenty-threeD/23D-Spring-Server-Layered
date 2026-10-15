@@ -199,15 +199,22 @@ class FileService(
                 or exists (select 1 from payment where contract_url like ?)
         """
 
+        /**
+         * 아이폰 사진은 HEIF 컨테이너로 저장된다.
+         * Tika는 ftyp 브랜드가 heic/heix면 image/heic, mif1이면 image/heif로 판별하는데,
+         * 아이폰·변환 앱에 따라 확장자와 브랜드가 엇갈리므로 두 확장자를 모두 허용한다.
+         */
         private val ALLOWED_MIME_EXTENSIONS = mapOf(
             "image/jpeg" to setOf("jpg", "jpeg"),
             "image/png" to setOf("png"),
             "image/webp" to setOf("webp"),
+            "image/heic" to setOf("heic", "heif"),
+            "image/heif" to setOf("heif", "heic"),
             "application/pdf" to setOf("pdf")
         )
 
         private val ALLOWED_STORED_FILE_NAME: Pattern =
-            Pattern.compile("^[0-9a-fA-F\\-]{36}\\.(jpg|jpeg|png|webp|pdf)$")
+            Pattern.compile("^[0-9a-fA-F\\-]{36}\\.(jpg|jpeg|png|webp|heic|heif|pdf)$")
     }
 
     private fun registerRollbackCleanup(
