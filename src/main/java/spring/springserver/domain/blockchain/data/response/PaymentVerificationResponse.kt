@@ -15,9 +15,7 @@ data class PaymentVerificationResponse(
 
     val recordedHeight: Long,
 
-    val chainPaymentHash: String,
-
-    val recalculatedHash: String
+    val chainPaymentHash: String
 ) {
 
     companion object {
@@ -40,8 +38,7 @@ data class PaymentVerificationResponse(
                 buyerAddressMatched = buyerAddressMatched,
                 amountMatched = amountMatched,
                 recordedHeight = chainPaymentRecordResponse.recordedHeight,
-                chainPaymentHash = chainPaymentRecordResponse.paymentHash,
-                recalculatedHash = recalculatedHash
+                chainPaymentHash = chainPaymentRecordResponse.paymentHash
             )
         }
     }
