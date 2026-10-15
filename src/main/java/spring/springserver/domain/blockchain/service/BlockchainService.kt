@@ -355,7 +355,10 @@ class BlockchainService(
             return
         }
 
-        throw BlockchainCommitTimeoutException("tx not committed within timeout (txhash=$txHash)")
+        throw BlockchainCommitTimeoutException(
+            "tx not committed within timeout (txhash=$txHash)",
+            txHash
+        )
     }
     
     fun findTx(

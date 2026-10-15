@@ -113,6 +113,20 @@ class PaymentRecordServiceImpl(
         findByOrderId(orderId).markDone(paymentKey)
     }
 
+    override fun markChainUnconfirmed(
+        orderId: String,
+        paymentHash: String,
+        blockchainTxHash: String?,
+        failureReason: String?
+    ) {
+
+        findByOrderId(orderId).markChainUnconfirmed(
+            paymentHash,
+            blockchainTxHash,
+            failureReason
+        )
+    }
+
     override fun markChainRecorded(
         orderId: String,
         paymentHash: String,
