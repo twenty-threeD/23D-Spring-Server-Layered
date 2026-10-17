@@ -104,7 +104,7 @@ class CommunityPostServiceImpl(
 
         val communityPost = communityAuthorizationService.getActivePost(postId)
 
-        communityPostRepository.incrementViewCount(postId)
+        val incrementedCount = communityPostRepository.incrementViewCount(postId)
 
         val response = CommunityPostResponse.toPostResponse(
             communityPost,
@@ -112,6 +112,14 @@ class CommunityPostServiceImpl(
             communityPostLikeRepository,
             getImageUrl(communityPost)
         )
+
+        /**
+         * 조회 직후 글이 삭제돼 UPDATE가 0행이면 DB 값 그대로 돌려준다.
+         */
+        if (incrementedCount == 0) {
+
+            return response
+        }
 
         return response.copy(viewCount = response.viewCount + 1)
     }
