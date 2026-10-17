@@ -2,6 +2,7 @@ package spring.springserver.domain.community.post.service.impl
 
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
@@ -19,6 +20,7 @@ import spring.springserver.domain.community.post.repository.CommunityPostReposit
 import spring.springserver.domain.community.post.service.CommunityPostService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.data.PageResponse
+import spring.springserver.global.util.PageableSortResolver
 import java.time.LocalDateTime
 
 @Service
@@ -88,7 +90,7 @@ class CommunityPostServiceImpl(
         pageable: Pageable
     ): PageResponse<CommunityPostResponse> {
 
-        return toPageResponse(communityPostRepository.findAllByDeletedAtIsNullOrderByUpdatedAtDesc(pageable))
+        return toPageResponse(communityPostRepository.findAllByDeletedAtIsNull(resolveSort(pageable)))
     }
 
     @Transactional(readOnly = true)
@@ -119,7 +121,7 @@ class CommunityPostServiceImpl(
         return toPageResponse(
             communityPostRepository.searchPosts(
                 normalizedKeyword,
-                pageable
+                resolveSort(pageable)
             )
         )
     }
@@ -133,9 +135,30 @@ class CommunityPostServiceImpl(
         return toPageResponse(
             communityPostRepository.searchPostsByCategory(
                 category,
-                pageable
+                resolveSort(pageable)
             )
         )
+    }
+
+    private fun resolveSort(
+        pageable: Pageable
+    ): Pageable {
+
+        return PageableSortResolver.resolve(
+            pageable,
+            COMMUNITY_POST_SORT_ALLOWED,
+            COMMUNITY_POST_SORT_DEFAULT,
+            COMMUNITY_POST_SORT_TIEBREAKER
+        )
+    }
+
+    companion object {
+
+        private val COMMUNITY_POST_SORT_ALLOWED = setOf("updatedAt", "viewCount", "id")
+
+        private val COMMUNITY_POST_SORT_DEFAULT = Sort.by(Sort.Direction.DESC, "updatedAt")
+
+        private val COMMUNITY_POST_SORT_TIEBREAKER = Sort.by(Sort.Direction.DESC, "id")
     }
 
     private fun toPageResponse(

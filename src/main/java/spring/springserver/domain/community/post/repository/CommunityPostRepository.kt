@@ -25,7 +25,6 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
               or coalesce(lower(c.username), '') like lower(concat('%', :keyword, '%'))
               or coalesce(lower(m.username), '') like lower(concat('%', :keyword, '%'))
           )
-        order by c.updatedAt desc
         """,
         countQuery = """
         select count(c)
@@ -52,7 +51,6 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
         from CommunityPost c
         where c.category = :category
         and c.deletedAt is null
-        order by c.updatedAt desc
         """
     )
     fun searchPostsByCategory(
@@ -66,7 +64,7 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
     ): CommunityPost?
 
     @EntityGraph(attributePaths = ["member"])
-    fun findAllByDeletedAtIsNullOrderByUpdatedAtDesc(
+    fun findAllByDeletedAtIsNull(
         pageable: Pageable
     ): Page<CommunityPost>
 
