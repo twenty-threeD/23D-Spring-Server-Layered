@@ -1,9 +1,11 @@
 package spring.springserver.domain.post.controller
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.validation.Valid
 import org.springdoc.core.annotations.ParameterObject
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
+import org.springframework.http.HttpHeaders
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.post.data.request.CreatePostRequest
 import spring.springserver.domain.post.data.request.UpdatePostRequest
@@ -11,6 +13,7 @@ import spring.springserver.domain.post.data.response.DeletedPostResponse
 import spring.springserver.domain.post.data.response.PostResponse
 import spring.springserver.domain.post.service.PostService
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.util.ClientIpResolver
 
 @RestController
 @RequestMapping("/api/post")
@@ -28,10 +31,15 @@ class PostController(
 
     @GetMapping ("/{postId}")
     fun viewPost(
-        @PathVariable postId: Long
+        @PathVariable postId: Long,
+        httpServletRequest: HttpServletRequest
     ): BaseResponse<PostResponse> {
 
-        return BaseResponse.ok(postService.viewPost(postId))
+        return BaseResponse.ok(postService.viewPost(
+                postId,
+                ClientIpResolver.resolve(httpServletRequest),
+                httpServletRequest.getHeader(HttpHeaders.USER_AGENT).orEmpty()
+        ))
     }
 
     @GetMapping
