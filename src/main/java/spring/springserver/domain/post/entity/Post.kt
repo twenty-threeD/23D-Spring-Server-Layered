@@ -57,14 +57,16 @@ class Post(
     /**
      * 재구매율 집계. 결제 confirm/cancel 때 재계산되고,
      * 매 조회에서 계약·결제를 다시 집계하지 않도록 미리 저장한다.
+     * 기존 행이 있는 운영 테이블에서 ddl-auto=update 가 ALTER TABLE ADD COLUMN 할 때
+     * DB default 가 없으면 NOT NULL 추가가 거부되므로 columnDefinition 으로 default 를 박는다.
      */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer not null default 0")
     var buyerCount: Int = 0,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer not null default 0")
     var repeatBuyerCount: Int = 0,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "double precision not null default 0")
     var repeatRate: Double = 0.0
 ) {
 
