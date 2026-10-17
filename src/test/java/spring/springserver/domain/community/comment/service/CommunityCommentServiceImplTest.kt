@@ -249,6 +249,96 @@ class CommunityCommentServiceImplTest {
         assertThat(result.content[1].replies.map { comment -> comment.id }).containsExactly(110L)
     }
 
+    @Test
+    fun `같은 원댓글의 답글을 대상으로 지정하면 멘션 대상이 저장된다`() {
+
+        val member = buildMember(1L)
+        val target = buildMember(2L)
+        val post = buildPost(10L)
+        val root = buildComment(id = 50L, post = post, parent = null, author = member)
+        val reply = buildComment(id = 100L, post = post, parent = root, author = target)
+
+        whenever(communityAuthorizationService.getCurrentMember()).thenReturn(member)
+        whenever(communityAuthorizationService.getActivePost(10L)).thenReturn(post)
+        whenever(communityCommentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(root)
+        whenever(communityCommentRepository.findByIdAndDeletedAtIsNull(100L)).thenReturn(reply)
+        whenever(communityCommentRepository.save(any())).thenAnswer { invocation -> invocation.arguments[0] }
+
+        val response = service.createComment(
+            CreateCommentRequest(
+                postId = 10L,
+                content = "mention",
+                parentId = 50L,
+                replyToCommentId = 100L
+            )
+        )
+
+        assertThat(response.parentId).isEqualTo(50L)
+        assertThat(response.replyToCommentId).isEqualTo(100L)
+        assertThat(response.replyToUsername).isEqualTo("user2")
+    }
+
+    @Test
+    fun `다른 원댓글의 답글을 대상으로 지정하면 400`() {
+
+        val member = buildMember(1L)
+        val post = buildPost(10L)
+        val root = buildComment(id = 50L, post = post, parent = null, author = member)
+        val otherRoot = buildComment(id = 60L, post = post, parent = null, author = member)
+        val otherReply = buildComment(id = 110L, post = post, parent = otherRoot, author = member)
+
+        whenever(communityCommentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(root)
+        whenever(communityCommentRepository.findByIdAndDeletedAtIsNull(110L)).thenReturn(otherReply)
+
+        whenever(communityAuthorizationService.getCurrentMember()).thenReturn(member)
+        whenever(communityAuthorizationService.getActivePost(10L)).thenReturn(post)
+
+        assertThatThrownBy {
+
+            service.createComment(
+                CreateCommentRequest(
+                    postId = 10L,
+                    content = "mention",
+                    parentId = 50L,
+                    replyToCommentId = 110L
+                )
+            )
+        }
+            .isInstanceOfSatisfying(ApplicationException::class.java) { exception ->
+
+                assertThat(exception.statusCode).isEqualTo(CommunityStatusCode.COMMENT_REPLY_TARGET_INVALID)
+            }
+    }
+
+    @Test
+    fun `parentId 없이 대상만 지정하면 400`() {
+
+        val member = buildMember(1L)
+        val post = buildPost(10L)
+        val root = buildComment(id = 50L, post = post, parent = null, author = member)
+
+        whenever(communityCommentRepository.findByIdAndDeletedAtIsNull(50L)).thenReturn(root)
+
+        whenever(communityAuthorizationService.getCurrentMember()).thenReturn(member)
+        whenever(communityAuthorizationService.getActivePost(10L)).thenReturn(post)
+
+        assertThatThrownBy {
+
+            service.createComment(
+                CreateCommentRequest(
+                    postId = 10L,
+                    content = "mention",
+                    parentId = null,
+                    replyToCommentId = 50L
+                )
+            )
+        }
+            .isInstanceOfSatisfying(ApplicationException::class.java) { exception ->
+
+                assertThat(exception.statusCode).isEqualTo(CommunityStatusCode.COMMENT_REPLY_TARGET_INVALID)
+            }
+    }
+
     private fun buildMember(
         id: Long
     ): Member {

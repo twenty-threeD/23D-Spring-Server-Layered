@@ -48,7 +48,20 @@ class CommunityComment(
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
-    var parent: CommunityComment? = null
+    var parent: CommunityComment? = null,
+
+    /**
+     * 답글에 다시 답한 경우 대상 댓글 id. 대상이 지워져도 남아야 하므로 외래키 없이 값만 둔다.
+     */
+    @Column(name = "reply_to_comment_id")
+    var replyToCommentId: Long? = null,
+
+    /**
+     * 멘션 칩에 보여줄 대상 작성자. 이름은 응답 시점의 현재 값을 쓴다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_member_id")
+    var replyToMember: Member? = null
 ) {
 
     @Id

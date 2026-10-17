@@ -73,6 +73,7 @@ interface CommunityCommentRepository : JpaRepository<CommunityComment, Long> {
         select c
         from CommunityComment c
         join fetch c.member
+        left join fetch c.replyToMember
         where c.parent.id in :parentIds
           and c.deletedAt is null
         order by c.createdAt asc, c.id asc
