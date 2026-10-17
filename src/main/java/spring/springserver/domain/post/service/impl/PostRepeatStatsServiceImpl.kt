@@ -85,7 +85,7 @@ class PostRepeatStatsServiceImpl(
 
         val query = entityManager.createQuery(
             """
-            select count(pm.id)
+            select count(distinct ct.id)
             from Payment pm, Contract ct
             where pm.contractId = ct.id
               and ct.post.id = :postId
@@ -103,9 +103,13 @@ class PostRepeatStatsServiceImpl(
 
     companion object {
 
+        /**
+         * 일부만 환불된 결제도 구매는 성립했으므로 집계에 넣는다. 전액 취소만 뺀다.
+         */
         private val COMPLETED_STATUSES = listOf(
             PaymentStatus.DONE,
-            PaymentStatus.CHAIN_RECORDED
+            PaymentStatus.CHAIN_RECORDED,
+            PaymentStatus.PARTIAL_CANCELED
         )
     }
 }
