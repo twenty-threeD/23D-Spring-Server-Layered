@@ -9,8 +9,10 @@ import spring.springserver.domain.community.comment.entity.CommunityComment
 import spring.springserver.domain.community.comment.repository.CommunityCommentRepository
 import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
+import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.profile.service.ProfileService
+import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 
 @Service
@@ -29,12 +31,31 @@ class CommunityCommentServiceImpl(
 
         val communityPost = communityAuthorizationService.getActivePost(createCommentRequest.postId)
 
+        val parent = createCommentRequest.parentId?.let { parentId ->
+
+            val found = communityCommentRepository.findByIdAndDeletedAtIsNull(parentId)
+                ?: throw ApplicationException(CommunityStatusCode.COMMENT_PARENT_NOT_FOUND)
+
+            if (found.communityPost.getId() != communityPost.getId()) {
+
+                throw ApplicationException(CommunityStatusCode.COMMENT_PARENT_POST_MISMATCH)
+            }
+
+            if (found.isReply()) {
+
+                throw ApplicationException(CommunityStatusCode.COMMENT_REPLY_DEPTH_EXCEEDED)
+            }
+
+            found
+        }
+
         val communityComment = communityCommentRepository.save(
             CommunityComment(
                 member = member,
                 communityPost = communityPost,
                 content = createCommentRequest.content.trim(),
                 isEdited = false,
+                parent = parent
             )
         )
 
@@ -52,21 +73,51 @@ class CommunityCommentServiceImpl(
 
         communityAuthorizationService.getActivePost(postId)
 
-        val communityComments = communityCommentRepository
-            .findAllByCommunityPostIdAndDeletedAtIsNullOrderByCreatedAtDesc(postId)
+        /**
+         * 삭제된 원댓글도 답글이 남아 있으면 placeholder 로 보여야 하므로 모두 가져온다.
+         * parent·member 는 fetch join 으로 묶어 두 번째 쿼리가 돌지 않게 한다.
+         */
+        val allComments = communityCommentRepository.findAllForPostWithParent(postId)
 
         val imageUrls = profileService.getImageUrlsByMemberIds(
-            communityComments.mapNotNull { communityComment -> communityComment.member.getId() }
+            allComments.mapNotNull { comment -> comment.member.getId() }
         )
 
-        return communityComments.map {
-                communityComment ->
+        val repliesByParentId = allComments
+            .filter { comment -> comment.isReply() && !comment.isDeleted() }
+            .groupBy { comment -> comment.parent?.getId() }
+
+        return allComments
+            .asSequence()
+            .filter { comment -> !comment.isReply() }
+            .filter { parent ->
+
+                /**
+                 * 삭제된 원댓글은 답글이 남아 있을 때만 placeholder 로 노출한다.
+                 */
+                !parent.isDeleted() || !repliesByParentId[parent.getId()].isNullOrEmpty()
+            }
+            .map { parent ->
+
+                val replies = repliesByParentId[parent.getId()]
+                    .orEmpty()
+                    .map { reply ->
+
+                        CommunityCommentResponse.of(
+                            communityComment = reply,
+                            likeCount = 0L,
+                            imageUrl = imageUrls[reply.member.getId()]
+                        )
+                    }
+
                 CommunityCommentResponse.of(
-                    communityComment = communityComment,
+                    communityComment = parent,
                     likeCount = 0L,
-                    imageUrl = imageUrls[communityComment.member.getId()]
+                    imageUrl = imageUrls[parent.member.getId()],
+                    replies = replies
                 )
             }
+            .toList()
     }
 
     override fun updateComment(
@@ -104,7 +155,20 @@ class CommunityCommentServiceImpl(
             communityComment.member.getId()
         )
 
-        communityComment.softDelete(LocalDateTime.now())
+        /**
+         * 답글이 매달린 원댓글은 자리가 사라지면 답글 흐름이 깨진다. soft delete 로 placeholder 를 남긴다.
+         * 답글이 없거나 자신이 답글이면 그냥 지운다.
+         */
+        val commentId = communityComment.getId()
+        val hasReplies = commentId != null && communityCommentRepository.existsByParentId(commentId)
+
+        if (hasReplies) {
+
+            communityComment.softDelete(LocalDateTime.now())
+        } else {
+
+            communityCommentRepository.delete(communityComment)
+        }
 
         return DeleteResponse.of("삭제되었습니다.")
     }

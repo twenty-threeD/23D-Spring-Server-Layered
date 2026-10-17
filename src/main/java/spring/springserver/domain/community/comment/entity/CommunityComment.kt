@@ -16,7 +16,12 @@ import java.time.LocalDateTime
          */
         Index(name = "idx_community_comment_post", columnList = "community_post_id"),
 
-        Index(name = "idx_community_comment_member", columnList = "member_id")
+        Index(name = "idx_community_comment_member", columnList = "member_id"),
+
+        /**
+         * 특정 원댓글의 답글을 뽑거나 원댓글 삭제 시 자식 유무를 확인하는 데 쓴다.
+         */
+        Index(name = "idx_community_comment_parent", columnList = "parent_id")
     ]
 )
 class CommunityComment(
@@ -37,6 +42,13 @@ class CommunityComment(
 
     @Column(name = "deleted_at")
     var deletedAt: LocalDateTime? = null,
+
+    /**
+     * 답글이면 원댓글을 가리킨다. 깊이는 1단계만 허용하므로 parent 가 또 parent 를 가지면 안 된다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    var parent: CommunityComment? = null
 ) {
 
     @Id
@@ -54,6 +66,10 @@ class CommunityComment(
     fun getCreatedAt(): LocalDateTime? = createdAt
 
     fun getUpdatedAt(): LocalDateTime? = updatedAt
+
+    fun isDeleted(): Boolean = deletedAt != null
+
+    fun isReply(): Boolean = parent != null
 
     fun update(
         content: String

@@ -8,6 +8,8 @@ data class CommunityCommentResponse(
 
     val postId: Long?,
 
+    val parentId: Long?,
+
     val username: String,
 
     val imageUrl: String?,
@@ -16,31 +18,68 @@ data class CommunityCommentResponse(
 
     val isEdited: Boolean,
 
+    val isDeleted: Boolean,
+
     val likeCount: Long,
 
     val createdAt: LocalDateTime?,
 
     val updatedAt: LocalDateTime?,
+
+    val replies: List<CommunityCommentResponse> = emptyList()
 ) {
 
     companion object {
 
+        private const val DELETED_CONTENT_PLACEHOLDER = "삭제된 댓글입니다"
+
         fun of(
             communityComment: CommunityComment,
             likeCount: Long,
-            imageUrl: String?
+            imageUrl: String?,
+            replies: List<CommunityCommentResponse> = emptyList()
         ): CommunityCommentResponse {
+
+            val isDeleted = communityComment.isDeleted()
+            val visibleContent = if (isDeleted) {
+
+                DELETED_CONTENT_PLACEHOLDER
+            } else {
+
+                communityComment.content
+            }
+
+            /**
+             * 삭제된 댓글은 작성자 식별 정보를 지워 자리만 남긴다.
+             */
+            val displayUsername = if (isDeleted) {
+
+                DELETED_CONTENT_PLACEHOLDER
+            } else {
+
+                communityComment.member.getDisplayUsername()
+            }
+
+            val displayImageUrl = when {
+
+                isDeleted -> null
+                communityComment.member.isDeleted() -> null
+                else -> imageUrl
+            }
 
             return CommunityCommentResponse(
                 communityComment.getId(),
                 communityComment.communityPost.getId(),
-                communityComment.member.getDisplayUsername(),
-                if (communityComment.member.isDeleted()) null else imageUrl,
-                communityComment.content,
+                communityComment.parent?.getId(),
+                displayUsername,
+                displayImageUrl,
+                visibleContent,
                 communityComment.isEdited,
+                isDeleted,
                 likeCount,
                 communityComment.getCreatedAt(),
                 communityComment.getUpdatedAt(),
+                replies
             )
         }
     }
