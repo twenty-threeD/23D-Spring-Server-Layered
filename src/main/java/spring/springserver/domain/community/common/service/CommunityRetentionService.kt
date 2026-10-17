@@ -36,7 +36,7 @@ class CommunityRetentionService(
         threshold: LocalDateTime
     ) {
 
-        val expiredComments = communityCommentRepository.findAllByDeletedAtBefore(threshold)
+        val expiredComments = communityCommentRepository.findAllPurgeableBefore(threshold)
 
         if (expiredComments.isNotEmpty()) {
 
@@ -53,7 +53,14 @@ class CommunityRetentionService(
 
             if (commentsOfPosts.isNotEmpty()) {
 
-                communityCommentRepository.deleteAll(commentsOfPosts)
+                /**
+                 * 답글이 원댓글을 parent_id 로 참조하므로 답글을 먼저 지운다.
+                 */
+                val (replies, rootComments) = commentsOfPosts.partition { comment -> comment.isReply() }
+
+                communityCommentRepository.deleteAll(replies)
+                communityCommentRepository.flush()
+                communityCommentRepository.deleteAll(rootComments)
             }
 
             communityPostLikeRepository.deleteAllByCommunityPostIn(expiredPosts)

@@ -3,6 +3,8 @@ package spring.springserver.domain.community.comment.service
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.mock
@@ -19,6 +21,7 @@ import spring.springserver.domain.community.post.entity.CommunityPost
 import spring.springserver.domain.member.entity.Member
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
+import java.time.LocalDateTime
 
 class CommunityCommentServiceImplTest {
 
@@ -194,6 +197,56 @@ class CommunityCommentServiceImplTest {
 
         verify(communityCommentRepository).delete(comment)
         assertThat(comment.deletedAt).isNull()
+    }
+
+    @Test
+    fun `목록은 원댓글만 페이징하고 답글을 replies 에 담는다`() {
+
+        val member = buildMember(1L)
+        val post = buildPost(10L)
+        val root = buildComment(id = 50L, post = post, parent = null, author = member)
+        val deletedRoot = buildComment(id = 60L, post = post, parent = null, author = member)
+        val reply = buildComment(id = 100L, post = post, parent = root, author = member)
+        val replyOfDeleted = buildComment(id = 110L, post = post, parent = deletedRoot, author = member)
+
+        deletedRoot.softDelete(LocalDateTime.now())
+
+        val pageable = PageRequest.of(
+            0,
+            20
+        )
+
+        whenever(communityAuthorizationService.getActivePost(10L)).thenReturn(post)
+        whenever(communityCommentRepository.findRootCommentsByPostId(any(), any())).thenReturn(
+            PageImpl(
+                listOf(
+                    root,
+                    deletedRoot
+                ),
+                pageable,
+                2L
+            )
+        )
+        whenever(communityCommentRepository.findRepliesByParentIds(any())).thenReturn(
+            listOf(
+                reply,
+                replyOfDeleted
+            )
+        )
+        whenever(profileService.getImageUrlsByMemberIds(any())).thenReturn(emptyMap())
+
+        val result = service.getComments(
+            10L,
+            pageable
+        )
+
+        assertThat(result.totalElements).isEqualTo(2L)
+        assertThat(result.content.map { comment -> comment.id }).containsExactly(50L, 60L)
+        assertThat(result.content[0].replies.map { comment -> comment.id }).containsExactly(100L)
+        assertThat(result.content[0].replies[0].parentId).isEqualTo(50L)
+        assertThat(result.content[1].isDeleted).isTrue()
+        assertThat(result.content[1].content).isEqualTo("삭제된 댓글입니다")
+        assertThat(result.content[1].replies.map { comment -> comment.id }).containsExactly(110L)
     }
 
     private fun buildMember(

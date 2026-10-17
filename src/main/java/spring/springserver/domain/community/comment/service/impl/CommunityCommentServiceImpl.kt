@@ -1,5 +1,7 @@
 package spring.springserver.domain.community.comment.service.impl
 
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import spring.springserver.domain.community.comment.data.request.CreateCommentRequest
@@ -12,6 +14,7 @@ import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.domain.community.common.exception.CommunityStatusCode
 import spring.springserver.domain.community.common.service.CommunityAuthorizationService
 import spring.springserver.domain.profile.service.ProfileService
+import spring.springserver.global.data.PageResponse
 import spring.springserver.global.exception.exception.ApplicationException
 import java.time.LocalDateTime
 
@@ -68,56 +71,66 @@ class CommunityCommentServiceImpl(
 
     @Transactional(readOnly = true)
     override fun getComments(
-        postId : Long
-    ): List<CommunityCommentResponse> {
+        postId: Long,
+        pageable: Pageable
+    ): PageResponse<CommunityCommentResponse> {
 
         communityAuthorizationService.getActivePost(postId)
 
         /**
-         * 삭제된 원댓글도 답글이 남아 있으면 placeholder 로 보여야 하므로 모두 가져온다.
-         * parent·member 는 fetch join 으로 묶어 두 번째 쿼리가 돌지 않게 한다.
+         * 정렬은 작성순으로 고정하고 페이지 번호·크기만 받는다.
          */
-        val allComments = communityCommentRepository.findAllForPostWithParent(postId)
-
-        val imageUrls = profileService.getImageUrlsByMemberIds(
-            allComments.mapNotNull { comment -> comment.member.getId() }
+        val rootCommentPage = communityCommentRepository.findRootCommentsByPostId(
+            postId,
+            PageRequest.of(
+                pageable.pageNumber,
+                pageable.pageSize
+            )
         )
 
-        val repliesByParentId = allComments
-            .filter { comment -> comment.isReply() && !comment.isDeleted() }
-            .groupBy { comment -> comment.parent?.getId() }
+        val rootComments = rootCommentPage.content
 
-        return allComments
-            .asSequence()
-            .filter { comment -> !comment.isReply() }
-            .filter { parent ->
+        val rootCommentIds = rootComments.mapNotNull { comment -> comment.getId() }
 
-                /**
-                 * 삭제된 원댓글은 답글이 남아 있을 때만 placeholder 로 노출한다.
-                 */
-                !parent.isDeleted() || !repliesByParentId[parent.getId()].isNullOrEmpty()
-            }
-            .map { parent ->
+        val replies = if (rootCommentIds.isEmpty()) {
 
-                val replies = repliesByParentId[parent.getId()]
-                    .orEmpty()
-                    .map { reply ->
+            emptyList()
+        } else {
 
-                        CommunityCommentResponse.of(
-                            communityComment = reply,
-                            likeCount = 0L,
-                            imageUrl = imageUrls[reply.member.getId()]
-                        )
-                    }
+            communityCommentRepository.findRepliesByParentIds(rootCommentIds)
+        }
 
-                CommunityCommentResponse.of(
-                    communityComment = parent,
-                    likeCount = 0L,
-                    imageUrl = imageUrls[parent.member.getId()],
-                    replies = replies
-                )
-            }
-            .toList()
+        val imageUrls = profileService.getImageUrlsByMemberIds(
+            (rootComments + replies).mapNotNull { comment -> comment.member.getId() }
+        )
+
+        val repliesByParentId = replies.groupBy { reply -> reply.parent?.getId() }
+
+        val content = rootComments.map { rootComment ->
+
+            val replyResponses = repliesByParentId[rootComment.getId()]
+                .orEmpty()
+                .map { reply ->
+
+                    CommunityCommentResponse.of(
+                        communityComment = reply,
+                        likeCount = 0L,
+                        imageUrl = imageUrls[reply.member.getId()]
+                    )
+                }
+
+            CommunityCommentResponse.of(
+                communityComment = rootComment,
+                likeCount = 0L,
+                imageUrl = imageUrls[rootComment.member.getId()],
+                replies = replyResponses
+            )
+        }
+
+        return PageResponse.of(
+            rootCommentPage,
+            content
+        )
     }
 
     override fun updateComment(

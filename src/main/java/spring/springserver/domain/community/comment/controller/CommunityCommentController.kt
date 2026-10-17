@@ -1,6 +1,8 @@
 package spring.springserver.domain.community.comment.controller
 
 import jakarta.validation.Valid
+import org.springdoc.core.annotations.ParameterObject
+import org.springframework.data.domain.Pageable
 import org.springframework.web.bind.annotation.*
 import spring.springserver.domain.community.comment.data.request.CreateCommentRequest
 import spring.springserver.domain.community.comment.data.request.UpdateCommentRequest
@@ -8,6 +10,7 @@ import spring.springserver.domain.community.comment.data.response.CommunityComme
 import spring.springserver.domain.community.comment.service.CommunityCommentService
 import spring.springserver.domain.community.common.data.response.DeleteResponse
 import spring.springserver.global.data.BaseResponse
+import spring.springserver.global.data.PageResponse
 
 @RestController
 @RequestMapping("/api/community/comment")
@@ -25,10 +28,16 @@ class CommunityCommentController(
 
     @GetMapping
     fun getComments(
-        @RequestParam postId: Long
-    ): BaseResponse<List<CommunityCommentResponse>> {
+        @RequestParam postId: Long,
+        @ParameterObject pageable: Pageable
+    ): BaseResponse<PageResponse<CommunityCommentResponse>> {
 
-        return BaseResponse.ok(communityCommentService.getComments(postId))
+        return BaseResponse.ok(
+            communityCommentService.getComments(
+                postId,
+                pageable
+            )
+        )
     }
 
     @PatchMapping
