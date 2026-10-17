@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
 import spring.springserver.domain.community.post.entity.Category
@@ -71,4 +72,16 @@ interface CommunityPostRepository : JpaRepository<CommunityPost, Long> {
     fun findAllByDeletedAtBefore(
         deletedAt: LocalDateTime
     ): List<CommunityPost>
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(
+        """
+update CommunityPost c
+set c.viewCount = c.viewCount + 1
+where c.id = :id and c.deletedAt is null
+"""
+    )
+    fun incrementViewCount(
+        @Param("id") id: Long
+    ): Int
 }
