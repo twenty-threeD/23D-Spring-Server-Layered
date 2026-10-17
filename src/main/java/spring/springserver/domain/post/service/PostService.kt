@@ -14,7 +14,9 @@ interface PostService {
     ): PostResponse
 
     fun viewPost(
-        id: Long
+        id: Long,
+        clientIp: String,
+        userAgent: String
     ): PostResponse
 
     fun viewAllPosts(

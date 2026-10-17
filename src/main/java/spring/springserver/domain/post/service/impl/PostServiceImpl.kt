@@ -65,7 +65,9 @@ class PostServiceImpl(
      * readOnly면 flush가 일어나지 않아 증가분이 저장되지 않는다.
      */
     override fun viewPost(
-        id: Long
+        id: Long,
+        clientIp: String,
+        userAgent: String
     ): PostResponse {
 
         val post = postRepository.findPostById(id)
@@ -82,7 +84,11 @@ class PostServiceImpl(
          */
         val postResponse = toResponse(post)
 
-        if (!shouldCountView(post)) {
+        if (!shouldCountView(
+                post,
+                clientIp,
+                userAgent
+            )) {
 
             return postResponse
         }
@@ -97,32 +103,59 @@ class PostServiceImpl(
     }
 
     /**
-     * 작성자 본인의 조회와 같은 회원의 재조회는 세지 않는다.
-     * Redis 키에 TTL을 걸어 회원 한 명당 글 하나를 하루에 한 번만 반영한다.
+     * 로그인 상태면 회원 id 기준으로 하루 1회만 센다. 작성자 본인 조회는 제외한다.
+     * 비로그인은 IP + User-Agent 해시로 5분 내 재조회를 걸러낸다. 전시용 임시 완화이며,
+     * 전시 종료 후 쿠키 기반 anonymous UUID로 교체 예정.
      *
      * Redis가 죽어 있으면 조회수를 세지 않는 쪽으로 넘어간다.
      * 상세 조회 자체가 실패하는 것보다 집계가 조금 비는 편이 낫다.
      */
     private fun shouldCountView(
-        post: Post
+        post: Post,
+        clientIp: String,
+        userAgent: String
     ): Boolean {
 
         val memberId = currentMemberIdOrNull()
-            ?: return false
 
-        if (memberId == post.member.getId()) {
+        if (memberId != null && memberId == post.member.getId()) {
 
             return false
         }
 
-        val key = "$VIEW_COUNT_KEY_PREFIX${post.getId()}:$memberId"
+        val key = if (memberId != null) {
+
+            "$VIEW_COUNT_KEY_PREFIX${post.getId()}:$memberId"
+        } else {
+
+            "$VIEW_COUNT_ANON_KEY_PREFIX${post.getId()}:$clientIp:${hashUserAgent(userAgent)}"
+        }
+
+        val ttl = if (memberId != null) VIEW_COUNT_TTL else VIEW_COUNT_ANON_TTL
 
         return runCatching {
 
             redisTemplate.opsForValue()
-                .setIfAbsent(key, "1", VIEW_COUNT_TTL)
+                .setIfAbsent(key, "1", ttl)
                 ?: false
         }.getOrDefault(false)
+    }
+
+    /**
+     * User-Agent는 길이가 들쭉날쭉하므로 Redis 키 길이를 안정화하려고 짧게 해시한다.
+     */
+    private fun hashUserAgent(
+        userAgent: String
+    ): String {
+
+        if (userAgent.isBlank()) {
+
+            return "none"
+        }
+
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(userAgent.toByteArray())
+
+        return digest.take(8).joinToString("") { byte -> "%02x".format(byte) }
     }
 
     /**
@@ -386,7 +419,11 @@ class PostServiceImpl(
 
         private const val VIEW_COUNT_KEY_PREFIX = "post-view:"
 
+        private const val VIEW_COUNT_ANON_KEY_PREFIX = "post-view:anon:"
+
         private val VIEW_COUNT_TTL = Duration.ofDays(1)
+
+        private val VIEW_COUNT_ANON_TTL = Duration.ofMinutes(5)
 
         private val UPLOADED_FILE_URL_REGEX = Regex("^/files/[^/\\s.][^/\\s]*$")
     }
