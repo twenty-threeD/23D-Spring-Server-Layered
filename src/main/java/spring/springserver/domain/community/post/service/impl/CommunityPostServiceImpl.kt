@@ -93,21 +93,27 @@ class CommunityPostServiceImpl(
         return toPageResponse(communityPostRepository.findAllByDeletedAtIsNull(resolveSort(pageable)))
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * 조회수를 올려야 하므로 readOnly 로 두지 않는다. readOnly 면 flush 가 일어나지 않고,
+     * 엔티티에서 읽고 더하면 서로 다른 사용자의 동시 조회가 서로를 덮어쓴다.
+     * `viewCount = viewCount + 1` UPDATE 로 원자적으로 처리한다.
+     */
     override fun getPost(
         postId: Long
     ): CommunityPostResponse {
 
         val communityPost = communityAuthorizationService.getActivePost(postId)
 
-        communityPost.increaseViewCount()
+        communityPostRepository.incrementViewCount(postId)
 
-        return CommunityPostResponse.toPostResponse(
+        val response = CommunityPostResponse.toPostResponse(
             communityPost,
             communityCommentRepository,
             communityPostLikeRepository,
             getImageUrl(communityPost)
         )
+
+        return response.copy(viewCount = response.viewCount + 1)
     }
 
     @Transactional(readOnly = true)
