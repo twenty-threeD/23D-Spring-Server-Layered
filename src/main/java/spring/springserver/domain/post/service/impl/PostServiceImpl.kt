@@ -1,8 +1,8 @@
 package spring.springserver.domain.post.service.impl
 
 import org.springframework.data.domain.Page
-import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
+import org.springframework.data.domain.Sort
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
@@ -26,6 +26,7 @@ import spring.springserver.domain.post.service.PostService
 import spring.springserver.domain.profile.service.ProfileService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.MemberDetails
+import spring.springserver.global.util.PageableSortResolver
 import java.time.Duration
 import java.time.LocalDateTime
 
@@ -178,7 +179,7 @@ class PostServiceImpl(
     ): Page<PostResponse> {
 
         return toResponses(
-            postRepository.findAllByIsDeletedFalseOrderByUpdatedAtDesc(pageable)
+            postRepository.findAllByIsDeletedFalse(resolveSort(pageable))
         )
     }
 
@@ -189,13 +190,14 @@ class PostServiceImpl(
     ): Page<PostResponse> {
 
         val normalizedTitle = title?.trim().orEmpty()
+        val sorted = resolveSort(pageable)
 
         if (categoryId == null) {
 
             return toResponses(
                 postRepository.searchPostsByTitle(
                     normalizedTitle,
-                    pageable.withoutSort()
+                    sorted
                 )
             )
         }
@@ -204,8 +206,20 @@ class PostServiceImpl(
             postRepository.searchPostsByTitleAndCategoryIds(
                 normalizedTitle,
                 jobCategoryService.getCategoryIdsIncludingDescendants(categoryId),
-                pageable.withoutSort()
+                sorted
             )
+        )
+    }
+
+    private fun resolveSort(
+        pageable: Pageable
+    ): Pageable {
+
+        return PageableSortResolver.resolve(
+            pageable,
+            POST_SORT_ALLOWED,
+            POST_SORT_DEFAULT,
+            POST_SORT_TIEBREAKER
         )
     }
 
@@ -412,10 +426,13 @@ class PostServiceImpl(
         })
     }
 
-    private fun Pageable.withoutSort(): Pageable =
-        PageRequest.of(pageNumber, pageSize)
-
     companion object {
+
+        private val POST_SORT_ALLOWED = setOf("updatedAt", "viewCount", "id")
+
+        private val POST_SORT_DEFAULT = Sort.by(Sort.Direction.DESC, "updatedAt")
+
+        private val POST_SORT_TIEBREAKER = Sort.by(Sort.Direction.DESC, "id")
 
         private const val VIEW_COUNT_KEY_PREFIX = "post-view:"
 

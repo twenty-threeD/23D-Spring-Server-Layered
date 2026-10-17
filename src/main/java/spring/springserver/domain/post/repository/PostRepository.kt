@@ -17,7 +17,7 @@ interface PostRepository: JpaRepository<Post, Long> {
         id: Long
     ): Post?
 
-    fun findAllByIsDeletedFalseOrderByUpdatedAtDesc(
+    fun findAllByIsDeletedFalse(
         pageable: Pageable
     ): Page<Post>
 
@@ -77,7 +77,6 @@ interface PostRepository: JpaRepository<Post, Long> {
               :title = ''
               or lower(p.title) like lower(concat('%', :title, '%'))
           )
-        order by p.updatedAt desc
         """
     )
     fun searchPostsByTitle(
@@ -99,7 +98,6 @@ interface PostRepository: JpaRepository<Post, Long> {
               or lower(p.title) like lower(concat('%', :title, '%'))
           )
           and p.category.id in :categoryIds
-        order by p.updatedAt desc
         """
     )
     fun searchPostsByTitleAndCategoryIds(
