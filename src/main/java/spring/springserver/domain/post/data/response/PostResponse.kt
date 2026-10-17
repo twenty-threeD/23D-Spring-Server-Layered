@@ -19,7 +19,13 @@ data class PostResponse(
 
     val member: PostMemberResponse,
 
-    val category: JobCategoryResponse?
+    val category: JobCategoryResponse?,
+
+    val repeatRate: Double,
+
+    val repeatBuyerCount: Int,
+
+    val buyerCount: Int
 ) {
 
     companion object {
@@ -40,7 +46,10 @@ data class PostResponse(
                     post.member,
                     memberImageUrl
                 ),
-                post.category?.let { JobCategoryResponse.of(it) }
+                post.category?.let { JobCategoryResponse.of(it) },
+                post.repeatRate,
+                post.repeatBuyerCount,
+                post.buyerCount
             )
         }
     }

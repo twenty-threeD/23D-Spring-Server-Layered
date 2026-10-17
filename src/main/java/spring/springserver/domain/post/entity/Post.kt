@@ -52,7 +52,20 @@ class Post(
     var category: JobCategory? = null,
 
     @OneToMany(mappedBy = "post", cascade = [CascadeType.ALL], orphanRemoval = true)
-    var attachments: MutableList<PostAttach> = mutableListOf()
+    var attachments: MutableList<PostAttach> = mutableListOf(),
+
+    /**
+     * 재구매율 집계. 결제 confirm/cancel 때 재계산되고,
+     * 매 조회에서 계약·결제를 다시 집계하지 않도록 미리 저장한다.
+     */
+    @Column(nullable = false)
+    var buyerCount: Int = 0,
+
+    @Column(nullable = false)
+    var repeatBuyerCount: Int = 0,
+
+    @Column(nullable = false)
+    var repeatRate: Double = 0.0
 ) {
 
     @Id
@@ -76,5 +89,16 @@ class Post(
                 post = this
             )
         )
+    }
+
+    fun applyRepeatStats(
+        buyerCount: Int,
+        repeatBuyerCount: Int,
+        repeatRate: Double
+    ) {
+
+        this.buyerCount = buyerCount
+        this.repeatBuyerCount = repeatBuyerCount
+        this.repeatRate = repeatRate
     }
 }

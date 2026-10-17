@@ -1,6 +1,7 @@
 package spring.springserver.domain.post.service.impl
 
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort
 import org.springframework.data.redis.core.RedisTemplate
@@ -24,6 +25,7 @@ import spring.springserver.domain.post.exception.PostStatusCode
 import spring.springserver.domain.post.repository.PostRepository
 import spring.springserver.domain.post.service.PostService
 import spring.springserver.domain.profile.service.ProfileService
+import spring.springserver.global.config.PostRepeatRateProperties
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.jwt.MemberDetails
 import spring.springserver.global.util.PageableSortResolver
@@ -39,7 +41,8 @@ class PostServiceImpl(
     private val jobCategoryService: JobCategoryService,
     private val profileService: ProfileService,
     private val memberService: MemberService,
-    private val redisTemplate: RedisTemplate<String, String>
+    private val redisTemplate: RedisTemplate<String, String>,
+    private val postRepeatRateProperties: PostRepeatRateProperties
 ): PostService {
 
     override fun createPost(
@@ -178,6 +181,16 @@ class PostServiceImpl(
         pageable: Pageable
     ): Page<PostResponse> {
 
+        if (isRepeatRateSort(pageable)) {
+
+            return toResponses(
+                postRepository.findAllLivingOrderByRepeatRate(
+                    postRepeatRateProperties.minBuyers,
+                    PageRequest.of(pageable.pageNumber, pageable.pageSize, REPEAT_RATE_SORT_HINT)
+                )
+            )
+        }
+
         return toResponses(
             postRepository.findAllByIsDeletedFalse(resolveSort(pageable))
         )
@@ -190,6 +203,32 @@ class PostServiceImpl(
     ): Page<PostResponse> {
 
         val normalizedTitle = title?.trim().orEmpty()
+
+        if (isRepeatRateSort(pageable)) {
+
+            val pageRequest = PageRequest.of(pageable.pageNumber, pageable.pageSize, REPEAT_RATE_SORT_HINT)
+
+            if (categoryId == null) {
+
+                return toResponses(
+                    postRepository.searchPostsByTitleOrderByRepeatRate(
+                        normalizedTitle,
+                        postRepeatRateProperties.minBuyers,
+                        pageRequest
+                    )
+                )
+            }
+
+            return toResponses(
+                postRepository.searchPostsByTitleAndCategoryIdsOrderByRepeatRate(
+                    normalizedTitle,
+                    jobCategoryService.getCategoryIdsIncludingDescendants(categoryId),
+                    postRepeatRateProperties.minBuyers,
+                    pageRequest
+                )
+            )
+        }
+
         val sorted = resolveSort(pageable)
 
         if (categoryId == null) {
@@ -209,6 +248,20 @@ class PostServiceImpl(
                 sorted
             )
         )
+    }
+
+    /**
+     * 재구매율은 표본 보정이 들어가므로 Pageable.sort 로는 표현할 수 없고,
+     * CASE WHEN 이 박힌 전용 @Query 로 라우팅한다. 1차 정렬이 repeatRate 일 때만 전용 경로로 간다.
+     */
+    private fun isRepeatRateSort(
+        pageable: Pageable
+    ): Boolean {
+
+        return pageable.sort
+            .toList()
+            .firstOrNull()
+            ?.property == "repeatRate"
     }
 
     private fun resolveSort(
@@ -428,7 +481,17 @@ class PostServiceImpl(
 
     companion object {
 
-        private val POST_SORT_ALLOWED = setOf("updatedAt", "viewCount", "id")
+        private val POST_SORT_ALLOWED = setOf("updatedAt", "viewCount", "id", "repeatRate")
+
+        /**
+         * repeatRate 전용 @Query 는 CASE WHEN 으로 하드코딩된 order by 를 쓴다.
+         * 응답 Page.sort 가 sorted:true 로 보이도록 PageRequest 에 같은 모양의 Sort 를 함께 실어 보낸다.
+         */
+        private val REPEAT_RATE_SORT_HINT = Sort.by(
+            Sort.Order.desc("repeatRate"),
+            Sort.Order.desc("viewCount"),
+            Sort.Order.desc("id")
+        )
 
         private val POST_SORT_DEFAULT = Sort.by(Sort.Direction.DESC, "updatedAt")
 
