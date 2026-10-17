@@ -103,7 +103,11 @@ dependencies {
     implementation("io.agora:authentication:2.1.3")
 
     // Anthropic (Claude API, 리뷰 AI 분석)
-    implementation("com.anthropic:anthropic-java:2.34.0")
+    // anthropic-java-core 가 끌어오는 swagger-annotations 2.2.31 이 springdoc 의 jakarta 변종(2.2.47)
+    // 과 같은 Schema 클래스를 담아 로드 순서에 따라 Schema.$dynamicRef() 가 사라져 /v3/api-docs 가 500 난다.
+    implementation("com.anthropic:anthropic-java:2.34.0") {
+        exclude(group = "io.swagger.core.v3", module = "swagger-annotations")
+    }
 
     // Kotlin
     implementation("org.jetbrains.kotlin:kotlin-reflect")
