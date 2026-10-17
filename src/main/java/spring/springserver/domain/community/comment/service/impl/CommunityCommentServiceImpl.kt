@@ -52,13 +52,35 @@ class CommunityCommentServiceImpl(
             found
         }
 
+        val replyTo = createCommentRequest.replyToCommentId?.let { replyToCommentId ->
+
+            val found = communityCommentRepository.findByIdAndDeletedAtIsNull(replyToCommentId)
+                ?: throw ApplicationException(CommunityStatusCode.COMMENT_REPLY_TARGET_INVALID)
+
+            /**
+             * 대상은 원댓글 자신이거나 같은 원댓글에 달린 답글이어야 한다.
+             */
+            val parentId = parent?.getId()
+            val isSameThread = parentId != null
+                && (found.getId() == parentId || found.parent?.getId() == parentId)
+
+            if (!isSameThread) {
+
+                throw ApplicationException(CommunityStatusCode.COMMENT_REPLY_TARGET_INVALID)
+            }
+
+            found
+        }
+
         val communityComment = communityCommentRepository.save(
             CommunityComment(
                 member = member,
                 communityPost = communityPost,
                 content = createCommentRequest.content.trim(),
                 isEdited = false,
-                parent = parent
+                parent = parent,
+                replyToCommentId = replyTo?.getId(),
+                replyToMember = replyTo?.member
             )
         )
 

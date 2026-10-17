@@ -10,6 +10,10 @@ data class CommunityCommentResponse(
 
     val parentId: Long?,
 
+    val replyToCommentId: Long?,
+
+    val replyToUsername: String?,
+
     val username: String,
 
     val imageUrl: String?,
@@ -71,6 +75,8 @@ data class CommunityCommentResponse(
                 communityComment.getId(),
                 communityComment.communityPost.getId(),
                 communityComment.parent?.getId(),
+                communityComment.replyToCommentId,
+                communityComment.replyToMember?.getDisplayUsername(),
                 displayUsername,
                 displayImageUrl,
                 visibleContent,
