@@ -25,6 +25,7 @@ import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.exception.PaymentStatusCode
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentService
+import spring.springserver.domain.post.service.PostRepeatStatsService
 import spring.springserver.global.exception.exception.ApplicationException
 import spring.springserver.global.util.ContractUrlHasher
 import spring.springserver.global.util.RedisLockExecutor
@@ -41,7 +42,8 @@ class PaymentServiceImpl(
     private val contractUrlHasher: ContractUrlHasher,
     private val contractService: ContractService,
     private val redisTemplate: RedisTemplate<String, String>,
-    private val redisLockExecutor: RedisLockExecutor
+    private val redisLockExecutor: RedisLockExecutor,
+    private val postRepeatStatsService: PostRepeatStatsService
 ): PaymentService {
 
     private val log = LoggerFactory.getLogger(PaymentServiceImpl::class.java)
@@ -229,6 +231,18 @@ class PaymentServiceImpl(
             hash,
             resolvedTxHash
         )
+
+        /**
+         * 결제가 체인 기록까지 끝났으므로 이 글의 재구매 통계를 다시 집계해 저장한다.
+         * 실패해도 결제 결과에는 영향 없게 로그만 남긴다.
+         */
+        runCatching {
+
+            postRepeatStatsService.recomputeByContractId(payment.getContractId())
+        }.onFailure { throwable ->
+
+            log.warn("재구매 통계 갱신 실패. orderId = {}", confirmPaymentRequest.orderId, throwable)
+        }
 
         completeTrade(payment)
 
@@ -670,6 +684,17 @@ class PaymentServiceImpl(
             )
 
             cancelTradeIfFullyCanceled(payment)
+
+            /**
+             * 결제 취소도 재구매 통계를 바꾸므로 다시 집계한다. 실패해도 취소 결과엔 영향 없게 로그만.
+             */
+            runCatching {
+
+                postRepeatStatsService.recomputeByContractId(payment.getContractId())
+            }.onFailure { throwable ->
+
+                log.warn("재구매 통계 갱신 실패(cancel). paymentKey = {}", paymentKey, throwable)
+            }
         } catch (exception: Exception) {
 
             /**

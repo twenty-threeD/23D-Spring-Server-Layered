@@ -117,4 +117,68 @@ where p.id = :id and p.isDeleted = false
     fun incrementViewCount(
         @Param("id") id: Long
     ): Int
+
+    @Query("select p.id from Post p where p.isDeleted = false")
+    fun findAllPostIdsOfLivingPosts(): List<Long>
+
+    /**
+     * 재구매율 정렬 전용. buyerCount 가 임계치 미만이면 정렬에서 0 으로 취급해 표본 보정.
+     * title 필터와 함께 쓴다. categoryIds 없이 전체 title 범위.
+     */
+    @Query(
+        """
+        select p
+        from Post p
+        where p.isDeleted = false
+          and (
+              :title = ''
+              or lower(p.title) like lower(concat('%', :title, '%'))
+          )
+        order by case when p.buyerCount >= :minBuyers then p.repeatRate else 0.0 end desc,
+                 p.viewCount desc,
+                 p.id desc
+        """
+    )
+    fun searchPostsByTitleOrderByRepeatRate(
+        @Param("title") title: String,
+        @Param("minBuyers") minBuyers: Int,
+        pageable: Pageable
+    ): Page<Post>
+
+    @Query(
+        """
+        select p
+        from Post p
+        where p.isDeleted = false
+          and (
+              :title = ''
+              or lower(p.title) like lower(concat('%', :title, '%'))
+          )
+          and p.category.id in :categoryIds
+        order by case when p.buyerCount >= :minBuyers then p.repeatRate else 0.0 end desc,
+                 p.viewCount desc,
+                 p.id desc
+        """
+    )
+    fun searchPostsByTitleAndCategoryIdsOrderByRepeatRate(
+        @Param("title") title: String,
+        @Param("categoryIds") categoryIds: Collection<Long>,
+        @Param("minBuyers") minBuyers: Int,
+        pageable: Pageable
+    ): Page<Post>
+
+    @Query(
+        """
+        select p
+        from Post p
+        where p.isDeleted = false
+        order by case when p.buyerCount >= :minBuyers then p.repeatRate else 0.0 end desc,
+                 p.viewCount desc,
+                 p.id desc
+        """
+    )
+    fun findAllLivingOrderByRepeatRate(
+        @Param("minBuyers") minBuyers: Int,
+        pageable: Pageable
+    ): Page<Post>
 }

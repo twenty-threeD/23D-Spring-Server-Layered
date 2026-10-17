@@ -172,6 +172,10 @@ app:
     same-site: ${COOKIE_SAME_SITE:None}
     secure: ${COOKIE_SECURE:true}
     domain: ${COOKIE_DOMAIN:.idta.store}
+  post:
+    repeat-rate:
+      min-buyers: ${POST_REPEAT_RATE_MIN_BUYERS:3}
+      backfill-on-start: ${POST_REPEAT_RATE_BACKFILL_ON_START:false}
 
 toss-payments:
   secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
