@@ -13,6 +13,7 @@ import spring.springserver.domain.payment.entity.PaymentStatus
 import spring.springserver.domain.payment.repository.PaymentRepository
 import spring.springserver.domain.payment.service.PaymentRecordService
 import spring.springserver.domain.payment.service.PaymentRecoveryService
+import spring.springserver.domain.post.service.PostRepeatStatsService
 import java.time.LocalDateTime
 
 @Service
@@ -22,7 +23,8 @@ class PaymentRecoveryServiceImpl(
     private val tossPaymentsClient: TossPaymentsClient,
     private val redisTemplate: RedisTemplate<String, String>,
     private val chatService: ChatService,
-    private val blockchainService: BlockchainService
+    private val blockchainService: BlockchainService,
+    private val postRepeatStatsService: PostRepeatStatsService
 ): PaymentRecoveryService {
 
     private val log = LoggerFactory.getLogger(PaymentRecoveryServiceImpl::class.java)
@@ -54,6 +56,8 @@ class PaymentRecoveryServiceImpl(
                     payment.getOrderId(),
                     payment.getFailureReason()
                 )
+
+                recomputeRepeatStats(payment)
 
                 log.info("보상 취소 재시도 성공. orderId={}", payment.getOrderId())
             } catch (exception: Exception) {
@@ -141,6 +145,8 @@ class PaymentRecoveryServiceImpl(
 
                     return@forEach
                 }
+
+                recomputeRepeatStats(payment)
 
                 /**
                  * 전액 취소면 채팅방 거래도 취소로 맞춘다. 실패하면 대상에 남겨 다음 주기에 다시 시도한다.
@@ -245,6 +251,8 @@ class PaymentRecoveryServiceImpl(
             payment.getBlockchainTxHash()
         )
 
+        recomputeRepeatStats(payment)
+
         val roomId = payment.getRoomId()
             ?: return
 
@@ -282,6 +290,22 @@ class PaymentRecoveryServiceImpl(
             PaymentStatus.IN_PROGRESS,
             LocalDateTime.now().minusMinutes(STUCK_THRESHOLD_MINUTES)
         )
+    }
+
+    /**
+     * 복구 경로에서 결제 상태가 바뀌면 재구매 통계도 다시 집계한다. 실패해도 복구 흐름은 계속한다.
+     */
+    private fun recomputeRepeatStats(
+        payment: Payment
+    ) {
+
+        runCatching {
+
+            postRepeatStatsService.recomputeByContractId(payment.getContractId())
+        }.onFailure { throwable ->
+
+            log.warn("재구매 통계 갱신 실패(recovery). orderId = {}", payment.getOrderId(), throwable)
+        }
     }
 
     companion object {

@@ -85,7 +85,7 @@ class PostRepeatStatsServiceImpl(
 
         val query = entityManager.createQuery(
             """
-            select count(pm.id)
+            select count(distinct ct.id)
             from Payment pm, Contract ct
             where pm.contractId = ct.id
               and ct.post.id = :postId
