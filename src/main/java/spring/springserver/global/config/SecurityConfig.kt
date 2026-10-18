@@ -309,6 +309,14 @@ class SecurityConfig(
                     ).hasAnyRole("USER", "PROFESSIONAL")
                     .requestMatchers(
                         HttpMethod.POST,
+                        "/api/push/token"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.DELETE,
+                        "/api/push/token"
+                    ).hasAnyRole("USER", "PROFESSIONAL")
+                    .requestMatchers(
+                        HttpMethod.POST,
                         "/phone/send",
                         "/phone/verify"
                     ).permitAll()
