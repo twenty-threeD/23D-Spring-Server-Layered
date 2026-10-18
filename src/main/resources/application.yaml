@@ -198,6 +198,12 @@ member-key:
   master-key: ${MEMBER_KEY_MASTER_KEY:}
   encrypt-plaintext: ${MEMBER_KEY_ENCRYPT_PLAINTEXT:false}
 
+expo:
+  push:
+    url: ${EXPO_PUSH_URL:https://exp.host/--/api/v2/push/send}
+    access-token: ${EXPO_PUSH_ACCESS_TOKEN:}
+    enabled: ${EXPO_PUSH_ENABLED:true}
+
 agora:
   app-id: ${AGORA_APP_ID:}
   app-certificate: ${AGORA_APP_CERTIFICATE:}
